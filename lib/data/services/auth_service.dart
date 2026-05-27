@@ -14,21 +14,22 @@ class AuthService {
       throw Exception('Login API is not supported on web in this build');
     }
 
-    final uri = _baseUri.replace(path: '/api/v1/login');
-    final client = HttpClient();
+    final uri = _baseUri.replace(path: '/api/v1/owner/login');
     try {
-      final req = await client.postUrl(uri);
-      req.headers.contentType = ContentType.json;
-      req.write(
-        jsonEncode(<String, dynamic>{
+      final response = await http.post(
+        uri,
+        headers: {
+          'content-type': 'application/x-www-form-urlencoded',
+          'accept': 'application/json',
+        },
+        body: {
           'email': email,
           'password': password,
-        }),
+        },
       );
 
-      final res = await req.close();
-      final body = await res.transform(utf8.decoder).join();
-      final status = res.statusCode;
+      final body = response.body;
+      final status = response.statusCode;
 
       Map<String, dynamic>? json;
       if (body.trim().isNotEmpty) {
@@ -38,6 +39,12 @@ class AuthService {
 
       if (status < 200 || status >= 300) {
         final msg = _extractError(json) ?? 'Login failed ($status)';
+        throw Exception(msg);
+      }
+
+      // Check if API returned status false but status code is 2xx
+      if (json != null && json['status'] == false) {
+        final msg = _extractError(json) ?? 'Login failed';
         throw Exception(msg);
       }
 
@@ -53,32 +60,37 @@ class AuthService {
       return User(id: user.id, name: user.name, email: user.email, token: token);
     } on SocketException {
       throw Exception('Network error. Please check your internet connection.');
-    } finally {
-      client.close(force: true);
     }
   }
 
-  Future<User> signup({required String name, required String email, required String password}) async {
+  Future<User> signup({
+    required String name,
+    required String email,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
     if (kIsWeb) {
       throw Exception('Signup API is not supported on web in this build');
     }
 
-    final uri = _baseUri.replace(path: '/api/register');
-    final client = HttpClient();
+    final uri = _baseUri.replace(path: '/api/v1/owner/register');
     try {
-      final req = await client.postUrl(uri);
-      req.headers.contentType = ContentType.json;
-      req.write(
-        jsonEncode(<String, dynamic>{
+      final response = await http.post(
+        uri,
+        headers: {
+          'content-type': 'application/x-www-form-urlencoded',
+          'accept': 'application/json',
+        },
+        body: {
           'name': name,
           'email': email,
           'password': password,
-        }),
+          'password_confirmation': passwordConfirmation,
+        },
       );
 
-      final res = await req.close();
-      final body = await res.transform(utf8.decoder).join();
-      final status = res.statusCode;
+      final body = response.body;
+      final status = response.statusCode;
 
       Map<String, dynamic>? json;
       if (body.trim().isNotEmpty) {
@@ -88,6 +100,12 @@ class AuthService {
 
       if (status < 200 || status >= 300) {
         final msg = _extractError(json) ?? 'Signup failed ($status)';
+        throw Exception(msg);
+      }
+
+      // Check if API returned status false but status code is 2xx
+      if (json != null && json['status'] == false) {
+        final msg = _extractError(json) ?? 'Signup failed';
         throw Exception(msg);
       }
 
@@ -106,8 +124,6 @@ class AuthService {
       return User(id: user.id, name: user.name, email: user.email, token: token);
     } on SocketException {
       throw Exception('Network error. Please check your internet connection.');
-    } finally {
-      client.close(force: true);
     }
   }
 

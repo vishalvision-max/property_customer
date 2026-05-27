@@ -130,6 +130,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                                     name: _name.text.trim(),
                                     email: _email.text.trim(),
                                     password: _password.text,
+                                    passwordConfirmation: _confirm.text,
                                   );
                             }
                           : null,

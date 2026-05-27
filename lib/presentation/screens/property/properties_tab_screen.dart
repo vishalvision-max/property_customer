@@ -29,7 +29,8 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
   Future<List<Property>>? _future;
   bool _loaded = false;
   bool _panchkulaSelected = false;
-  String? _selectedMode; // Null by default, meaning no mode is selected initially!
+  String?
+  _selectedMode; // Null by default, meaning no mode is selected initially!
 
   // Dynamic filter state variables
   RangeValues? _selectedPriceRange;
@@ -46,37 +47,28 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
 
   void _load() {
     final loc = ref.read(locationProvider);
-    
+
     // Resolve base future depending on mode selection
     final Future<List<Property>> baseFuture;
     if (_selectedMode == null) {
       // If no mode is selected, fetch both rent and buy properties combined!
       baseFuture = ref
           .read(propertyProvider.notifier)
-          .fetchForType(
-            mode: 'rent',
-            lat: loc.lat,
-            lng: loc.lng,
-          )
+          .fetchForType(mode: 'rent', lat: loc.lat, lng: loc.lng)
           .then((rent) async {
             final buy = await ref
                 .read(propertyProvider.notifier)
-                .fetchForType(
-                  mode: 'buy',
-                  lat: loc.lat,
-                  lng: loc.lng,
-                );
+                .fetchForType(mode: 'buy', lat: loc.lat, lng: loc.lng);
             return [...rent, ...buy];
           });
     } else {
-      final backendMode = (_selectedMode == 'Rent' || _selectedMode == 'PG/Living') ? 'rent' : 'buy';
+      final backendMode =
+          (_selectedMode == 'Rent' || _selectedMode == 'PG/Living')
+          ? 'rent'
+          : 'buy';
       baseFuture = ref
           .read(propertyProvider.notifier)
-          .fetchForType(
-            mode: backendMode,
-            lat: loc.lat,
-            lng: loc.lng,
-          );
+          .fetchForType(mode: backendMode, lat: loc.lat, lng: loc.lng);
     }
 
     setState(() {
@@ -96,27 +88,45 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
           if (m == 'pg/living') {
             filtered = filtered.where((p) {
               final text = '${p.name} ${p.description}'.toLowerCase();
-              return text.contains('pg') || text.contains('living') || text.contains('co-living') || text.contains('hostel');
+              return text.contains('pg') ||
+                  text.contains('living') ||
+                  text.contains('co-living') ||
+                  text.contains('hostel');
             }).toList();
           } else if (m == 'commercial') {
             filtered = filtered.where((p) {
               final text = '${p.name} ${p.description}'.toLowerCase();
-              return text.contains('commercial') || text.contains('office') || text.contains('shop') || text.contains('retail') || text.contains('showroom') || text.contains('warehouse');
+              return text.contains('commercial') ||
+                  text.contains('office') ||
+                  text.contains('shop') ||
+                  text.contains('retail') ||
+                  text.contains('showroom') ||
+                  text.contains('warehouse');
             }).toList();
           } else if (m == 'land/plot') {
             filtered = filtered.where((p) {
               final text = '${p.name} ${p.description}'.toLowerCase();
-              return text.contains('plot') || text.contains('land') || text.contains('site');
+              return text.contains('plot') ||
+                  text.contains('land') ||
+                  text.contains('site');
             }).toList();
           } else if (m == 'new projects') {
             filtered = filtered.where((p) {
               final text = '${p.name} ${p.description}'.toLowerCase();
-              return text.contains('project') || text.contains('new launch') || text.contains('upcoming') || text.contains('under construction');
+              return text.contains('project') ||
+                  text.contains('new launch') ||
+                  text.contains('upcoming') ||
+                  text.contains('under construction');
             }).toList();
           } else if (m == 'builders') {
             filtered = filtered.where((p) {
               final text = '${p.name} ${p.description}'.toLowerCase();
-              return text.contains('builder') || text.contains('dlf') || text.contains('godrej') || text.contains('emaar') || text.contains('prestige') || text.contains('ats');
+              return text.contains('builder') ||
+                  text.contains('dlf') ||
+                  text.contains('godrej') ||
+                  text.contains('emaar') ||
+                  text.contains('prestige') ||
+                  text.contains('ats');
             }).toList();
           }
         }
@@ -125,8 +135,9 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
         if (_selectedBHKs.isNotEmpty) {
           filtered = filtered.where((p) {
             final specs = getPropertySpecs(p);
-            final bedroomsStr =
-                specs.bedrooms.replaceAll(RegExp(r'\s*Bed'), '').trim();
+            final bedroomsStr = specs.bedrooms
+                .replaceAll(RegExp(r'\s*Bed'), '')
+                .trim();
             final bedrooms = int.tryParse(bedroomsStr) ?? 0;
 
             for (final bhk in _selectedBHKs) {
@@ -264,83 +275,83 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                     'Select Price Range',
-                     style: TextStyle(
-                       fontSize: 16,
-                       fontWeight: FontWeight.w800,
-                       color: Color(0xFF1D2939),
-                     ),
-                   ),
-                   const SizedBox(height: 16),
-                   Text(
-                     '${formatVal(current.start)} - ${formatVal(current.end)}',
-                     style: const TextStyle(
-                       fontSize: 14,
-                       fontWeight: FontWeight.w800,
-                       color: Color(0xFF5C46E8),
-                     ),
-                   ),
-                   const SizedBox(height: 16),
-                   RangeSlider(
-                     values: current,
-                     min: 0,
-                     max: 10000000,
-                     divisions: 50,
-                     activeColor: const Color(0xFF5C46E8),
-                     inactiveColor: const Color(0xFFF2F4F7),
-                     labels: RangeLabels(
-                       formatVal(current.start),
-                       formatVal(current.end),
-                     ),
-                     onChanged: (vals) {
-                       setModalState(() {
-                         current = vals;
-                       });
-                     },
-                   ),
-                   const SizedBox(height: 24),
-                   Row(
-                     children: [
-                       Expanded(
-                         child: OutlinedButton(
-                           onPressed: () {
-                             setState(() {
-                               _selectedPriceRange = null;
-                               _load();
-                             });
-                             Navigator.pop(context);
-                           },
-                           style: OutlinedButton.styleFrom(
-                             side: const BorderSide(color: Color(0xFFD0D5DD)),
-                             shape: RoundedRectangleBorder(
-                               borderRadius: BorderRadius.circular(10),
-                             ),
-                           ),
-                           child: const Text('Reset'),
-                         ),
-                       ),
-                       const SizedBox(width: 12),
-                       Expanded(
-                         child: ElevatedButton(
-                           onPressed: () {
-                             setState(() {
-                               _selectedPriceRange = current;
-                               _load();
-                             });
-                             Navigator.pop(context);
-                           },
-                           style: ElevatedButton.styleFrom(
-                             backgroundColor: const Color(0xFF5C46E8),
-                             foregroundColor: Colors.white,
-                             shape: RoundedRectangleBorder(
-                               borderRadius: BorderRadius.circular(10),
-                             ),
-                           ),
-                           child: const Text('Apply'),
-                         ),
-                       ),
-                     ],
-                   ),
+                    'Select Price Range',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1D2939),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '${formatVal(current.start)} - ${formatVal(current.end)}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF5C46E8),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  RangeSlider(
+                    values: current,
+                    min: 0,
+                    max: 10000000,
+                    divisions: 50,
+                    activeColor: const Color(0xFF5C46E8),
+                    inactiveColor: const Color(0xFFF2F4F7),
+                    labels: RangeLabels(
+                      formatVal(current.start),
+                      formatVal(current.end),
+                    ),
+                    onChanged: (vals) {
+                      setModalState(() {
+                        current = vals;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            setState(() {
+                              _selectedPriceRange = null;
+                              _load();
+                            });
+                            Navigator.pop(context);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Color(0xFFD0D5DD)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: const Text('Reset'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              _selectedPriceRange = current;
+                              _load();
+                            });
+                            Navigator.pop(context);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF5C46E8),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: const Text('Apply'),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             );
@@ -399,7 +410,9 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                             vertical: 10,
                           ),
                           decoration: BoxDecoration(
-                            color: isSel ? const Color(0xFFF2EFFF) : Colors.white,
+                            color: isSel
+                                ? const Color(0xFFF2EFFF)
+                                : Colors.white,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
                               color: isSel
@@ -474,8 +487,6 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
     );
   }
 
-
-
   String _getBHKLabel() {
     if (_selectedBHKs.isEmpty) return 'BHK';
     final sorted = _selectedBHKs.toList()..sort();
@@ -492,6 +503,7 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
       }
       return val.toInt().toString();
     }
+
     return '${format(_selectedPriceRange!.start)}-${format(_selectedPriceRange!.end)}';
   }
 
@@ -509,7 +521,11 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
             elevation: 0,
             centerTitle: true,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: _kTextDark, size: 20),
+              icon: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: _kTextDark,
+                size: 20,
+              ),
               onPressed: () {
                 // Back to home
               },
@@ -526,7 +542,11 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
             actions: [
               IconButton(
                 onPressed: () => context.push('/search'),
-                icon: const Icon(Icons.tune_rounded, color: _kPrimary, size: 22),
+                icon: const Icon(
+                  Icons.tune_rounded,
+                  color: _kPrimary,
+                  size: 22,
+                ),
                 tooltip: 'Filters',
               ),
             ],
@@ -541,17 +561,17 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       scrollDirection: Axis.horizontal,
                       children: [
-                        _FilterChip(
-                          label: 'Panchkula',
-                          onTap: () {
-                            setState(() {
-                              _panchkulaSelected = !_panchkulaSelected;
-                              _load();
-                            });
-                          },
-                          icon: _panchkulaSelected ? Icons.close_rounded : null,
-                          isSelected: _panchkulaSelected,
-                        ),
+                        // _FilterChip(
+                        //   label: 'Panchkula',
+                        //   onTap: () {
+                        //     setState(() {
+                        //       _panchkulaSelected = !_panchkulaSelected;
+                        //       _load();
+                        //     });
+                        //   },
+                        //   icon: _panchkulaSelected ? Icons.close_rounded : null,
+                        //   isSelected: _panchkulaSelected,
+                        // ),
                         const SizedBox(width: 8),
                         _FilterChip(
                           label: _selectedMode ?? 'Select Mode',
@@ -599,7 +619,7 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  
+
                   // Search Bar Input Trigger
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -743,7 +763,9 @@ class _FilterChip extends StatelessWidget {
           color: isSelected ? const Color(0xFFF2EFFF) : Colors.white,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? const Color(0xFF5C46E8).withValues(alpha: 0.3) : const Color(0xFFE4E7EC),
+            color: isSelected
+                ? const Color(0xFF5C46E8).withValues(alpha: 0.3)
+                : const Color(0xFFE4E7EC),
             width: 1,
           ),
         ),
@@ -755,7 +777,9 @@ class _FilterChip extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w700,
-                color: isSelected ? const Color(0xFF5C46E8) : const Color(0xFF344054),
+                color: isSelected
+                    ? const Color(0xFF5C46E8)
+                    : const Color(0xFF344054),
               ),
             ),
             if (icon != null) ...[
@@ -763,7 +787,9 @@ class _FilterChip extends StatelessWidget {
               Icon(
                 icon,
                 size: 14,
-                color: isSelected ? const Color(0xFF5C46E8) : const Color(0xFF667085),
+                color: isSelected
+                    ? const Color(0xFF5C46E8)
+                    : const Color(0xFF667085),
               ),
             ],
           ],

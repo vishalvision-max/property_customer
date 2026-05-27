@@ -37,11 +37,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     final splash = state.matchedLocation == '/splash';
 
     final isAuthed = auth.user != null;
+
+    // --- Splash ---
     if (splash) {
       if (auth.isLoading) return null;
       if (!auth.seenOnboarding) return '/onboarding';
+      if (!isAuthed) return '/login';
       return '/home';
     }
+
+    // While auth is still loading (e.g. after a hot restart or provider rebuild),
+    // never redirect — wait for bootstrap to finish first.
+    if (auth.isLoading) return null;
 
     if (!auth.seenOnboarding && !onboarding) return '/onboarding';
 

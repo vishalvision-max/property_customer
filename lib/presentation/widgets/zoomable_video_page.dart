@@ -1,4 +1,8 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:video_player/video_player.dart';
 
 class ZoomableVideoPage extends StatefulWidget {
@@ -20,12 +24,27 @@ class _ZoomableVideoPageState extends State<ZoomableVideoPage> {
   }
 
   Future<void> _init() async {
-    final uri = Uri.tryParse(widget.url);
+    final cleaned = widget.url.trim();
+    if (cleaned.isEmpty) {
+      setState(() => _failed = true);
+      return;
+    }
+    final uri = Uri.tryParse(cleaned);
     if (uri == null) {
       setState(() => _failed = true);
       return;
     }
-    final c = VideoPlayerController.networkUrl(uri);
+    VideoPlayerController c;
+    if (!kIsWeb && (uri.scheme == 'http' || uri.scheme == 'https')) {
+      try {
+        final file = await DefaultCacheManager().getSingleFile(cleaned);
+        c = VideoPlayerController.file(File(file.path));
+      } catch (_) {
+        c = VideoPlayerController.networkUrl(uri);
+      }
+    } else {
+      c = VideoPlayerController.networkUrl(uri);
+    }
     _controller = c;
     try {
       await c.initialize();
