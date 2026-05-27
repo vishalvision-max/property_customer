@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/services/favorites_service.dart';
@@ -55,6 +56,8 @@ class FavoritesNotifier extends StateNotifier<Set<String>> {
 
   Future<void> load() async {
     state = await _storage.getFavorites();
+    if (kIsWeb) return; // Web uses local storage only!
+    
     final token = _ref.read(authProvider).user?.token;
     if (token == null || token.trim().isEmpty) return;
     try {
@@ -69,6 +72,13 @@ class FavoritesNotifier extends StateNotifier<Set<String>> {
   Future<void> refresh() => load();
 
   Future<void> removeRemote({required String id}) async {
+    if (kIsWeb) {
+      final next = {...state}..remove(id);
+      state = next;
+      await _storage.saveFavorites(state);
+      return;
+    }
+
     final token = _ref.read(authProvider).user?.token;
     if (token == null || token.trim().isEmpty) {
       final next = {...state}..remove(id);
@@ -112,6 +122,11 @@ class FavoritesNotifier extends StateNotifier<Set<String>> {
     required String type,
     required String id,
   }) async {
+    if (kIsWeb) {
+      await toggle(id);
+      return;
+    }
+
     final token = _ref.read(authProvider).user?.token;
     if (token == null || token.trim().isEmpty) {
       // UI already guards this, but keep this safe for programmatic calls.

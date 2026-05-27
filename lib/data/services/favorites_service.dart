@@ -17,7 +17,7 @@ class FavoritesService {
     required String id,
   }) async {
     if (kIsWeb) {
-      throw Exception('Favorites API is not supported on web in this build');
+      return;
     }
 
     final uri = _baseUri.replace(path: '/api/v1/favorites/$id');
@@ -42,7 +42,7 @@ class FavoritesService {
 
   Future<Set<String>> fetchFavoriteIds({required String token}) async {
     if (kIsWeb) {
-      throw Exception('Favorites API is not supported on web in this build');
+      return const <String>{};
     }
 
     final uri = _baseUri.replace(path: '/api/v1/favorites');
@@ -74,7 +74,7 @@ class FavoritesService {
     required String id,
   }) async {
     if (kIsWeb) {
-      throw Exception('Favorites API is not supported on web in this build');
+      return const FavoritesToggleResult(isFavorited: null);
     }
 
     final uri = _baseUri.replace(path: '/api/v1/favorites/toggle');
