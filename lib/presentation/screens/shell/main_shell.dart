@@ -86,7 +86,8 @@ class _MainShellState extends ConsumerState<MainShell> {
     if (_authGated.contains(index) && !isAuthed) {
       final labels = ['', '', 'saved', 'profile'];
       AppSnackbar.showError(context, 'Please login to view ${labels[index]}');
-      context.push('/login?from=${Uri.encodeComponent('/')}');
+      ref.read(navProvider.notifier).goTo(index);
+      context.push('/login?from=${Uri.encodeComponent('/home')}');
       return;
     }
 
@@ -112,7 +113,8 @@ class _MainShellState extends ConsumerState<MainShell> {
       );
       final labels = ['', '', 'saved', 'profile'];
       AppSnackbar.showError(context, 'Please login to view ${labels[index]}');
-      context.push('/login?from=${Uri.encodeComponent('/')}');
+      ref.read(navProvider.notifier).goTo(index);
+      context.push('/login?from=${Uri.encodeComponent('/home')}');
       return;
     }
 
