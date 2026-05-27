@@ -108,10 +108,46 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
           }
           return ListView.separated(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            itemCount: items.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            itemCount: items.length + 1,
+            separatorBuilder: (context, index) => SizedBox(height: index == 0 ? 0 : 8),
             itemBuilder: (context, i) {
-              final p = items[i];
+              if (i == 0) {
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(0, 4, 0, 10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${items.length} Properties Found',
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF1D2939),
+                        ),
+                      ),
+                      const Row(
+                        children: [
+                          Text(
+                            'Sort: Relevance',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF667085),
+                            ),
+                          ),
+                          SizedBox(width: 4),
+                          Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: Color(0xFF667085),
+                            size: 16,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              }
+              final p = items[i - 1];
               return PropertyCard(
                 property: p,
                 onTap: () => context.push('/property/${p.id}'),

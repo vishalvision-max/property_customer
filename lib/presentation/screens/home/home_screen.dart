@@ -426,7 +426,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             else
               SliverToBoxAdapter(
                 child: SizedBox(
-                  height: 178,
+                  height: 236,
                   child: ListView.separated(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
                     scrollDirection: Axis.horizontal,
@@ -435,15 +435,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         const SizedBox(width: 14),
                     itemBuilder: (context, i) {
                       final p = featured[i];
-                      return SizedBox(
-                            width: 240,
-                            child: PropertyCard(
-                              property: p,
-                              compact: true,
-                              enableVideoPreview: false,
-                              onTap: () => context.push('/property/${p.id}'),
-                            ),
-                          )
+                      return _FeaturedPropertyCard(
+                        p: p,
+                        onTap: () => context.push('/property/${p.id}'),
+                      )
                           .animate()
                           .fadeIn(delay: (60 * i).ms, duration: 260.ms)
                           .slideX(begin: 0.05);
@@ -2372,6 +2367,182 @@ class _LocationSheetState extends ConsumerState<_LocationSheet> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FeaturedPropertyCard extends ConsumerWidget {
+  final Property p;
+  final VoidCallback onTap;
+
+  const _FeaturedPropertyCard({required this.p, required this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isAuthed = ref.watch(authProvider).user != null;
+    final isFav = ref.watch(favoritesProvider.select((s) => s.contains(p.id)));
+
+    void toggleFavorite() {
+      if (!isAuthed) {
+        AppSnackbar.showError(context, 'Please login to add favorites');
+        context.push('/login?from=${Uri.encodeComponent('/property/${p.id}')}');
+        return;
+      }
+      ref
+          .read(favoritesProvider.notifier)
+          .toggleRemote(type: 'property', id: p.id)
+          .catchError((_) {
+            if (!context.mounted) return;
+            AppSnackbar.showError(
+              context,
+              'Failed to update wishlist. Please try again.',
+            );
+          });
+    }
+
+    String formatPrice(int price, String type) {
+      if (type == 'rent') {
+        if (price >= 100000) {
+          double lakhs = price / 100000.0;
+          return '₹${lakhs.toStringAsFixed(lakhs % 1 == 0 ? 0 : 1)} Lakh/mo';
+        }
+        return '₹$price/mo';
+      } else {
+        if (price >= 10000000) {
+          double crores = price / 10000000.0;
+          return '₹${crores.toStringAsFixed(crores % 1 == 0 ? 0 : 2)} Cr';
+        } else if (price >= 100000) {
+          double lakhs = price / 100000.0;
+          return '₹${lakhs.toStringAsFixed(lakhs % 1 == 0 ? 0 : 1)} Lakh';
+        }
+        return '₹$price';
+      }
+    }
+
+    final specs = getPropertySpecs(p);
+    const fallbackImage =
+        'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=900&q=80&auto=format&fit=crop';
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 220,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE4E7EC), width: 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
+                  child: CachedNetworkImage(
+                    imageUrl: p.images.isEmpty ? fallbackImage : p.images.first.trim(),
+                    height: 115,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(color: Colors.black12),
+                    errorWidget: (context, url, error) => Container(color: Colors.black12),
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: GestureDetector(
+                    onTap: toggleFavorite,
+                    child: Container(
+                      height: 30,
+                      width: 30,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Icon(
+                          isFav ? Icons.favorite : Icons.favorite_border_rounded,
+                          color: isFav ? Colors.pinkAccent : const Color(0xFF5C46E8),
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 8,
+                  left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.55),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'Featured',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    p.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1D2939),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    p.location,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF667085),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    formatPrice(p.price, p.type),
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1D2939),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${specs.sqft.replaceAll(RegExp(r'\s*sqft'), '')} sqft  •  ${specs.bedrooms.replaceAll(RegExp(r'\s*Bed'), '')} Bed  •  ${specs.bathrooms.replaceAll(RegExp(r'\s*Bath'), '')} Bath',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF667085),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

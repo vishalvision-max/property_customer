@@ -22,13 +22,14 @@ class PropertyService {
     String? type, // rent | buy
     String? sortBy,
   }) async {
+    final apiType = type == 'buy' ? 'sale' : type;
     return _fetchFromApi(
       query: <String, String>{
         if (categoryId != null) 'category_id': categoryId.toString(),
         if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
         if (minPrice != null) 'min_price': minPrice.toString(),
         if (maxPrice != null) 'max_price': maxPrice.toString(),
-        if (type != null && type.trim().isNotEmpty) 'type': type.trim(),
+        if (apiType != null && apiType.trim().isNotEmpty) 'type': apiType.trim(),
         if (sortBy != null && sortBy.trim().isNotEmpty)
           'sort_by': sortBy.trim(),
       },

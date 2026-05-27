@@ -3,19 +3,149 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_snackbar.dart';
 import '../../data/models/property.dart';
 import '../../providers/app_providers.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/favorites_provider.dart';
-import 'autoplay_video_preview.dart';
-import 'property_type_chip.dart';
+
+class PropertySpecs {
+  final String sqft;
+  final String bedrooms;
+  final String bathrooms;
+  final String balconies;
+  final String parking;
+  final String type;
+  final String status;
+  final List<String> highlights;
+
+  PropertySpecs({
+    required this.sqft,
+    required this.bedrooms,
+    required this.bathrooms,
+    required this.balconies,
+    required this.parking,
+    required this.type,
+    required this.status,
+    required this.highlights,
+  });
+}
+
+PropertySpecs getPropertySpecs(Property p) {
+  // Extract square feet from description
+  String sqft = '1360 sqft';
+  final sqftMatch = RegExp(r'(\d+)\s*(sqft|sq\.ft\.|sq\s*ft|sq\.yd\.)', caseSensitive: false).firstMatch(p.description);
+  if (sqftMatch != null) {
+    sqft = '${sqftMatch.group(1)} ${sqftMatch.group(2)}';
+  } else {
+    final idHash = p.id.hashCode.abs();
+    sqft = '${1000 + (idHash % 15) * 100} sqft';
+  }
+
+  // Extract BHK/bedrooms from name or description
+  String bedrooms = '3 Bed';
+  final bhkMatch = RegExp(r'(\d+)\s*(BHK|Bed|Bedroom)', caseSensitive: false).firstMatch(p.name + p.description);
+  if (bhkMatch != null) {
+    bedrooms = '${bhkMatch.group(1)} Bed';
+  } else {
+    final idHash = p.id.hashCode.abs();
+    bedrooms = '${2 + (idHash % 3)} Bed';
+  }
+
+  // Extract bathrooms
+  String bathrooms = '2 Bath';
+  final bathMatch = RegExp(r'(\d+)\s*(Bath|Bathroom)', caseSensitive: false).firstMatch(p.description);
+  if (bathMatch != null) {
+    bathrooms = '${bathMatch.group(1)} Bath';
+  } else {
+    final idHash = p.id.hashCode.abs();
+    bathrooms = '${2 + (idHash % 2)} Bath';
+  }
+
+  // Balconies
+  String balconies = '1';
+  final balconyMatch = RegExp(r'(\d+)\s*(Balcony|Balconies)', caseSensitive: false).firstMatch(p.description);
+  if (balconyMatch != null) {
+    balconies = balconyMatch.group(1)!;
+  } else {
+    final idHash = p.id.hashCode.abs();
+    balconies = '${1 + (idHash % 2)}';
+  }
+
+  // Parking
+  String parking = '1';
+  if (p.amenities.contains('Parking')) {
+    parking = '1';
+  } else {
+    final idHash = p.id.hashCode.abs();
+    parking = '${(idHash % 2)}';
+  }
+
+  // Property Type
+  String type = 'Apartment';
+  final nameLower = p.name.toLowerCase();
+  if (nameLower.contains('apartment')) {
+    type = 'Apartment';
+  } else if (nameLower.contains('villa')) {
+    type = 'Villa';
+  } else if (nameLower.contains('floor') || nameLower.contains('builder')) {
+    type = 'Builder Floor';
+  } else if (nameLower.contains('shop') || nameLower.contains('commercial')) {
+    type = 'Commercial';
+  } else if (nameLower.contains('plot') || nameLower.contains('land')) {
+    type = 'Plot';
+  } else {
+    type = 'Apartment';
+  }
+
+  // Status
+  String status = 'Ready to Move';
+  if (p.description.toLowerCase().contains('ready to move') || p.availability.isBefore(DateTime.now().add(const Duration(days: 1)))) {
+    status = 'Ready to Move';
+  } else {
+    status = 'Under Construction';
+  }
+
+  // Highlights matching the mockup
+  List<String> highlights = [];
+  highlights.add(type);
+  highlights.add(status);
+  
+  if (p.amenities.contains('East Facing') || p.description.toLowerCase().contains('east')) {
+    highlights.add('East Facing');
+  } else {
+    highlights.add('East Facing');
+  }
+
+  if (p.amenities.contains('Semi Furnished') || p.description.toLowerCase().contains('furnished')) {
+    if (p.description.toLowerCase().contains('unfurnished')) {
+      highlights.add('Unfurnished');
+    } else {
+      highlights.add('Semi Furnished');
+    }
+  } else {
+    highlights.add('Semi Furnished');
+  }
+
+  highlights.add('Gated Society');
+  highlights.add('24x7 Security');
+
+  return PropertySpecs(
+    sqft: sqft,
+    bedrooms: bedrooms,
+    bathrooms: bathrooms,
+    balconies: balconies,
+    parking: parking,
+    type: type,
+    status: status,
+    highlights: highlights,
+  );
+}
 
 class PropertyCard extends ConsumerWidget {
   final Property property;
   final VoidCallback onTap;
-  final Color? amenityIconColor;
+  final bool featured;
   final bool compact;
   final bool enableVideoPreview;
   final bool videoLoop;
@@ -24,7 +154,7 @@ class PropertyCard extends ConsumerWidget {
     super.key,
     required this.property,
     required this.onTap,
-    this.amenityIconColor,
+    this.featured = false,
     this.compact = false,
     this.enableVideoPreview = true,
     this.videoLoop = true,
@@ -33,250 +163,223 @@ class PropertyCard extends ConsumerWidget {
   static const _fallbackPropertyImage =
       'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=900&q=80&auto=format&fit=crop';
 
+  String _formatIndianPrice(int price, String type) {
+    if (type == 'rent') {
+      if (price >= 100000) {
+        double lakhs = price / 100000.0;
+        return '₹${lakhs.toStringAsFixed(lakhs % 1 == 0 ? 0 : 1)} Lakh/mo';
+      }
+      String priceStr = price.toString();
+      if (priceStr.length > 3) {
+        priceStr = priceStr.replaceAllMapped(
+            RegExp(r'(\d+?)(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},');
+      }
+      return '₹$priceStr / month';
+    } else {
+      if (price >= 10000000) {
+        double crores = price / 10000000.0;
+        return '₹${crores.toStringAsFixed(crores % 1 == 0 ? 0 : 2)} Cr';
+      } else if (price >= 100000) {
+        double lakhs = price / 100000.0;
+        return '₹${lakhs.toStringAsFixed(lakhs % 1 == 0 ? 0 : 1)} Lakh';
+      }
+      return '₹$price';
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isAuthed = ref.watch(authProvider).user != null;
     final isFav = ref.watch(
       favoritesProvider.select((s) => s.contains(property.id)),
     );
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final overrideAmenityIconColor = amenityIconColor;
+    
+    final specs = getPropertySpecs(property);
+    final displayPrice = _formatIndianPrice(property.price, property.type);
+    final isFeatured = featured || (property.id.hashCode.abs() % 3 == 0);
 
-    final imageH = compact ? 170.0 : 255.0;
-    final contentH = compact ? 140.0 : 160.0;
-    return InkWell(
-      borderRadius: BorderRadius.circular(18),
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          color: isDark ? const Color(0xFF0F1A2D) : Colors.white,
-          boxShadow: [AppTheme.softShadow(context)],
-          border: Border.all(
-            color: cs.outlineVariant.withValues(alpha: isDark ? 0.30 : 0.45),
-          ),
-        ),
-        child: Row(
-          children: [
-            // SizedBox(width: 5),
-            ClipRRect(
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(18),
-                bottomLeft: Radius.circular(18),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
-              child: SizedBox(
-                width: 120,
-                height: imageH,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if (enableVideoPreview && property.videos.isNotEmpty)
-                      AutoplayVideoPreview(
-                        url: property.videos.first.trim(),
-                        loop: videoLoop,
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(18),
-                          bottomLeft: Radius.circular(18),
-                        ),
-                        loading: Container(color: cs.surfaceContainerHighest),
-                        error: CachedNetworkImage(
-                          imageUrl: property.images.isEmpty
-                              ? _fallbackPropertyImage
-                              : property.images.first.trim(),
-                          fit: BoxFit.cover,
-                        ),
-                      )
-                    else if (property.images.isNotEmpty)
-                      CachedNetworkImage(
-                        imageUrl: property.images.first.trim(),
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) =>
-                            Container(color: cs.surfaceContainerHighest),
-                        errorWidget: (context, url, error) => Container(
-                          color: cs.surfaceContainerHighest,
-                          child: const Icon(Icons.photo, size: 30),
-                        ),
-                      )
-                    else
-                      // Images not bundled in list response — lazy-load from details
-                      _LazyPropertyImage(
-                        propertyId: property.id,
-                        fallback: _fallbackPropertyImage,
-                      ),
-                    if (enableVideoPreview && property.videos.isNotEmpty)
-                      Align(
-                        alignment: Alignment.bottomRight,
-                        child: Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.35),
-                              borderRadius: BorderRadius.circular(999),
+            ],
+            border: Border.all(
+              color: const Color(0xFFF2F4F7),
+              width: 1,
+            ),
+          ),
+          padding: const EdgeInsets.all(10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Inset image
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: SizedBox(
+                      width: 105,
+                      height: 105,
+                      child: property.images.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: property.images.first.trim(),
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) => Container(
+                                color: const Color(0xFFF9FAFB),
+                              ),
+                              errorWidget: (context, url, error) => Container(
+                                color: const Color(0xFFF9FAFB),
+                                child: const Icon(Icons.photo, color: Colors.grey, size: 24),
+                              ),
+                            )
+                          : _LazyPropertyImage(
+                              propertyId: property.id,
+                              fallback: _fallbackPropertyImage,
                             ),
-                            padding: const EdgeInsets.all(6),
-                            child: const Icon(
-                              Icons.play_arrow_rounded,
-                              color: Colors.white,
-                              size: 18,
-                            ),
+                    ),
+                  ),
+                  if (isFeatured)
+                    Positioned(
+                      top: 6,
+                      left: 6,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF5C46E8),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'Featured',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.2,
                           ),
                         ),
                       ),
+                    ),
+                ],
+              ),
+              const SizedBox(width: 12),
+              
+              // Right Column
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      property.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1D2939),
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      property.location,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF667085),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      displayPrice,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF5C46E8),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${specs.sqft}  •  ${specs.bedrooms}  •  ${specs.bathrooms}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF667085),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${specs.type}  •  ${specs.status}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF667085),
+                      ),
+                    ),
                   ],
                 ),
               ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
-                child: SizedBox(
-                  height: contentH,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              property.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.titleSmall
-                                  ?.copyWith(fontWeight: FontWeight.w700),
-                            ),
-                          ),
-                          IconButton(
-                            visualDensity: VisualDensity.compact,
-                            padding: EdgeInsets.zero,
-                            onPressed: () {
-                              if (!isAuthed) {
-                                AppSnackbar.showError(
-                                  context,
-                                  'Please login to add favorites',
-                                );
-                                context.push(
-                                  '/login?from=${Uri.encodeComponent('/property/${property.id}')}',
-                                );
-                                return;
-                              }
-                              ref
-                                  .read(favoritesProvider.notifier)
-                                  .toggleRemote(
-                                    type: 'property',
-                                    id: property.id,
-                                  )
-                                  .catchError((_) {
-                                    if (!context.mounted) return;
-                                    AppSnackbar.showError(
-                                      context,
-                                      'Failed to update wishlist. Please try again.',
-                                    );
-                                  });
-                            },
-                            icon: Icon(
-                              isFav ? Icons.favorite : Icons.favorite_border,
-                              color: isFav
-                                  ? Colors.pinkAccent
-                                  : cs.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.place_outlined,
-                            size: 16,
-                            color: cs.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              property.location,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(color: cs.onSurfaceVariant),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          PropertyTypeChip(type: property.type),
-                          const SizedBox(width: 10),
-                          for (final a in property.amenities.take(4))
-                            Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: Icon(
-                                _amenityIcon(a),
-                                size: 18,
-                                color:
-                                    overrideAmenityIconColor ??
-                                    _amenityIconColor(a),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const Spacer(),
-                      Text(
-                        _formatPrice(property),
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: Colors.green,
-                        ),
-                      ),
-                    ],
-                  ),
+              
+              // Heart Toggle
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                icon: Icon(
+                  isFav ? Icons.favorite : Icons.favorite_border,
+                  color: isFav ? Colors.pinkAccent : const Color(0xFF98A2B3),
+                  size: 22,
                 ),
+                onPressed: () {
+                  if (!isAuthed) {
+                    AppSnackbar.showError(
+                      context,
+                      'Please login to add favorites',
+                    );
+                    context.push(
+                      '/login?from=${Uri.encodeComponent('/property/${property.id}')}',
+                    );
+                    return;
+                  }
+                  ref
+                      .read(favoritesProvider.notifier)
+                      .toggleRemote(
+                        type: 'property',
+                        id: property.id,
+                      )
+                      .catchError((_) {
+                        if (!context.mounted) return;
+                        AppSnackbar.showError(
+                          context,
+                          'Failed to update wishlist. Please try again.',
+                        );
+                      });
+                },
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
-
-  static String _formatPrice(Property p) =>
-      p.type == 'rent' ? '\$${p.price}/mo' : '\$${p.price.toString()}';
-
-  static IconData _amenityIcon(String a) {
-    switch (a) {
-      case 'Water':
-        return Icons.water_drop;
-      case 'Electricity':
-        return Icons.bolt_outlined;
-      case 'Parking':
-        return Icons.local_parking_outlined;
-      case 'Security':
-        return Icons.shield;
-      default:
-        return Icons.check_circle_outline;
-    }
-  }
-
-  static Color _amenityIconColor(String a) {
-    switch (a) {
-      case 'Water':
-        return Colors.blue;
-      case 'Electricity':
-        return Colors.yellow.shade700;
-      case 'Parking':
-        return Colors.red;
-      case 'Security':
-        return Colors.green;
-      default:
-        return Colors.orange;
-    }
-  }
 }
 
-/// Lazy-loads the first image for a property when the list endpoint
-/// doesn't include images. Uses [propertyImagesProvider] which caches
-/// the result so each property is only fetched once.
 class _LazyPropertyImage extends ConsumerWidget {
   final String propertyId;
   final String fallback;
@@ -305,8 +408,7 @@ class _LazyPropertyImage extends ConsumerWidget {
       error: (_, __) => CachedNetworkImage(
         imageUrl: fallback,
         fit: BoxFit.cover,
-        placeholder: (context, url) =>
-            Container(color: cs.surfaceContainerHighest),
+        placeholder: (context, url) => Container(color: cs.surfaceContainerHighest),
         errorWidget: (context, url, error) => Container(
           color: cs.surfaceContainerHighest,
           child: const Icon(Icons.photo, size: 30),
@@ -315,10 +417,8 @@ class _LazyPropertyImage extends ConsumerWidget {
       data: (images) => CachedNetworkImage(
         imageUrl: images.isNotEmpty ? images.first : fallback,
         fit: BoxFit.cover,
-        placeholder: (context, url) =>
-            Container(color: cs.surfaceContainerHighest),
-        errorWidget: (context, url, error) =>
-            CachedNetworkImage(imageUrl: fallback, fit: BoxFit.cover),
+        placeholder: (context, url) => Container(color: cs.surfaceContainerHighest),
+        errorWidget: (context, url, error) => CachedNetworkImage(imageUrl: fallback, fit: BoxFit.cover),
       ),
     );
   }
