@@ -159,6 +159,19 @@ class PropertyNotifier extends StateNotifier<PropertyState> {
     }
   }
 
+  void upsertMany(List<Property> properties) {
+    final nextAll = [...state.all];
+    for (final p in properties) {
+      final idx = nextAll.indexWhere((e) => e.id == p.id);
+      if (idx >= 0) {
+        nextAll[idx] = p;
+      } else {
+        nextAll.add(p);
+      }
+    }
+    state = state.copyWith(all: nextAll);
+  }
+
   Future<List<Property>> search({
     required String mode,
     required BudgetRange budgetRange,

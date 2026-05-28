@@ -127,6 +127,18 @@ class _MainShellState extends ConsumerState<MainShell> {
   Widget build(BuildContext context) {
     final currentIndex = ref.watch(navProvider);
 
+    // Sync the PageController whenever navProvider changes from *any* caller,
+    // not just _onNavTap. This makes external goTo(0) calls work correctly.
+    ref.listen<int>(navProvider, (prev, next) {
+      if (_pageController.hasClients && _pageController.page?.round() != next) {
+        _pageController.animateToPage(
+          next,
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeInOutCubic,
+        );
+      }
+    });
+
     return Scaffold(
       // No AppBar here — each tab manages its own
       body: PageView(

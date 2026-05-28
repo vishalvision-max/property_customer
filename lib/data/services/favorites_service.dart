@@ -139,13 +139,18 @@ class FavoritesService {
     final root = unwrap(decoded);
     if (root is Map) {
       final map = root.cast<String, dynamic>();
+      
+      // First, check the message field to explicitly handle toggle events.
+      final msg = map['message']?.toString().toLowerCase() ?? '';
+      if (msg.contains('added')) return true;
+      if (msg.contains('removed') || msg.contains('deleted')) return false;
+
       final candidates = <dynamic>[
         map['is_favorited'],
         map['is_favorite'],
         map['favorited'],
         map['favourite'],
         map['favorite'],
-        map['status'],
       ];
       for (final c in candidates) {
         if (c is bool) return c;
@@ -162,6 +167,45 @@ class FavoritesService {
       }
     }
     return null;
+  }
+
+  Future<List<Map<String, dynamic>>> fetchFavoriteProperties({required String token}) async {
+    if (kIsWeb) return const [];
+
+    final uri = _baseUri.replace(path: '/api/v1/favorites/index');
+    debugPrint('[FavoritesService] GET $uri');
+    try {
+      final response = await http.get(
+        uri,
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return const [];
+      }
+      final decoded = response.body.trim().isEmpty ? null : jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        final data = decoded['data'] ?? decoded['favorites'] ?? decoded['result'] ?? decoded;
+        if (data is List) {
+          final out = <Map<String, dynamic>>[];
+          for (final item in data) {
+            if (item is Map) {
+              final nested = item['favoritable'];
+              if (nested is Map) {
+                out.add(nested.cast<String, dynamic>());
+              }
+            }
+          }
+          return out;
+        }
+      }
+      return const [];
+    } catch (e) {
+      debugPrint('[FavoritesService] fetchFavoriteProperties exception: $e');
+      return const [];
+    }
   }
 
   Set<String> _extractIds(dynamic decoded) {

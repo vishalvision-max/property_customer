@@ -772,6 +772,8 @@ class PropertyService {
     }
   }
 
+  Property propertyFromApiJson(Map<String, dynamic> json) => _propertyFromApiJson(json);
+
   Property _propertyFromApiJson(Map<String, dynamic> json) {
     // Support a few common backend field-name variants to avoid breaking
     // if the API schema differs from the mock schema.

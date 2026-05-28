@@ -19,6 +19,16 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
   // Key used to force a rebuild of the FutureBuilder on pull-to-refresh.
   int _refreshKey = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      if (mounted) {
+        ref.read(favoritesProvider.notifier).load();
+      }
+    });
+  }
+
   Future<void> _onRefresh() async {
     // 1. Re-sync favorites IDs from the server.
     await ref.read(favoritesProvider.notifier).refresh();
@@ -49,7 +59,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
     final favIds = ref.watch(favoritesProvider).toList()..sort();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Favorites')),
+      appBar: AppBar(centerTitle: true, title: const Text('Favorites')),
       body: RefreshIndicator(
         onRefresh: _onRefresh,
         color: const Color(0xFF6C5CE7),

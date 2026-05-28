@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:http/http.dart';
 
 import '../../../data/models/property.dart';
 import '../../../providers/auth_provider.dart';
@@ -12,6 +13,7 @@ import '../../widgets/empty_state.dart';
 import '../../widgets/property_card.dart';
 import '../../widgets/shimmer_list.dart';
 import '../search/search_args.dart';
+import '../../../providers/nav_provider.dart';
 
 const _kPrimary = Color(0xFF5C46E8);
 const _kBg = Color(0xFFF9FAFB);
@@ -220,7 +222,11 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
       var filtered = fetched;
       if (_panchkulaSelected) {
         filtered = filtered
-            .where((p) => p.location.toLowerCase().contains(_selectedCity.toLowerCase()))
+            .where(
+              (p) => p.location.toLowerCase().contains(
+                _selectedCity.toLowerCase(),
+              ),
+            )
             .toList();
       }
       if (_selectedMode != null) {
@@ -355,170 +361,287 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                  // Handle
-                  Center(
-                    child: Container(
-                      width: 36,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE4E7EC),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Header
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Change Location',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                          color: _kTextDark,
-                          letterSpacing: -0.4,
+                    // Handle
+                    Center(
+                      child: Container(
+                        width: 36,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE4E7EC),
+                          borderRadius: BorderRadius.circular(2),
                         ),
                       ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close_rounded, size: 20),
-                        style: IconButton.styleFrom(
-                          backgroundColor: const Color(0xFFF2F4F7),
-                          padding: const EdgeInsets.all(6),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Google Map Preview Card
-                  Container(
-                    height: 180,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF2F4F7),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFE4E7EC)),
                     ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Stack(
+                    const SizedBox(height: 20),
+
+                    // Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Map street pattern mock with drag offset
-                        GestureDetector(
-                          onHorizontalDragUpdate: (details) {
-                            setModalState(() {
-                              dragOffsetX += details.primaryDelta ?? 0;
-                              currentLng -= (details.primaryDelta ?? 0) * 0.0001;
-                            });
-                          },
-                          onVerticalDragUpdate: (details) {
-                            setModalState(() {
-                              dragOffsetY += details.primaryDelta ?? 0;
-                              currentLat += (details.primaryDelta ?? 0) * 0.0001;
-                            });
-                          },
-                          child: Container(
-                            color: const Color(0xFFE8ECEF),
-                            child: Stack(
-                              children: [
-                                // Mock Roads & Blocks
-                                Positioned(
-                                  left: -100 + dragOffsetX,
-                                  top: -50 + dragOffsetY,
-                                  child: SizedBox(
-                                    width: 600,
-                                    height: 300,
-                                    child: CustomPaint(
-                                      painter: _MockMapPainter(),
+                        const Text(
+                          'Change Location',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: _kTextDark,
+                            letterSpacing: -0.4,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.close_rounded, size: 20),
+                          style: IconButton.styleFrom(
+                            backgroundColor: const Color(0xFFF2F4F7),
+                            padding: const EdgeInsets.all(6),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Google Map Preview Card
+                    Container(
+                      height: 180,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF2F4F7),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE4E7EC)),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Stack(
+                        children: [
+                          // Map street pattern mock with drag offset
+                          GestureDetector(
+                            onHorizontalDragUpdate: (details) {
+                              setModalState(() {
+                                dragOffsetX += details.primaryDelta ?? 0;
+                                currentLng -=
+                                    (details.primaryDelta ?? 0) * 0.0001;
+                              });
+                            },
+                            onVerticalDragUpdate: (details) {
+                              setModalState(() {
+                                dragOffsetY += details.primaryDelta ?? 0;
+                                currentLat +=
+                                    (details.primaryDelta ?? 0) * 0.0001;
+                              });
+                            },
+                            child: Container(
+                              color: const Color(0xFFE8ECEF),
+                              child: Stack(
+                                children: [
+                                  // Mock Roads & Blocks
+                                  Positioned(
+                                    left: -100 + dragOffsetX,
+                                    top: -50 + dragOffsetY,
+                                    child: SizedBox(
+                                      width: 600,
+                                      height: 300,
+                                      child: CustomPaint(
+                                        painter: _MockMapPainter(),
+                                      ),
                                     ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        // Translucent Coordinates HUD
-                        Positioned(
-                          top: 12,
-                          right: 12,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.7),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.explore_rounded, color: Colors.greenAccent, size: 12),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '${currentLat.toStringAsFixed(4)}° N, ${currentLng.toStringAsFixed(4)}° E',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w700,
-                                    fontFamily: 'monospace',
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        // Translucent Drag Indicator Overlay
-                        Positioned(
-                          left: 12,
-                          bottom: 12,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.85),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text(
-                              'Drag map to pan',
-                              style: TextStyle(
-                                color: Color(0xFF344054),
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        // Static Glowing Location Pin in Center
-                        Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.location_on_rounded,
-                                color: _kPrimary,
-                                size: 36,
-                                shadows: [
-                                  Shadow(
-                                    color: Colors.black26,
-                                    offset: Offset(0, 4),
-                                    blurRadius: 4,
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 2),
-                              // Ripple dot shadow
-                              Container(
-                                width: 8,
-                                height: 2.5,
-                                decoration: const BoxDecoration(
-                                  color: Colors.black38,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black45,
-                                      blurRadius: 2,
+                            ),
+                          ),
+
+                          // Translucent Coordinates HUD
+                          Positioned(
+                            top: 12,
+                            right: 12,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.7),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.explore_rounded,
+                                    color: Colors.greenAccent,
+                                    size: 12,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${currentLat.toStringAsFixed(4)}° N, ${currentLng.toStringAsFixed(4)}° E',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w700,
+                                      fontFamily: 'monospace',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          // Translucent Drag Indicator Overlay
+                          Positioned(
+                            left: 12,
+                            bottom: 12,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.85),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'Drag map to pan',
+                                style: TextStyle(
+                                  color: Color(0xFF344054),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // Static Glowing Location Pin in Center
+                          Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.location_on_rounded,
+                                  color: _kPrimary,
+                                  size: 36,
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.black26,
+                                      offset: Offset(0, 4),
+                                      blurRadius: 4,
                                     ),
                                   ],
+                                ),
+                                const SizedBox(height: 2),
+                                // Ripple dot shadow
+                                Container(
+                                  width: 8,
+                                  height: 2.5,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.black38,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black45,
+                                        blurRadius: 2,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Manual Inputs: City and State
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'City',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF344054),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              TextField(
+                                controller: _cityController,
+                                style: const TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'e.g. Panchkula',
+                                  prefixIcon: const Icon(
+                                    Icons.location_city_rounded,
+                                    size: 18,
+                                  ),
+                                  prefixIconColor: const Color(0xFF667085),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 12,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFD0D5DD),
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: const BorderSide(
+                                      color: _kPrimary,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'State',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF344054),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              TextField(
+                                controller: _stateController,
+                                style: const TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'e.g. Haryana',
+                                  prefixIcon: const Icon(
+                                    Icons.map_rounded,
+                                    size: 18,
+                                  ),
+                                  prefixIconColor: const Color(0xFF667085),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 12,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFD0D5DD),
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: const BorderSide(
+                                      color: _kPrimary,
+                                      width: 1.5,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
@@ -526,216 +649,165 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
-                  // Manual Inputs: City and State
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'City',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF344054),
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            TextField(
-                              controller: _cityController,
-                              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
-                              decoration: InputDecoration(
-                                hintText: 'e.g. Panchkula',
-                                prefixIcon: const Icon(Icons.location_city_rounded, size: 18),
-                                prefixIconColor: const Color(0xFF667085),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: const BorderSide(color: Color(0xFFD0D5DD)),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: const BorderSide(color: _kPrimary, width: 1.5),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'State',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF344054),
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            TextField(
-                              controller: _stateController,
-                              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
-                              decoration: InputDecoration(
-                                hintText: 'e.g. Haryana',
-                                prefixIcon: const Icon(Icons.map_rounded, size: 18),
-                                prefixIconColor: const Color(0xFF667085),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: const BorderSide(color: Color(0xFFD0D5DD)),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: const BorderSide(color: _kPrimary, width: 1.5),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
+                    // GPS Auto-detect Trigger
+                    OutlinedButton.icon(
+                      onPressed: isDetecting
+                          ? null
+                          : () async {
+                              setModalState(() {
+                                isDetecting = true;
+                              });
+                              try {
+                                final enabled =
+                                    await Geolocator.isLocationServiceEnabled();
+                                if (!enabled)
+                                  throw Exception(
+                                    'Location services are disabled',
+                                  );
 
-                  // GPS Auto-detect Trigger
-                  OutlinedButton.icon(
-                    onPressed: isDetecting
-                        ? null
-                        : () async {
-                            setModalState(() {
-                              isDetecting = true;
-                            });
-                            try {
-                              final enabled = await Geolocator.isLocationServiceEnabled();
-                              if (!enabled) throw Exception('Location services are disabled');
+                                var permission =
+                                    await Geolocator.checkPermission();
+                                if (permission == LocationPermission.denied) {
+                                  permission =
+                                      await Geolocator.requestPermission();
+                                }
+                                if (permission == LocationPermission.denied ||
+                                    permission ==
+                                        LocationPermission.deniedForever) {
+                                  throw Exception('Permission denied');
+                                }
 
-                              var permission = await Geolocator.checkPermission();
-                              if (permission == LocationPermission.denied) {
-                                permission = await Geolocator.requestPermission();
-                              }
-                              if (permission == LocationPermission.denied ||
-                                  permission == LocationPermission.deniedForever) {
-                                throw Exception('Permission denied');
-                              }
+                                final pos = await Geolocator.getCurrentPosition(
+                                  locationSettings: const LocationSettings(
+                                    accuracy: LocationAccuracy.low,
+                                  ),
+                                );
 
-                              final pos = await Geolocator.getCurrentPosition(
-                                locationSettings: const LocationSettings(accuracy: LocationAccuracy.low),
-                              );
-
-                              // Reverse geocode
-                              final placemarks = await placemarkFromCoordinates(pos.latitude, pos.longitude);
-                              if (placemarks.isNotEmpty) {
-                                final place = placemarks.first;
+                                // Reverse geocode
+                                final placemarks =
+                                    await placemarkFromCoordinates(
+                                      pos.latitude,
+                                      pos.longitude,
+                                    );
+                                if (placemarks.isNotEmpty) {
+                                  final place = placemarks.first;
+                                  setModalState(() {
+                                    _cityController.text =
+                                        place.locality ?? 'Panchkula';
+                                    _stateController.text =
+                                        place.administrativeArea ?? 'Haryana';
+                                    currentLat = pos.latitude;
+                                    currentLng = pos.longitude;
+                                  });
+                                }
+                              } catch (e) {
+                                // Denied or error - fallback to beautiful dummy detection
                                 setModalState(() {
-                                  _cityController.text = place.locality ?? 'Panchkula';
-                                  _stateController.text = place.administrativeArea ?? 'Haryana';
-                                  currentLat = pos.latitude;
-                                  currentLng = pos.longitude;
+                                  _cityController.text = 'Panchkula';
+                                  _stateController.text = 'Haryana';
+                                  currentLat = 30.6942;
+                                  currentLng = 76.8606;
+                                });
+                              } finally {
+                                setModalState(() {
+                                  isDetecting = false;
                                 });
                               }
-                            } catch (e) {
-                              // Denied or error - fallback to beautiful dummy detection
-                              setModalState(() {
-                                _cityController.text = 'Panchkula';
-                                _stateController.text = 'Haryana';
-                                currentLat = 30.6942;
-                                currentLng = 76.8606;
-                              });
-                            } finally {
-                              setModalState(() {
-                                isDetecting = false;
-                              });
-                            }
-                          },
-                    icon: isDetecting
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: _kPrimary),
-                          )
-                        : const Icon(Icons.my_location_rounded, size: 16),
-                    label: Text(
-                      isDetecting ? 'Detecting GPS Location...' : 'Use My GPS Location',
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: _kPrimary,
-                      side: const BorderSide(color: Color(0xFFD0D5DD)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                            },
+                      icon: isDetecting
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: _kPrimary,
+                              ),
+                            )
+                          : const Icon(Icons.my_location_rounded, size: 16),
+                      label: Text(
+                        isDetecting
+                            ? 'Detecting GPS Location...'
+                            : 'Use My GPS Location',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Actions row
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextButton(
-                          onPressed: () {
-                            setState(() {
-                              _panchkulaSelected = false;
-                            });
-                            Navigator.pop(context);
-                            _load();
-                          },
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                          child: const Text(
-                            'Clear Filter',
-                            style: TextStyle(color: Color(0xFF667085), fontWeight: FontWeight.w700),
-                          ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: _kPrimary,
+                        side: const BorderSide(color: Color(0xFFD0D5DD)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            final city = _cityController.text.trim();
-                            final state = _stateController.text.trim();
-                            if (city.isNotEmpty) {
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Actions row
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () {
                               setState(() {
-                                _selectedCity = city;
-                                _selectedState = state;
-                                _panchkulaSelected = true;
+                                _panchkulaSelected = false;
                               });
                               Navigator.pop(context);
                               _load();
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _kPrimary,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                            },
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                             ),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                          child: const Text(
-                            'Apply Location',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                            child: const Text(
+                              'Clear Filter',
+                              style: TextStyle(
+                                color: Color(0xFF667085),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              final city = _cityController.text.trim();
+                              final state = _stateController.text.trim();
+                              if (city.isNotEmpty) {
+                                setState(() {
+                                  _selectedCity = city;
+                                  _selectedState = state;
+                                  _panchkulaSelected = true;
+                                });
+                                Navigator.pop(context);
+                                _load();
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _kPrimary,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: const Text(
+                              'Apply Location',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          );
-        },
-      );
+            );
+          },
+        );
       },
     );
   }
@@ -1098,7 +1170,7 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                 size: 20,
               ),
               onPressed: () {
-                // Back to home
+                ref.read(navProvider.notifier).goTo(0);
               },
             ),
             title: const Text(
@@ -1110,6 +1182,7 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                 letterSpacing: -0.4,
               ),
             ),
+
             actions: [
               IconButton(
                 onPressed: () => context.push('/search'),
@@ -1144,7 +1217,9 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                               _showLocationPickerDialog();
                             }
                           },
-                          icon: _panchkulaSelected ? Icons.close_rounded : Icons.keyboard_arrow_down_rounded,
+                          icon: _panchkulaSelected
+                              ? Icons.close_rounded
+                              : Icons.keyboard_arrow_down_rounded,
                           isSelected: _panchkulaSelected,
                         ),
                         const SizedBox(width: 8),
@@ -1372,24 +1447,24 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                                     color: _kTextDark,
                                   ),
                                 ),
-                                const Row(
-                                  children: [
-                                    Text(
-                                      'Sort: Relevance',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                        color: _kTextMid,
-                                      ),
-                                    ),
-                                    SizedBox(width: 4),
-                                    Icon(
-                                      Icons.keyboard_arrow_down_rounded,
-                                      color: _kTextMid,
-                                      size: 16,
-                                    ),
-                                  ],
-                                ),
+                                // const Row(
+                                //   children: [
+                                //     Text(
+                                //       'Sort: Relevance',
+                                //       style: TextStyle(
+                                //         fontSize: 12,
+                                //         fontWeight: FontWeight.w700,
+                                //         color: _kTextMid,
+                                //       ),
+                                //     ),
+                                //     SizedBox(width: 4),
+                                //     Icon(
+                                //       Icons.keyboard_arrow_down_rounded,
+                                //       color: _kTextMid,
+                                //       size: 16,
+                                //     ),
+                                //   ],
+                                // ),
                               ],
                             ),
                           );
@@ -1511,13 +1586,24 @@ class _FilterChip extends StatelessWidget {
 class _MockMapPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..style = PaintingStyle.fill;
+    final paint = Paint()..style = PaintingStyle.fill;
 
     // Draw Parks (green areas)
     paint.color = const Color(0xFFD4E6D2);
-    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(40, 30, 100, 70), const Radius.circular(8)), paint);
-    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(380, 120, 140, 80), const Radius.circular(8)), paint);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        const Rect.fromLTWH(40, 30, 100, 70),
+        const Radius.circular(8),
+      ),
+      paint,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        const Rect.fromLTWH(380, 120, 140, 80),
+        const Radius.circular(8),
+      ),
+      paint,
+    );
 
     // Draw River (blue wavy area)
     paint.color = const Color(0xFFB9D8F2);

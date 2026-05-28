@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/services/favorites_service.dart';
 import '../data/services/local_storage_service.dart';
 import 'auth_provider.dart';
+import '../data/models/property.dart';
+import 'property_provider.dart';
 import 'app_providers.dart';
 
 class FavoritesNotifier extends StateNotifier<Set<String>> {
@@ -64,6 +66,22 @@ class FavoritesNotifier extends StateNotifier<Set<String>> {
       final remote = await _favoritesService.fetchFavoriteIds(token: token);
       state = _applyOverrides(remote);
       await _storage.saveFavorites(state);
+
+      // Pre-populate nested favoritable property objects into the property provider's cache!
+      final rawProps = await _favoritesService.fetchFavoriteProperties(token: token);
+      if (rawProps.isNotEmpty) {
+        final propNotifier = _ref.read(propertyProvider.notifier);
+        final service = _ref.read(propertyServiceProvider);
+        final List<Property> parsed = [];
+        for (final raw in rawProps) {
+          try {
+            parsed.add(service.propertyFromApiJson(raw));
+          } catch (_) {}
+        }
+        if (parsed.isNotEmpty) {
+          propNotifier.upsertMany(parsed);
+        }
+      }
     } catch (_) {
       // Keep local cache if remote sync fails.
     }

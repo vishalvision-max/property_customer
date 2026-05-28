@@ -46,6 +46,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   String _mode = 'rent';
   ProviderSubscription<LocationState>? _locationSub;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  int _visibleCount = 3;
 
   @override
   void initState() {
@@ -158,6 +159,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         onRefresh: () {
           final token = ref.read(authProvider).user?.token;
           final loc = ref.read(locationProvider);
+          setState(() {
+            _visibleCount = 3;
+          });
           return ref
               .read(propertyProvider.notifier)
               .loadHomeForMode(
@@ -455,11 +459,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ),
               )
-            else
+            else ...[
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
                 sliver: SliverList.separated(
-                  itemCount: recommended.length,
+                  itemCount: recommended.take(_visibleCount).length,
                   separatorBuilder: (context, index) =>
                       const SizedBox(height: 14),
                   itemBuilder: (context, i) {
@@ -474,6 +478,51 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   },
                 ),
               ),
+              if (recommended.length > _visibleCount)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
+                    child: Column(
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _visibleCount += 3;
+                            });
+                          },
+                          icon: const Icon(Icons.expand_more_rounded, color: Colors.white, size: 20),
+                          label: const Text(
+                            'Load More Properties',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13.5,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _kPrimary,
+                            minimumSize: const Size.fromHeight(48),
+                            elevation: 2,
+                            shadowColor: _kPrimary.withValues(alpha: 0.3),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Showing ${_visibleCount > recommended.length ? recommended.length : _visibleCount} of ${recommended.length} properties',
+                          style: const TextStyle(
+                            color: _kTextMid,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
           ],
         ),
       ),
