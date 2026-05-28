@@ -367,8 +367,8 @@ class PropertyNotifier extends StateNotifier<PropertyState> {
   }
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
-  fetchAllOwnerPropertiesPaged(String token, {int page = 1}) {
-    return _repo.fetchAllOwnerPropertiesPaged(token: token, page: page);
+  fetchAllOwnerPropertiesPaged(String token, {int page = 1, String? city}) {
+    return _repo.fetchAllOwnerPropertiesPaged(token: token, page: page, city: city);
   }
 }
 

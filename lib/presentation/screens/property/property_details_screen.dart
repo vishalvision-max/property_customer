@@ -13,10 +13,79 @@ import '../../widgets/autoplay_video_preview.dart';
 import '../../widgets/zoomable_video_page.dart';
 import '../../widgets/property_card.dart'; // to reuse specs extraction and price formatter
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shimmer/shimmer.dart';
 
 const _kPrimary = Color(0xFF5C46E8);
 const _fallbackImage =
     'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=1200&q=80&auto=format&fit=crop';
+
+String _getCleanLocality(String fullLocation) {
+  final loc = fullLocation.trim();
+  if (loc.isEmpty) return 'Panchkula';
+  final parts = loc.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+  
+  if (parts.isNotEmpty && parts.last.toLowerCase() == 'india') {
+    parts.removeLast();
+  }
+  
+  if (parts.isNotEmpty) {
+    final cleanState = parts.last.replaceAll(RegExp(r'\d+'), '').trim();
+    if (cleanState.isNotEmpty) {
+      parts[parts.length - 1] = cleanState;
+    } else {
+      parts.removeLast();
+    }
+  }
+
+  if (parts.isNotEmpty) {
+    final first = parts.first;
+    final isFlatNo = RegExp(r'^(\d+|\w-\d+|\d+\w|\bflat\b|\broom\b|\bshop\b|\bfloor\b|\bplot\b)', caseSensitive: false).hasMatch(first);
+    if (isFlatNo || first.length <= 5) {
+      parts.removeAt(0);
+    }
+  }
+  
+  if (parts.isEmpty) return 'Panchkula';
+  
+  if (parts.length >= 2) {
+    return '${parts[0]}, ${parts[1]}';
+  }
+  return parts.first;
+}
+
+String _getCleanSmallAddress(String fullLocation) {
+  final loc = fullLocation.trim();
+  if (loc.isEmpty) return 'Panchkula, Haryana';
+  final parts = loc.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+  
+  if (parts.isNotEmpty && parts.last.toLowerCase() == 'india') {
+    parts.removeLast();
+  }
+  
+  if (parts.isNotEmpty) {
+    final cleanState = parts.last.replaceAll(RegExp(r'\d+'), '').trim();
+    if (cleanState.isNotEmpty) {
+      parts[parts.length - 1] = cleanState;
+    } else {
+      parts.removeLast();
+    }
+  }
+
+  if (parts.isNotEmpty) {
+    final first = parts.first;
+    final isFlatNo = RegExp(r'^(\d+|\w-\d+|\d+\w|\bflat\b|\broom\b|\bshop\b|\bfloor\b|\bplot\b)', caseSensitive: false).hasMatch(first);
+    if (isFlatNo || first.length <= 5) {
+      parts.removeAt(0);
+    }
+  }
+  
+  if (parts.isEmpty) return 'Panchkula, Haryana';
+  
+  if (parts.length > 3) {
+    return parts.sublist(parts.length - 3).join(', ');
+  }
+  return parts.join(', ');
+}
 
 class PropertyDetailsScreen extends ConsumerStatefulWidget {
   final String propertyId;
@@ -88,18 +157,50 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
     
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          for (int i = 0; i < displayImages.length; i++)
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(right: 8),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          children: [
+            for (int i = 0; i < displayImages.length; i++)
+              SizedBox(
+                width: 80,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => _ZoomGallery(
+                          images: images,
+                          initialIndex: i + 1,
+                          title: p.name,
+                        ),
+                      ),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: AspectRatio(
+                        aspectRatio: 1.2,
+                        child: CachedNetworkImage(
+                          imageUrl: displayImages[i].trim(),
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(color: Colors.black12),
+                          errorWidget: (context, url, error) => Container(color: Colors.black12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            if (remainingCount > 0)
+              SizedBox(
+                width: 80,
                 child: GestureDetector(
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => _ZoomGallery(
                         images: images,
-                        initialIndex: i + 1,
+                        initialIndex: displayImages.length + 1,
                         title: p.name,
                       ),
                     ),
@@ -108,64 +209,38 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                     borderRadius: BorderRadius.circular(8),
                     child: AspectRatio(
                       aspectRatio: 1.2,
-                      child: CachedNetworkImage(
-                        imageUrl: displayImages[i].trim(),
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(color: Colors.black12),
-                        errorWidget: (context, url, error) => Container(color: Colors.black12),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          CachedNetworkImage(
+                            imageUrl: images[displayImages.length + 1].trim(),
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(color: Colors.black12),
+                            errorWidget: (context, url, error) => Container(color: Colors.black12),
+                          ),
+                          Container(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            child: Center(
+                              child: Text(
+                                '+$remainingCount\nPhotos',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.2,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          if (remainingCount > 0)
-            Expanded(
-              child: GestureDetector(
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => _ZoomGallery(
-                      images: images,
-                      initialIndex: displayImages.length + 1,
-                      title: p.name,
-                    ),
-                  ),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: AspectRatio(
-                    aspectRatio: 1.2,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        CachedNetworkImage(
-                          imageUrl: images[displayImages.length + 1].trim(),
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(color: Colors.black12),
-                          errorWidget: (context, url, error) => Container(color: Colors.black12),
-                        ),
-                        Container(
-                          color: Colors.black.withValues(alpha: 0.5),
-                          child: Center(
-                            child: Text(
-                              '+$remainingCount\nPhotos',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                                height: 1.2,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -393,11 +468,12 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
           }
           final message = Uri.encodeComponent('Hi, I am interested in your property: "${(() {
             final type = specs.type;
+            final cleanLocality = _getCleanLocality(p.location);
             if (type.toLowerCase().contains('plot') || type.toLowerCase().contains('land')) {
-              return 'Residential Plot in ${p.location.split(',').first}';
+              return 'Residential Plot in $cleanLocality';
             }
             if (type.toLowerCase().contains('commercial') || type.toLowerCase().contains('shop')) {
-              return 'Commercial Space in ${p.location.split(',').first}';
+              return 'Commercial Space in $cleanLocality';
             }
             int bhkCount = 3;
             if (p.bhk != null && p.bhk! > 0) {
@@ -411,8 +487,7 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                 bhkCount = int.tryParse(bhkMatch.group(1) ?? '3') ?? 3;
               }
             }
-            final sector = p.location.split(',').first.trim();
-            return '$bhkCount BHK $type in $sector';
+            return '$bhkCount BHK $type in $cleanLocality';
           })()}" (${p.location}).');
           
           final uri = Uri.parse('https://wa.me/$cleanPhone?text=$message');
@@ -450,6 +525,7 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                       ),
                       onToggleFavorite: toggleFavorite,
                       isFavorited: isFav,
+                      isLoading: snapshot.connectionState == ConnectionState.waiting,
                     ),
                     
                     // Thumbnail Strip
@@ -461,11 +537,12 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                       child: Text(
                         (() {
                           final type = specs.type;
+                          final cleanLocality = _getCleanLocality(p.location);
                           if (type.toLowerCase().contains('plot') || type.toLowerCase().contains('land')) {
-                            return 'Residential Plot in ${p.location.split(',').first}';
+                            return 'Residential Plot in $cleanLocality';
                           }
                           if (type.toLowerCase().contains('commercial') || type.toLowerCase().contains('shop')) {
-                            return 'Commercial Space in ${p.location.split(',').first}';
+                            return 'Commercial Space in $cleanLocality';
                           }
                           int bhkCount = 3;
                           if (p.bhk != null && p.bhk! > 0) {
@@ -479,8 +556,7 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                               bhkCount = int.tryParse(bhkMatch.group(1) ?? '3') ?? 3;
                             }
                           }
-                          final sector = p.location.split(',').first.trim();
-                          return '$bhkCount BHK $type in $sector';
+                          return '$bhkCount BHK $type in $cleanLocality';
                         })(),
                         style: const TextStyle(
                           fontSize: 20,
@@ -495,14 +571,7 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
-                        (() {
-                          final loc = p.location.trim();
-                          final parts = loc.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
-                          if (parts.length >= 2) {
-                            return parts.skip(1).join(', ');
-                          }
-                          return loc;
-                        })(),
+                        _getCleanSmallAddress(p.location),
                         style: const TextStyle(
                           fontSize: 13.5,
                           fontWeight: FontWeight.w600,
@@ -727,6 +796,7 @@ class _HeroMediaLight extends StatefulWidget {
   final VoidCallback onShare;
   final VoidCallback onToggleFavorite;
   final bool isFavorited;
+  final bool isLoading;
 
   const _HeroMediaLight({
     required this.videos,
@@ -736,6 +806,7 @@ class _HeroMediaLight extends StatefulWidget {
     required this.onShare,
     required this.onToggleFavorite,
     required this.isFavorited,
+    required this.isLoading,
   });
 
   @override
@@ -763,13 +834,24 @@ class _HeroMediaLightState extends State<_HeroMediaLight> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          CarouselSlider(
-            options: CarouselOptions(
-              height: 290,
-              viewportFraction: 1,
-              enableInfiniteScroll: total > 1,
-              onPageChanged: (i, _) => setState(() => _index = i),
-            ),
+          if (widget.isLoading && widget.images.isEmpty)
+            Shimmer.fromColors(
+              baseColor: const Color(0xFFF2F4F7),
+              highlightColor: const Color(0xFFEAECF0),
+              child: Container(
+                height: 290,
+                width: double.infinity,
+                color: Colors.white,
+              ),
+            )
+          else
+            CarouselSlider(
+              options: CarouselOptions(
+                height: 290,
+                viewportFraction: 1,
+                enableInfiniteScroll: total > 1,
+                onPageChanged: (i, _) => setState(() => _index = i),
+              ),
             items: [
               for (final v in videos)
                 GestureDetector(

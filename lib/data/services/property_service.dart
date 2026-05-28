@@ -146,12 +146,14 @@ class PropertyService {
   fetchAllOwnerPropertiesPaged({
     required String token,
     int page = 1,
+    String? city,
   }) async {
     final uri = _baseUri.replace(
       path: '/api/v1/owner/all/properties',
       queryParameters: {
         'page': page.toString(),
         't': DateTime.now().millisecondsSinceEpoch.toString(),
+        if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
       },
     );
     debugPrint('[PropertyService] GET $uri');

@@ -1,7 +1,3 @@
-import 'dart:io';
-
-import 'package:flutter/foundation.dart';
-import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -9,11 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:video_player/video_player.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/app_snackbar.dart';
 import '../../../data/models/property.dart';
-import '../../../providers/app_providers.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/connectivity_provider.dart';
 import '../../../providers/location_provider.dart';
@@ -52,8 +46,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   String _mode = 'rent';
   ProviderSubscription<LocationState>? _locationSub;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  VideoPlayerController? _recommendedController;
-  String? _playingRecommendedId;
 
   @override
   void initState() {
@@ -122,63 +114,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void dispose() {
     _locationSub?.close();
-    _recommendedController?.dispose();
     super.dispose();
-  }
-
-  Future<void> _startRecommendedVideo(Property p) async {
-    final url = p.videos.isNotEmpty ? p.videos.first.trim() : '';
-    if (url.isEmpty) return;
-    if (_playingRecommendedId == p.id &&
-        _recommendedController != null &&
-        (_recommendedController!.value.isInitialized)) {
-      _recommendedController!.play();
-      return;
-    }
-
-    await _recommendedController?.dispose();
-    _recommendedController = null;
-
-    setState(() {
-      _playingRecommendedId = p.id;
-    });
-
-    final uri = Uri.tryParse(url);
-    if (uri == null) return;
-
-    VideoPlayerController c;
-    if (!kIsWeb && (uri.scheme == 'http' || uri.scheme == 'https')) {
-      try {
-        final file = await DefaultCacheManager().getSingleFile(url);
-        c = VideoPlayerController.file(File(file.path));
-      } catch (_) {
-        c = VideoPlayerController.networkUrl(uri);
-      }
-    } else {
-      c = VideoPlayerController.networkUrl(uri);
-    }
-    _recommendedController = c;
-    try {
-      await c.initialize();
-      await c.setLooping(true);
-      await c.setVolume(0);
-      if (!mounted) return;
-      setState(() {});
-      await c.play();
-    } catch (_) {
-      await c.dispose();
-      if (!mounted) return;
-      setState(() {
-        _recommendedController = null;
-        _playingRecommendedId = null;
-      });
-    }
-  }
-
-  void _stopRecommendedVideo() {
-    final c = _recommendedController;
-    if (c == null) return;
-    if (c.value.isPlaying) c.pause();
   }
 
   @override
@@ -528,14 +464,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       const SizedBox(height: 14),
                   itemBuilder: (context, i) {
                     final p = recommended[i];
-                    return _RecommendedCard(
-                          property: p,
-                          onTap: () => context.push('/property/${p.id}'),
-                          isPlaying: _playingRecommendedId == p.id,
-                          controller: _recommendedController,
-                          onLongPressStart: () => _startRecommendedVideo(p),
-                          onLongPressEnd: _stopRecommendedVideo,
-                        )
+                    return PropertyCard(
+                      property: p,
+                      onTap: () => context.push('/property/${p.id}'),
+                    )
                         .animate()
                         .fadeIn(delay: (50 * i).ms, duration: 240.ms)
                         .slideY(begin: 0.04);
@@ -2004,301 +1936,9 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-//  RECOMMENDED CARD  — full-width horizontal layout
-// ─────────────────────────────────────────────────────────────
-class _RecommendedCard extends ConsumerWidget {
-  final Property property;
-  final VoidCallback onTap;
-  final bool isPlaying;
-  final VideoPlayerController? controller;
-  final VoidCallback onLongPressStart;
-  final VoidCallback onLongPressEnd;
-  const _RecommendedCard({
-    required this.property,
-    required this.onTap,
-    required this.isPlaying,
-    required this.controller,
-    required this.onLongPressStart,
-    required this.onLongPressEnd,
-  });
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return GestureDetector(
-      onTap: onTap,
-      onLongPressStart: (_) => onLongPressStart(),
-      onLongPressEnd: (_) => onLongPressEnd(),
-      onLongPressCancel: () => onLongPressEnd(),
-      child: Container(
-        height: 118,
-        decoration: BoxDecoration(
-          color: _kCard,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 18,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            // ── Thumbnail ──
-            ClipRRect(
-              borderRadius: const BorderRadius.horizontal(
-                left: Radius.circular(18),
-              ),
-              child: SizedBox(
-                width: 118,
-                height: 118,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if (isPlaying &&
-                        controller != null &&
-                        controller!.value.isInitialized)
-                      ClipRRect(
-                        borderRadius: const BorderRadius.horizontal(
-                          left: Radius.circular(18),
-                        ),
-                        child: FittedBox(
-                          fit: BoxFit.cover,
-                          clipBehavior: Clip.hardEdge,
-                          child: SizedBox(
-                            width: controller!.value.size.width,
-                            height: controller!.value.size.height,
-                            child: VideoPlayer(controller!),
-                          ),
-                        ),
-                      )
-                    else if (property.images.isNotEmpty)
-                      CachedNetworkImage(
-                        imageUrl: property.images.first.trim(),
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) =>
-                            _RecommendedImageFallback(),
-                        errorWidget: (context, url, error) =>
-                            _RecommendedImageFallback(),
-                      )
-                    else
-                      // Images not in list response — lazy-load from details API
-                      _LazyRecommendedImage(propertyId: property.id),
-                    // Type badge
-                    Positioned(
-                      top: 8,
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _kPrimary,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          property.type.toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
 
-            // ── Details ──
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Price
-                    Text(
-                      '₹${property.price}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        color: _kPrimary,
-                      ),
-                    ),
-                    // Title
-                    Text(
-                      property.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: _kTextDark,
-                      ),
-                    ),
-                    // Location
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.location_on_outlined,
-                          size: 12,
-                          color: _kTextMid,
-                        ),
-                        const SizedBox(width: 3),
-                        Expanded(
-                          child: Text(
-                            property.location,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 11.5,
-                              color: _kTextMid,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    // Meta row
-                    Row(
-                      children: [
-                        for (final a in property.amenities.take(2)) ...[
-                          _MetaChip(icon: Icons.check_circle_outline, label: a),
-                          if (a != property.amenities.take(2).last)
-                            const SizedBox(width: 6),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
 
-            // ── Favourite icon ──
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: _kBorder.withValues(alpha: 0.5),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.favorite_border_rounded,
-                  color: _kTextMid,
-                  size: 17,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Lazy-loads the thumbnail for a recommended card when the list endpoint
-/// returns images: null. Watches [propertyImagesProvider] which caches
-/// the result so each property is only fetched once per session.
-class _LazyRecommendedImage extends ConsumerWidget {
-  final String propertyId;
-
-  const _LazyRecommendedImage({required this.propertyId});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(propertyImagesProvider(propertyId));
-    return async.when(
-      loading: () => Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFEDE7F6), Color(0xFFD1C4E9)],
-          ),
-        ),
-        child: const Center(
-          child: SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: Color(0xFF9575CD),
-            ),
-          ),
-        ),
-      ),
-      error: (_, __) => _RecommendedImageFallback(),
-      data: (images) => images.isNotEmpty
-          ? CachedNetworkImage(
-              imageUrl: images.first,
-              fit: BoxFit.cover,
-              placeholder: (context, url) => _RecommendedImageFallback(),
-              errorWidget: (context, url, error) => _RecommendedImageFallback(),
-            )
-          : _RecommendedImageFallback(),
-    );
-  }
-}
-
-class _RecommendedImageFallback extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFEDE7F6), Color(0xFFD1C4E9)],
-        ),
-      ),
-      child: const Icon(
-        Icons.home_work_outlined,
-        color: Color(0xFF9575CD),
-        size: 36,
-      ),
-    );
-  }
-}
-
-class _MetaChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  const _MetaChip({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: _kPrimary.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 11, color: _kPrimary),
-          const SizedBox(width: 3),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w700,
-              color: _kPrimary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ─────────────────────────────────────────────────────────────
 //  BUILDER CHIP

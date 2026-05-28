@@ -44,8 +44,8 @@ class PropertyRepository {
       _service.fetchAllOwnerProperties(token: token);
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
-  fetchAllOwnerPropertiesPaged({required String token, int page = 1}) =>
-      _service.fetchAllOwnerPropertiesPaged(token: token, page: page);
+  fetchAllOwnerPropertiesPaged({required String token, int page = 1, String? city}) =>
+      _service.fetchAllOwnerPropertiesPaged(token: token, page: page, city: city);
 
   Future<List<Property>> fetchTwoBhkProperties({required String token}) =>
       _service.fetchTwoBhkProperties(token: token);

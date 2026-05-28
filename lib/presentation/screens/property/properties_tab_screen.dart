@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 
 import '../../../data/models/property.dart';
 import '../../../providers/auth_provider.dart';
@@ -9,14 +11,12 @@ import '../../../providers/property_provider.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/property_card.dart';
 import '../../widgets/shimmer_list.dart';
-import '../search/name_search_args.dart';
 import '../search/search_args.dart';
 
 const _kPrimary = Color(0xFF5C46E8);
 const _kBg = Color(0xFFF9FAFB);
 const _kTextDark = Color(0xFF1D2939);
 const _kTextMid = Color(0xFF667085);
-const _kBorder = Color(0xFFE4E7EC);
 
 class PropertiesTabScreen extends ConsumerStatefulWidget {
   const PropertiesTabScreen({super.key});
@@ -38,10 +38,15 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
 
   // ── Filter state ──────────────────────────────────────────────────────────
   bool _panchkulaSelected = false;
+  String _selectedCity = 'Panchkula';
+  String _selectedState = 'Haryana';
   String? _selectedMode;
   String? _specialApiSelected;
   RangeValues? _selectedPriceRange;
   Set<int> _selectedBHKs = {};
+
+  late final TextEditingController _cityController;
+  late final TextEditingController _stateController;
 
   // ── Scroll controller for infinite scroll ─────────────────────────────────
   late final ScrollController _scrollController;
@@ -49,6 +54,8 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
   @override
   void initState() {
     super.initState();
+    _cityController = TextEditingController(text: _selectedCity);
+    _stateController = TextEditingController(text: _selectedState);
     _scrollController = ScrollController()..addListener(_onScroll);
   }
 
@@ -63,6 +70,8 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
 
   @override
   void dispose() {
+    _cityController.dispose();
+    _stateController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -104,11 +113,26 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
         final notif = ref.read(propertyProvider.notifier);
         final result = switch (_specialApiSelected) {
           '2 BHK' => await notif.fetchTwoBhkPropertiesPaged(token, page: page),
-          'Under 50 Lakhs' => await notif.fetchFlatsUnderFiftyLakhPaged(token, page: page),
-          'Ready to Move' => await notif.fetchReadyToMovePropertiesPaged(token, page: page),
-          'Furnished' => await notif.fetchFurnishedPropertiesPaged(token, page: page),
-          'Gated Society' => await notif.fetchGatedSocietyPropertiesPaged(token, page: page),
-          'Studio Apartment' => await notif.fetchStudioApartmentPropertiesPaged(token, page: page),
+          'Under 50 Lakhs' => await notif.fetchFlatsUnderFiftyLakhPaged(
+            token,
+            page: page,
+          ),
+          'Ready to Move' => await notif.fetchReadyToMovePropertiesPaged(
+            token,
+            page: page,
+          ),
+          'Furnished' => await notif.fetchFurnishedPropertiesPaged(
+            token,
+            page: page,
+          ),
+          'Gated Society' => await notif.fetchGatedSocietyPropertiesPaged(
+            token,
+            page: page,
+          ),
+          'Studio Apartment' => await notif.fetchStudioApartmentPropertiesPaged(
+            token,
+            page: page,
+          ),
           _ => throw UnimplementedError(),
         };
         fetched = result.items;
@@ -118,7 +142,11 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
         // Default: paginated all-properties API
         final result = await ref
             .read(propertyProvider.notifier)
-            .fetchAllOwnerPropertiesPaged(token, page: page);
+            .fetchAllOwnerPropertiesPaged(
+              token,
+              page: page,
+              city: _panchkulaSelected ? _selectedCity : null,
+            );
         fetched = result.items;
         hasMore = result.hasMore;
         currentPage = result.currentPage;
@@ -126,39 +154,59 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
         final notif = ref.read(propertyProvider.notifier);
         switch (_selectedMode) {
           case 'Buy':
-            final result = await notif.fetchBuyPropertiesPaged(token, page: page);
+            final result = await notif.fetchBuyPropertiesPaged(
+              token,
+              page: page,
+            );
             fetched = result.items;
             hasMore = result.hasMore;
             currentPage = result.currentPage;
             break;
           case 'Rent':
-            final result = await notif.fetchRentPropertiesPaged(token, page: page);
+            final result = await notif.fetchRentPropertiesPaged(
+              token,
+              page: page,
+            );
             fetched = result.items;
             hasMore = result.hasMore;
             currentPage = result.currentPage;
             break;
           case 'PG/Living':
-            final pgResult = await notif.fetchPgPropertiesPaged(token, page: page);
-            final coResult = await notif.fetchCoLivingPropertiesPaged(token, page: page);
+            final pgResult = await notif.fetchPgPropertiesPaged(
+              token,
+              page: page,
+            );
+            final coResult = await notif.fetchCoLivingPropertiesPaged(
+              token,
+              page: page,
+            );
             fetched = [...pgResult.items, ...coResult.items];
             hasMore = pgResult.hasMore || coResult.hasMore;
             currentPage = page;
             break;
           case 'Commercial':
-            final result = await notif.fetchCommercialPropertiesPaged(token, page: page);
+            final result = await notif.fetchCommercialPropertiesPaged(
+              token,
+              page: page,
+            );
             fetched = result.items;
             hasMore = result.hasMore;
             currentPage = result.currentPage;
             break;
           case 'Land/Plot':
-            final result = await notif.fetchLandPlotPropertiesPaged(token, page: page);
+            final result = await notif.fetchLandPlotPropertiesPaged(
+              token,
+              page: page,
+            );
             fetched = result.items;
             hasMore = result.hasMore;
             currentPage = result.currentPage;
             break;
           default:
             final loc = ref.read(locationProvider);
-            final backendMode = _selectedMode == 'New Projects' ? 'buy' : 'rent';
+            final backendMode = _selectedMode == 'New Projects'
+                ? 'buy'
+                : 'rent';
             fetched = await notif.fetchForType(
               mode: backendMode,
               lat: loc.lat,
@@ -172,7 +220,7 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
       var filtered = fetched;
       if (_panchkulaSelected) {
         filtered = filtered
-            .where((p) => p.location.toLowerCase().contains('panchkula'))
+            .where((p) => p.location.toLowerCase().contains(_selectedCity.toLowerCase()))
             .toList();
       }
       if (_selectedMode != null) {
@@ -207,8 +255,9 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
       if (_selectedBHKs.isNotEmpty) {
         filtered = filtered.where((p) {
           final specs = getPropertySpecs(p);
-          final bedroomsStr =
-              specs.bedrooms.replaceAll(RegExp(r'\s*Bed'), '').trim();
+          final bedroomsStr = specs.bedrooms
+              .replaceAll(RegExp(r'\s*Bed'), '')
+              .trim();
           final bedrooms = int.tryParse(bedroomsStr) ?? 0;
           for (final bhk in _selectedBHKs) {
             if (bhk == 4 && bedrooms >= 4) return true;
@@ -219,9 +268,11 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
       }
       if (_selectedPriceRange != null) {
         filtered = filtered
-            .where((p) =>
-                p.price >= _selectedPriceRange!.start &&
-                p.price <= _selectedPriceRange!.end)
+            .where(
+              (p) =>
+                  p.price >= _selectedPriceRange!.start &&
+                  p.price <= _selectedPriceRange!.end,
+            )
             .toList();
       }
 
@@ -271,6 +322,424 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
 
   void _load() => _loadPage(1, replace: true);
 
+  void _showLocationPickerDialog() {
+    _cityController.text = _selectedCity;
+    _stateController.text = _selectedState;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.5),
+      builder: (context) {
+        bool isDetecting = false;
+        double currentLat = 30.6942;
+        double currentLng = 76.8606;
+        double dragOffsetX = 0.0;
+        double dragOffsetY = 0.0;
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                top: 20,
+                left: 20,
+                right: 20,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                  // Handle
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE4E7EC),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Change Location',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: _kTextDark,
+                          letterSpacing: -0.4,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close_rounded, size: 20),
+                        style: IconButton.styleFrom(
+                          backgroundColor: const Color(0xFFF2F4F7),
+                          padding: const EdgeInsets.all(6),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Google Map Preview Card
+                  Container(
+                    height: 180,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF2F4F7),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE4E7EC)),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Stack(
+                      children: [
+                        // Map street pattern mock with drag offset
+                        GestureDetector(
+                          onHorizontalDragUpdate: (details) {
+                            setModalState(() {
+                              dragOffsetX += details.primaryDelta ?? 0;
+                              currentLng -= (details.primaryDelta ?? 0) * 0.0001;
+                            });
+                          },
+                          onVerticalDragUpdate: (details) {
+                            setModalState(() {
+                              dragOffsetY += details.primaryDelta ?? 0;
+                              currentLat += (details.primaryDelta ?? 0) * 0.0001;
+                            });
+                          },
+                          child: Container(
+                            color: const Color(0xFFE8ECEF),
+                            child: Stack(
+                              children: [
+                                // Mock Roads & Blocks
+                                Positioned(
+                                  left: -100 + dragOffsetX,
+                                  top: -50 + dragOffsetY,
+                                  child: SizedBox(
+                                    width: 600,
+                                    height: 300,
+                                    child: CustomPaint(
+                                      painter: _MockMapPainter(),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // Translucent Coordinates HUD
+                        Positioned(
+                          top: 12,
+                          right: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.7),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.explore_rounded, color: Colors.greenAccent, size: 12),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${currentLat.toStringAsFixed(4)}° N, ${currentLng.toStringAsFixed(4)}° E',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w700,
+                                    fontFamily: 'monospace',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // Translucent Drag Indicator Overlay
+                        Positioned(
+                          left: 12,
+                          bottom: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.85),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'Drag map to pan',
+                              style: TextStyle(
+                                color: Color(0xFF344054),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        // Static Glowing Location Pin in Center
+                        Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.location_on_rounded,
+                                color: _kPrimary,
+                                size: 36,
+                                shadows: [
+                                  Shadow(
+                                    color: Colors.black26,
+                                    offset: Offset(0, 4),
+                                    blurRadius: 4,
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              // Ripple dot shadow
+                              Container(
+                                width: 8,
+                                height: 2.5,
+                                decoration: const BoxDecoration(
+                                  color: Colors.black38,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black45,
+                                      blurRadius: 2,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Manual Inputs: City and State
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'City',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF344054),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            TextField(
+                              controller: _cityController,
+                              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                              decoration: InputDecoration(
+                                hintText: 'e.g. Panchkula',
+                                prefixIcon: const Icon(Icons.location_city_rounded, size: 18),
+                                prefixIconColor: const Color(0xFF667085),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: const BorderSide(color: Color(0xFFD0D5DD)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: const BorderSide(color: _kPrimary, width: 1.5),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'State',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF344054),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            TextField(
+                              controller: _stateController,
+                              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                              decoration: InputDecoration(
+                                hintText: 'e.g. Haryana',
+                                prefixIcon: const Icon(Icons.map_rounded, size: 18),
+                                prefixIconColor: const Color(0xFF667085),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: const BorderSide(color: Color(0xFFD0D5DD)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: const BorderSide(color: _kPrimary, width: 1.5),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  // GPS Auto-detect Trigger
+                  OutlinedButton.icon(
+                    onPressed: isDetecting
+                        ? null
+                        : () async {
+                            setModalState(() {
+                              isDetecting = true;
+                            });
+                            try {
+                              final enabled = await Geolocator.isLocationServiceEnabled();
+                              if (!enabled) throw Exception('Location services are disabled');
+
+                              var permission = await Geolocator.checkPermission();
+                              if (permission == LocationPermission.denied) {
+                                permission = await Geolocator.requestPermission();
+                              }
+                              if (permission == LocationPermission.denied ||
+                                  permission == LocationPermission.deniedForever) {
+                                throw Exception('Permission denied');
+                              }
+
+                              final pos = await Geolocator.getCurrentPosition(
+                                locationSettings: const LocationSettings(accuracy: LocationAccuracy.low),
+                              );
+
+                              // Reverse geocode
+                              final placemarks = await placemarkFromCoordinates(pos.latitude, pos.longitude);
+                              if (placemarks.isNotEmpty) {
+                                final place = placemarks.first;
+                                setModalState(() {
+                                  _cityController.text = place.locality ?? 'Panchkula';
+                                  _stateController.text = place.administrativeArea ?? 'Haryana';
+                                  currentLat = pos.latitude;
+                                  currentLng = pos.longitude;
+                                });
+                              }
+                            } catch (e) {
+                              // Denied or error - fallback to beautiful dummy detection
+                              setModalState(() {
+                                _cityController.text = 'Panchkula';
+                                _stateController.text = 'Haryana';
+                                currentLat = 30.6942;
+                                currentLng = 76.8606;
+                              });
+                            } finally {
+                              setModalState(() {
+                                isDetecting = false;
+                              });
+                            }
+                          },
+                    icon: isDetecting
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: _kPrimary),
+                          )
+                        : const Icon(Icons.my_location_rounded, size: 16),
+                    label: Text(
+                      isDetecting ? 'Detecting GPS Location...' : 'Use My GPS Location',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _kPrimary,
+                      side: const BorderSide(color: Color(0xFFD0D5DD)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Actions row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _panchkulaSelected = false;
+                            });
+                            Navigator.pop(context);
+                            _load();
+                          },
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          child: const Text(
+                            'Clear Filter',
+                            style: TextStyle(color: Color(0xFF667085), fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            final city = _cityController.text.trim();
+                            final state = _stateController.text.trim();
+                            if (city.isNotEmpty) {
+                              setState(() {
+                                _selectedCity = city;
+                                _selectedState = state;
+                                _panchkulaSelected = true;
+                              });
+                              Navigator.pop(context);
+                              _load();
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _kPrimary,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          child: const Text(
+                            'Apply Location',
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+      },
+    );
+  }
+
   void _showModePicker() {
     showModalBottomSheet(
       context: context,
@@ -279,15 +748,7 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        const modes = [
-          'Buy',
-          'Rent',
-          'PG/Living',
-          'Commercial',
-          'Land/Plot',
-          'New Projects',
-          'Builders',
-        ];
+        const modes = ['Buy', 'Rent', 'PG/Living', 'Commercial', 'Land/Plot'];
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           child: Column(
@@ -661,7 +1122,7 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
               ),
             ],
             bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(150),
+              preferredSize: const Size.fromHeight(102),
               child: Column(
                 children: [
                   // Filter Chips Row
@@ -671,17 +1132,21 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       scrollDirection: Axis.horizontal,
                       children: [
-                        // _FilterChip(
-                        //   label: 'Panchkula',
-                        //   onTap: () {
-                        //     setState(() {
-                        //       _panchkulaSelected = !_panchkulaSelected;
-                        //       _load();
-                        //     });
-                        //   },
-                        //   icon: _panchkulaSelected ? Icons.close_rounded : null,
-                        //   isSelected: _panchkulaSelected,
-                        // ),
+                        _FilterChip(
+                          label: _selectedCity,
+                          onTap: () {
+                            if (_panchkulaSelected) {
+                              setState(() {
+                                _panchkulaSelected = false;
+                              });
+                              _load();
+                            } else {
+                              _showLocationPickerDialog();
+                            }
+                          },
+                          icon: _panchkulaSelected ? Icons.close_rounded : Icons.keyboard_arrow_down_rounded,
+                          isSelected: _panchkulaSelected,
+                        ),
                         const SizedBox(width: 8),
                         _FilterChip(
                           label: _selectedMode ?? 'Select Mode',
@@ -736,95 +1201,104 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                     child: ListView(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       scrollDirection: Axis.horizontal,
-                      children: [
-                        '2 BHK',
-                        'Under 50 Lakhs',
-                        'Ready to Move',
-                        'Furnished',
-                        'Gated Society',
-                        'Studio Apartment',
-                      ].map((label) {
-                        final isSel = _specialApiSelected == label;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                if (isSel) {
-                                  _specialApiSelected = null;
-                                } else {
-                                  _specialApiSelected = label;
-                                  // Clear other regular filters when special API is picked
-                                  _selectedMode = null;
-                                  _selectedPriceRange = null;
-                                  _selectedBHKs.clear();
-                                }
-                                _load();
-                              });
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(horizontal: 14),
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: isSel ? const Color(0xFF5C46E8) : const Color(0xFFF3F4F6),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: isSel ? const Color(0xFF5C46E8) : Colors.transparent,
+                      children:
+                          [
+                            '2 BHK',
+                            'Under 50 Lakhs',
+                            'Ready to Move',
+                            'Furnished',
+                            'Gated Society',
+                            'Studio Apartment',
+                          ].map((label) {
+                            final isSel = _specialApiSelected == label;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    if (isSel) {
+                                      _specialApiSelected = null;
+                                    } else {
+                                      _specialApiSelected = label;
+                                      // Clear other regular filters when special API is picked
+                                      _selectedMode = null;
+                                      _selectedPriceRange = null;
+                                      _selectedBHKs.clear();
+                                    }
+                                    _load();
+                                  });
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                  ),
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: isSel
+                                        ? const Color(0xFF5C46E8)
+                                        : const Color(0xFFF3F4F6),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: isSel
+                                          ? const Color(0xFF5C46E8)
+                                          : Colors.transparent,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    label,
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: isSel
+                                          ? Colors.white
+                                          : const Color(0xFF4B5563),
+                                    ),
+                                  ),
                                 ),
                               ),
-                              child: Text(
-                                label,
-                                style: TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: isSel ? Colors.white : const Color(0xFF4B5563),
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
+                            );
+                          }).toList(),
                     ),
                   ),
                   const SizedBox(height: 12),
 
-                  // Search Bar Input Trigger
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                    child: GestureDetector(
-                      onTap: () => context.push(
-                        '/name-search',
-                        extra: const NameSearchArgs(mode: 'rent'),
-                      ),
-                      child: Container(
-                        height: 40,
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        decoration: BoxDecoration(
-                          color: _kBg,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: _kBorder),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.search_rounded,
-                              color: _kTextMid,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              'Search properties…',
-                              style: TextStyle(
-                                color: Colors.grey.shade400,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                  // // Search Bar Input Trigger
+                  // Padding(
+                  //   padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  //   child: GestureDetector(
+                  //     onTap: () => context.push(
+                  //       '/name-search',
+                  //       extra: const NameSearchArgs(mode: 'rent'),
+                  //     ),
+                  //     child: Container(
+                  //       height: 40,
+                  //       padding: const EdgeInsets.symmetric(horizontal: 14),
+                  //       decoration: BoxDecoration(
+                  //         color: _kBg,
+                  //         borderRadius: BorderRadius.circular(10),
+                  //         border: Border.all(color: _kBorder),
+                  //       ),
+                  //       child: Row(
+                  //         children: [
+                  //           const Icon(
+                  //             Icons.search_rounded,
+                  //             color: _kTextMid,
+                  //             size: 18,
+                  //           ),
+                  //           const SizedBox(width: 10),
+                  //           Text(
+                  //             'Search properties…',
+                  //             style: TextStyle(
+                  //               color: Colors.grey.shade400,
+                  //               fontSize: 13,
+                  //             ),
+                  //           ),
+                  //         ],
+                  //       ),
+                  //     ),
+                  //   ),
+                  // ),
                 ],
               ),
             ),
@@ -838,143 +1312,135 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
               child: _isLoading
                   ? const ShimmerList()
                   : _error != null && _items.isEmpty
-                      ? LayoutBuilder(
-                          builder: (ctx, constraints) => SingleChildScrollView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            child: SizedBox(
-                              height: constraints.maxHeight,
-                              child: EmptyState(
-                                title: 'Could not load properties',
-                                message: _error!,
-                                asset: 'assets/illustrations/empty_search.svg',
-                                action: TextButton.icon(
-                                  onPressed: _load,
-                                  icon: const Icon(Icons.refresh_rounded),
-                                  label: const Text('Retry'),
-                                ),
-                              ),
+                  ? LayoutBuilder(
+                      builder: (ctx, constraints) => SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: SizedBox(
+                          height: constraints.maxHeight,
+                          child: EmptyState(
+                            title: 'Could not load properties',
+                            message: _error!,
+                            asset: 'assets/illustrations/empty_search.svg',
+                            action: TextButton.icon(
+                              onPressed: _load,
+                              icon: const Icon(Icons.refresh_rounded),
+                              label: const Text('Retry'),
                             ),
                           ),
-                        )
-                      : _items.isEmpty
-                          ? LayoutBuilder(
-                              builder: (ctx, constraints) =>
-                                  SingleChildScrollView(
-                                physics: const AlwaysScrollableScrollPhysics(),
-                                child: SizedBox(
-                                  height: constraints.maxHeight,
-                                  child: EmptyState(
-                                    title: 'No properties found',
-                                    message:
-                                        'Pull down to refresh or try a different filter.',
-                                    asset:
-                                        'assets/illustrations/empty_search.svg',
-                                    action: TextButton.icon(
-                                      onPressed: _resetAndLoad,
-                                      icon: const Icon(Icons.refresh_rounded),
-                                      label: const Text('Clear Filters'),
+                        ),
+                      ),
+                    )
+                  : _items.isEmpty
+                  ? LayoutBuilder(
+                      builder: (ctx, constraints) => SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: SizedBox(
+                          height: constraints.maxHeight,
+                          child: EmptyState(
+                            title: 'No properties found',
+                            message:
+                                'Pull down to refresh or try a different filter.',
+                            asset: 'assets/illustrations/empty_search.svg',
+                            action: TextButton.icon(
+                              onPressed: _resetAndLoad,
+                              icon: const Icon(Icons.refresh_rounded),
+                              label: const Text('Clear Filters'),
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      controller: _scrollController,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                      // +2: header row + bottom loader/footer
+                      itemCount: _items.length + 2,
+                      itemBuilder: (context, i) {
+                        // ── Header row ─────────────────────────────
+                        if (i == 0) {
+                          return Padding(
+                            padding: const EdgeInsets.fromLTRB(0, 4, 0, 10),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '${_items.length}${_hasMore ? '+' : ''} Properties Found',
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: _kTextDark,
+                                  ),
+                                ),
+                                const Row(
+                                  children: [
+                                    Text(
+                                      'Sort: Relevance',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: _kTextMid,
+                                      ),
                                     ),
+                                    SizedBox(width: 4),
+                                    Icon(
+                                      Icons.keyboard_arrow_down_rounded,
+                                      color: _kTextMid,
+                                      size: 16,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        // ── Bottom loader / end footer ────────────
+                        if (i == _items.length + 1) {
+                          if (_isLoadingMore) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 20),
+                              child: Center(
+                                child: SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: _kPrimary,
                                   ),
                                 ),
                               ),
-                            )
-                          : ListView.builder(
-                              controller: _scrollController,
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              padding:
-                                  const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                              // +2: header row + bottom loader/footer
-                              itemCount: _items.length + 2,
-                              itemBuilder: (context, i) {
-                                // ── Header row ─────────────────────────────
-                                if (i == 0) {
-                                  return Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                        0, 4, 0, 10),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          '${_items.length}${_hasMore ? '+' : ''} Properties Found',
-                                          style: const TextStyle(
-                                            fontSize: 12.5,
-                                            fontWeight: FontWeight.w800,
-                                            color: _kTextDark,
-                                          ),
-                                        ),
-                                        const Row(
-                                          children: [
-                                            Text(
-                                              'Sort: Relevance',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w700,
-                                                color: _kTextMid,
-                                              ),
-                                            ),
-                                            SizedBox(width: 4),
-                                            Icon(
-                                              Icons.keyboard_arrow_down_rounded,
-                                              color: _kTextMid,
-                                              size: 16,
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }
-
-                                // ── Bottom loader / end footer ────────────
-                                if (i == _items.length + 1) {
-                                  if (_isLoadingMore) {
-                                    return const Padding(
-                                      padding: EdgeInsets.symmetric(
-                                          vertical: 20),
-                                      child: Center(
-                                        child: SizedBox(
-                                          width: 24,
-                                          height: 24,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2.5,
-                                            color: _kPrimary,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                  if (!_hasMore && _items.isNotEmpty) {
-                                    return const Padding(
-                                      padding: EdgeInsets.symmetric(
-                                          vertical: 20),
-                                      child: Center(
-                                        child: Text(
-                                          '— No more properties —',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: _kTextMid,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                  return const SizedBox.shrink();
-                                }
-
-                                // ── Property card ─────────────────────────
-                                final p = _items[i - 1];
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  child: PropertyCard(
-                                    property: p,
-                                    onTap: () =>
-                                        context.push('/property/${p.id}'),
+                            );
+                          }
+                          if (!_hasMore && _items.isNotEmpty) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 20),
+                              child: Center(
+                                child: Text(
+                                  '— No more properties —',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: _kTextMid,
+                                    fontWeight: FontWeight.w500,
                                   ),
-                                );
-                              },
-                            ),
+                                ),
+                              ),
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        }
+
+                        // ── Property card ─────────────────────────
+                        final p = _items[i - 1];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: PropertyCard(
+                            property: p,
+                            onTap: () => context.push('/property/${p.id}'),
+                          ),
+                        );
+                      },
+                    ),
             ),
           ),
         ],
@@ -1040,4 +1506,48 @@ class _FilterChip extends StatelessWidget {
       ),
     );
   }
+}
+
+class _MockMapPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..style = PaintingStyle.fill;
+
+    // Draw Parks (green areas)
+    paint.color = const Color(0xFFD4E6D2);
+    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(40, 30, 100, 70), const Radius.circular(8)), paint);
+    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(380, 120, 140, 80), const Radius.circular(8)), paint);
+
+    // Draw River (blue wavy area)
+    paint.color = const Color(0xFFB9D8F2);
+    final path = Path()
+      ..moveTo(0, 200)
+      ..quadraticBezierTo(150, 180, 300, 220)
+      ..quadraticBezierTo(450, 260, 600, 210)
+      ..lineTo(600, 260)
+      ..lineTo(0, 260)
+      ..close();
+    canvas.drawPath(path, paint);
+
+    // Draw Major Roads (light-grey intersecting lines)
+    final roadPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 14
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(const Offset(0, 100), const Offset(600, 100), roadPaint);
+    canvas.drawLine(const Offset(220, 0), const Offset(220, 300), roadPaint);
+    canvas.drawLine(const Offset(400, 0), const Offset(400, 300), roadPaint);
+
+    // Draw Minor Roads (thin lines)
+    roadPaint.strokeWidth = 6;
+    roadPaint.color = Colors.white.withValues(alpha: 0.7);
+    canvas.drawLine(const Offset(0, 40), const Offset(220, 40), roadPaint);
+    canvas.drawLine(const Offset(220, 160), const Offset(600, 160), roadPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

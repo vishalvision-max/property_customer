@@ -401,10 +401,33 @@ class PropertyCard extends ConsumerWidget {
                         final loc = property.location.trim();
                         if (loc.isEmpty) return 'Panchkula';
                         final parts = loc.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+                        
+                        if (parts.isNotEmpty && parts.last.toLowerCase() == 'india') {
+                          parts.removeLast();
+                        }
+                        
+                        if (parts.isNotEmpty) {
+                          final cleanState = parts.last.replaceAll(RegExp(r'\d+'), '').trim();
+                          if (cleanState.isNotEmpty) {
+                            parts[parts.length - 1] = cleanState;
+                          } else {
+                            parts.removeLast();
+                          }
+                        }
+
+                        if (parts.isNotEmpty) {
+                          final first = parts.first;
+                          final isFlatNo = RegExp(r'^(\d+|\w-\d+|\d+\w|\bflat\b|\broom\b|\bshop\b|\bfloor\b|\bplot\b)', caseSensitive: false).hasMatch(first);
+                          if (isFlatNo || first.length <= 5) {
+                            parts.removeAt(0);
+                          }
+                        }
+
+                        if (parts.isEmpty) return 'Panchkula';
                         if (parts.length >= 2) {
                           return '${parts[0]}, ${parts[1]}';
                         }
-                        return loc;
+                        return parts.first;
                       })(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
