@@ -51,6 +51,7 @@ dependencies:
   flutter_cache_manager: ^3.4.1
   video_player: ^2.9.2
   visibility_detector: ^0.4.0+2
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

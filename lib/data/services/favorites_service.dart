@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 
 class FavoritesToggleResult {
   /// `null` when backend doesn't explicitly return the new state.
@@ -10,99 +10,124 @@ class FavoritesToggleResult {
 }
 
 class FavoritesService {
-  static final Uri _baseUri = Uri.parse('https://propertysearch.visionvivante.in');
+  static final Uri _baseUri =
+      Uri.parse('https://propertysearch.visionvivante.in');
 
-  Future<void> delete({
-    required String token,
-    required String id,
-  }) async {
-    if (kIsWeb) {
-      return;
-    }
-
-    final uri = _baseUri.replace(path: '/api/v1/favorites/$id');
-    final client = HttpClient();
-    try {
-      final req = await client.deleteUrl(uri);
-      req.headers.set('Accept', 'application/json');
-      req.headers.set('Authorization', 'Bearer $token');
-
-      final res = await req.close();
-      final status = res.statusCode;
-      if (status < 200 || status >= 300) {
-        final body = await res.transform(utf8.decoder).join();
-        throw Exception('Failed to delete favorite ($status) ${body.trim()}');
-      }
-    } on SocketException {
-      throw Exception('Network error. Please check your internet connection.');
-    } finally {
-      client.close(force: true);
-    }
-  }
-
+  // ─────────────────────────────────────────────────────────────
+  //  GET /api/v1/favorites/index
+  //  Returns all favorited property IDs for the logged-in user.
+  // ─────────────────────────────────────────────────────────────
   Future<Set<String>> fetchFavoriteIds({required String token}) async {
-    if (kIsWeb) {
+    if (kIsWeb) return const <String>{};
+
+    final uri = _baseUri.replace(path: '/api/v1/favorites/index');
+    debugPrint('[FavoritesService] GET $uri');
+    try {
+      final response = await http.get(
+        uri,
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      debugPrint('[FavoritesService] fetchFavoriteIds → ${response.statusCode}');
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        debugPrint('[FavoritesService] fetchFavoriteIds error: ${response.body}');
+        return const <String>{};
+      }
+      final decoded = response.body.trim().isEmpty
+          ? null
+          : jsonDecode(response.body);
+      return _extractIds(decoded);
+    } catch (e) {
+      debugPrint('[FavoritesService] fetchFavoriteIds exception: $e');
       return const <String>{};
     }
-
-    final uri = _baseUri.replace(path: '/api/v1/favorites');
-    final client = HttpClient();
-    try {
-      final req = await client.getUrl(uri);
-      req.headers.set('Accept', 'application/json');
-      req.headers.set('Authorization', 'Bearer $token');
-
-      final res = await req.close();
-      final body = await res.transform(utf8.decoder).join();
-      final status = res.statusCode;
-      if (status < 200 || status >= 300) {
-        throw Exception('Failed to load favorites ($status)');
-      }
-
-      final decoded = body.trim().isEmpty ? null : jsonDecode(body);
-      return _extractIds(decoded);
-    } on SocketException {
-      throw Exception('Network error. Please check your internet connection.');
-    } finally {
-      client.close(force: true);
-    }
   }
 
+  // ─────────────────────────────────────────────────────────────
+  //  POST /api/v1/favorites/toggle
+  //  Body: type=property & id=<propertyId>
+  //  Adds to favorites if not present, removes if present.
+  // ─────────────────────────────────────────────────────────────
   Future<FavoritesToggleResult> toggle({
     required String token,
     required String type,
     required String id,
   }) async {
-    if (kIsWeb) {
-      return const FavoritesToggleResult(isFavorited: null);
-    }
+    if (kIsWeb) return const FavoritesToggleResult(isFavorited: null);
 
     final uri = _baseUri.replace(path: '/api/v1/favorites/toggle');
-    final client = HttpClient();
+    debugPrint('[FavoritesService] POST $uri  type=$type id=$id');
     try {
-      final req = await client.postUrl(uri);
-      req.headers.set('Accept', 'application/json');
-      req.headers.set('Content-Type', 'application/json');
-      req.headers.set('Authorization', 'Bearer $token');
+      final response = await http.post(
+        uri,
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: {'type': type, 'id': id},
+      );
+      debugPrint('[FavoritesService] toggle → ${response.statusCode}');
+      debugPrint('[FavoritesService] toggle body: ${response.body}');
 
-      req.add(utf8.encode(jsonEncode(<String, dynamic>{'type': type, 'id': int.tryParse(id) ?? id})));
-
-      final res = await req.close();
-      final body = await res.transform(utf8.decoder).join();
-      final status = res.statusCode;
-      if (status < 200 || status >= 300) {
-        throw Exception('Failed to toggle favorite ($status)');
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+          'Failed to toggle favorite (${response.statusCode})',
+        );
       }
 
-      final decoded = body.trim().isEmpty ? null : jsonDecode(body);
+      final decoded = response.body.trim().isEmpty
+          ? null
+          : jsonDecode(response.body);
       return FavoritesToggleResult(isFavorited: _pickFavorited(decoded));
-    } on SocketException {
-      throw Exception('Network error. Please check your internet connection.');
-    } finally {
-      client.close(force: true);
+    } catch (e) {
+      debugPrint('[FavoritesService] toggle exception: $e');
+      rethrow;
     }
   }
 
+  // ─────────────────────────────────────────────────────────────
+  //  POST /api/v1/favorites/remove/{id}
+  //  Body: type=property & id=<propertyId>
+  //  Explicitly removes a property from favorites.
+  // ─────────────────────────────────────────────────────────────
+  Future<void> delete({
+    required String token,
+    required String id,
+    String type = 'property',
+  }) async {
+    if (kIsWeb) return;
+
+    final uri = _baseUri.replace(path: '/api/v1/favorites/remove/$id');
+    debugPrint('[FavoritesService] POST $uri  type=$type id=$id');
+    try {
+      final response = await http.post(
+        uri,
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: {'type': type, 'id': id},
+      );
+      debugPrint('[FavoritesService] delete → ${response.statusCode}');
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        debugPrint('[FavoritesService] delete error: ${response.body}');
+        throw Exception(
+          'Failed to remove favorite (${response.statusCode}) ${response.body.trim()}',
+        );
+      }
+    } catch (e) {
+      debugPrint('[FavoritesService] delete exception: $e');
+      rethrow;
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  HELPERS
+  // ─────────────────────────────────────────────────────────────
   bool? _pickFavorited(dynamic decoded) {
     dynamic unwrap(dynamic v) {
       if (v is Map<String, dynamic>) {
@@ -127,8 +152,12 @@ class FavoritesService {
         if (c is num) return c != 0;
         if (c is String) {
           final s = c.toLowerCase().trim();
-          if (s == 'true' || s == '1' || s == 'yes' || s == 'favorited') return true;
-          if (s == 'false' || s == '0' || s == 'no' || s == 'unfavorited') return false;
+          if (s == 'true' || s == '1' || s == 'yes' || s == 'favorited') {
+            return true;
+          }
+          if (s == 'false' || s == '0' || s == 'no' || s == 'unfavorited') {
+            return false;
+          }
         }
       }
     }
@@ -144,7 +173,9 @@ class FavoritesService {
     }
 
     final root = unwrap(decoded);
-    final items = root is List ? root : (root is Map && root['data'] is List ? root['data'] : const []);
+    final items = root is List
+        ? root
+        : (root is Map && root['data'] is List ? root['data'] : const []);
     if (items is! List) return const <String>{};
 
     String? readIdFromMap(Map<String, dynamic> map) {

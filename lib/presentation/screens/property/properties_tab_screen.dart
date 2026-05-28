@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../data/models/property.dart';
+import '../../../providers/auth_provider.dart';
 import '../../../providers/location_provider.dart';
 import '../../../providers/property_provider.dart';
 import '../../widgets/empty_state.dart';
@@ -26,140 +27,249 @@ class PropertiesTabScreen extends ConsumerStatefulWidget {
 }
 
 class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
-  Future<List<Property>>? _future;
+  // ── Pagination state ─────────────────────────────────────────────────────
+  final List<Property> _items = [];
+  int _currentPage = 1;
+  bool _hasMore = true;
+  bool _isLoading = false;
+  bool _isLoadingMore = false;
   bool _loaded = false;
-  bool _panchkulaSelected = false;
-  String?
-  _selectedMode; // Null by default, meaning no mode is selected initially!
+  String? _error;
 
-  // Dynamic filter state variables
+  // ── Filter state ──────────────────────────────────────────────────────────
+  bool _panchkulaSelected = false;
+  String? _selectedMode;
+  String? _specialApiSelected;
   RangeValues? _selectedPriceRange;
   Set<int> _selectedBHKs = {};
+
+  // ── Scroll controller for infinite scroll ─────────────────────────────────
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController()..addListener(_onScroll);
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_loaded) {
       _loaded = true;
-      _load();
+      _loadPage(1, replace: true);
     }
   }
 
-  void _load() {
-    final loc = ref.read(locationProvider);
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
-    // Resolve base future depending on mode selection
-    final Future<List<Property>> baseFuture;
-    if (_selectedMode == null) {
-      // If no mode is selected, fetch both rent and buy properties combined!
-      baseFuture = ref
-          .read(propertyProvider.notifier)
-          .fetchForType(mode: 'rent', lat: loc.lat, lng: loc.lng)
-          .then((rent) async {
-            final buy = await ref
-                .read(propertyProvider.notifier)
-                .fetchForType(mode: 'buy', lat: loc.lat, lng: loc.lng);
-            return [...rent, ...buy];
-          });
-    } else {
-      final backendMode =
-          (_selectedMode == 'Rent' || _selectedMode == 'PG/Living')
-          ? 'rent'
-          : 'buy';
-      baseFuture = ref
-          .read(propertyProvider.notifier)
-          .fetchForType(mode: backendMode, lat: loc.lat, lng: loc.lng);
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      _loadMore();
     }
+  }
 
-    setState(() {
-      _future = baseFuture.then((items) {
-        var filtered = items;
+  // ── Pull-to-refresh ───────────────────────────────────────────────────────
+  Future<void> _onRefresh() async {
+    await _loadPage(1, replace: true);
+  }
 
-        // 1. Location filter
-        if (_panchkulaSelected) {
-          filtered = filtered
-              .where((p) => p.location.toLowerCase().contains('panchkula'))
-              .toList();
+  // ── Load a page ───────────────────────────────────────────────────────────
+  Future<void> _loadPage(int page, {bool replace = false}) async {
+    if (_isLoading || _isLoadingMore) return;
+
+    if (mounted) {
+      setState(() {
+        if (replace) {
+          _isLoading = true;
+          _error = null;
+        } else {
+          _isLoadingMore = true;
         }
-
-        // 2. Category/Subtype dynamic filtering (only if a category is selected)
-        if (_selectedMode != null) {
-          final m = _selectedMode!.toLowerCase();
-          if (m == 'pg/living') {
-            filtered = filtered.where((p) {
-              final text = '${p.name} ${p.description}'.toLowerCase();
-              return text.contains('pg') ||
-                  text.contains('living') ||
-                  text.contains('co-living') ||
-                  text.contains('hostel');
-            }).toList();
-          } else if (m == 'commercial') {
-            filtered = filtered.where((p) {
-              final text = '${p.name} ${p.description}'.toLowerCase();
-              return text.contains('commercial') ||
-                  text.contains('office') ||
-                  text.contains('shop') ||
-                  text.contains('retail') ||
-                  text.contains('showroom') ||
-                  text.contains('warehouse');
-            }).toList();
-          } else if (m == 'land/plot') {
-            filtered = filtered.where((p) {
-              final text = '${p.name} ${p.description}'.toLowerCase();
-              return text.contains('plot') ||
-                  text.contains('land') ||
-                  text.contains('site');
-            }).toList();
-          } else if (m == 'new projects') {
-            filtered = filtered.where((p) {
-              final text = '${p.name} ${p.description}'.toLowerCase();
-              return text.contains('project') ||
-                  text.contains('new launch') ||
-                  text.contains('upcoming') ||
-                  text.contains('under construction');
-            }).toList();
-          } else if (m == 'builders') {
-            filtered = filtered.where((p) {
-              final text = '${p.name} ${p.description}'.toLowerCase();
-              return text.contains('builder') ||
-                  text.contains('dlf') ||
-                  text.contains('godrej') ||
-                  text.contains('emaar') ||
-                  text.contains('prestige') ||
-                  text.contains('ats');
-            }).toList();
-          }
-        }
-
-        // 3. BHK filter
-        if (_selectedBHKs.isNotEmpty) {
-          filtered = filtered.where((p) {
-            final specs = getPropertySpecs(p);
-            final bedroomsStr = specs.bedrooms
-                .replaceAll(RegExp(r'\s*Bed'), '')
-                .trim();
-            final bedrooms = int.tryParse(bedroomsStr) ?? 0;
-
-            for (final bhk in _selectedBHKs) {
-              if (bhk == 4 && bedrooms >= 4) return true;
-              if (bhk == bedrooms) return true;
-            }
-            return false;
-          }).toList();
-        }
-
-        // 4. Price filter
-        if (_selectedPriceRange != null) {
-          filtered = filtered.where((p) {
-            return p.price >= _selectedPriceRange!.start &&
-                p.price <= _selectedPriceRange!.end;
-          }).toList();
-        }
-
-        return filtered;
       });
-    });
+    }
+
+    try {
+      final token = ref.read(authProvider).user?.token ?? '';
+      List<Property> fetched = [];
+      bool hasMore = false;
+      int currentPage = page;
+
+      if (_specialApiSelected != null) {
+        final notif = ref.read(propertyProvider.notifier);
+        final result = switch (_specialApiSelected) {
+          '2 BHK' => await notif.fetchTwoBhkPropertiesPaged(token, page: page),
+          'Under 50 Lakhs' => await notif.fetchFlatsUnderFiftyLakhPaged(token, page: page),
+          'Ready to Move' => await notif.fetchReadyToMovePropertiesPaged(token, page: page),
+          'Furnished' => await notif.fetchFurnishedPropertiesPaged(token, page: page),
+          'Gated Society' => await notif.fetchGatedSocietyPropertiesPaged(token, page: page),
+          'Studio Apartment' => await notif.fetchStudioApartmentPropertiesPaged(token, page: page),
+          _ => throw UnimplementedError(),
+        };
+        fetched = result.items;
+        hasMore = result.hasMore;
+        currentPage = result.currentPage;
+      } else if (_selectedMode == null) {
+        // Default: paginated all-properties API
+        final result = await ref
+            .read(propertyProvider.notifier)
+            .fetchAllOwnerPropertiesPaged(token, page: page);
+        fetched = result.items;
+        hasMore = result.hasMore;
+        currentPage = result.currentPage;
+      } else {
+        final notif = ref.read(propertyProvider.notifier);
+        switch (_selectedMode) {
+          case 'Buy':
+            final result = await notif.fetchBuyPropertiesPaged(token, page: page);
+            fetched = result.items;
+            hasMore = result.hasMore;
+            currentPage = result.currentPage;
+            break;
+          case 'Rent':
+            final result = await notif.fetchRentPropertiesPaged(token, page: page);
+            fetched = result.items;
+            hasMore = result.hasMore;
+            currentPage = result.currentPage;
+            break;
+          case 'PG/Living':
+            final pgResult = await notif.fetchPgPropertiesPaged(token, page: page);
+            final coResult = await notif.fetchCoLivingPropertiesPaged(token, page: page);
+            fetched = [...pgResult.items, ...coResult.items];
+            hasMore = pgResult.hasMore || coResult.hasMore;
+            currentPage = page;
+            break;
+          case 'Commercial':
+            final result = await notif.fetchCommercialPropertiesPaged(token, page: page);
+            fetched = result.items;
+            hasMore = result.hasMore;
+            currentPage = result.currentPage;
+            break;
+          case 'Land/Plot':
+            final result = await notif.fetchLandPlotPropertiesPaged(token, page: page);
+            fetched = result.items;
+            hasMore = result.hasMore;
+            currentPage = result.currentPage;
+            break;
+          default:
+            final loc = ref.read(locationProvider);
+            final backendMode = _selectedMode == 'New Projects' ? 'buy' : 'rent';
+            fetched = await notif.fetchForType(
+              mode: backendMode,
+              lat: loc.lat,
+              lng: loc.lng,
+            );
+            hasMore = false;
+        }
+      }
+
+      // Client-side filters
+      var filtered = fetched;
+      if (_panchkulaSelected) {
+        filtered = filtered
+            .where((p) => p.location.toLowerCase().contains('panchkula'))
+            .toList();
+      }
+      if (_selectedMode != null) {
+        final m = _selectedMode!.toLowerCase();
+        if (m == 'pg/living') {
+          filtered = filtered.where((p) {
+            final text = '${p.name} ${p.description}'.toLowerCase();
+            return text.contains('pg') ||
+                text.contains('living') ||
+                text.contains('co-living') ||
+                text.contains('hostel');
+          }).toList();
+        } else if (m == 'commercial') {
+          filtered = filtered.where((p) {
+            final text = '${p.name} ${p.description}'.toLowerCase();
+            return text.contains('commercial') ||
+                text.contains('office') ||
+                text.contains('shop') ||
+                text.contains('retail') ||
+                text.contains('showroom') ||
+                text.contains('warehouse');
+          }).toList();
+        } else if (m == 'land/plot') {
+          filtered = filtered.where((p) {
+            final text = '${p.name} ${p.description}'.toLowerCase();
+            return text.contains('plot') ||
+                text.contains('land') ||
+                text.contains('site');
+          }).toList();
+        }
+      }
+      if (_selectedBHKs.isNotEmpty) {
+        filtered = filtered.where((p) {
+          final specs = getPropertySpecs(p);
+          final bedroomsStr =
+              specs.bedrooms.replaceAll(RegExp(r'\s*Bed'), '').trim();
+          final bedrooms = int.tryParse(bedroomsStr) ?? 0;
+          for (final bhk in _selectedBHKs) {
+            if (bhk == 4 && bedrooms >= 4) return true;
+            if (bhk == bedrooms) return true;
+          }
+          return false;
+        }).toList();
+      }
+      if (_selectedPriceRange != null) {
+        filtered = filtered
+            .where((p) =>
+                p.price >= _selectedPriceRange!.start &&
+                p.price <= _selectedPriceRange!.end)
+            .toList();
+      }
+
+      if (mounted) {
+        setState(() {
+          if (replace) {
+            _items
+              ..clear()
+              ..addAll(filtered);
+          } else {
+            _items.addAll(filtered);
+          }
+          _currentPage = currentPage;
+          _hasMore = hasMore;
+          _isLoading = false;
+          _isLoadingMore = false;
+          _error = null;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading properties: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isLoadingMore = false;
+          _error = e.toString().replaceAll('Exception: ', '');
+        });
+      }
+    }
   }
+
+  void _loadMore() {
+    if (!_hasMore || _isLoadingMore || _isLoading) return;
+    _loadPage(_currentPage + 1, replace: false);
+  }
+
+  // ── Reset filters and reload ───────────────────────────────────────────────
+  void _resetAndLoad() {
+    setState(() {
+      _specialApiSelected = null;
+      _selectedMode = null;
+      _selectedPriceRange = null;
+      _selectedBHKs = {};
+    });
+    _loadPage(1, replace: true);
+  }
+
+  void _load() => _loadPage(1, replace: true);
 
   void _showModePicker() {
     showModalBottomSheet(
@@ -551,7 +661,7 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
               ),
             ],
             bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(100),
+              preferredSize: const Size.fromHeight(150),
               child: Column(
                 children: [
                   // Filter Chips Row
@@ -620,6 +730,65 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                   ),
                   const SizedBox(height: 8),
 
+                  // Special API Chips Row
+                  SizedBox(
+                    height: 38,
+                    child: ListView(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        '2 BHK',
+                        'Under 50 Lakhs',
+                        'Ready to Move',
+                        'Furnished',
+                        'Gated Society',
+                        'Studio Apartment',
+                      ].map((label) {
+                        final isSel = _specialApiSelected == label;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                if (isSel) {
+                                  _specialApiSelected = null;
+                                } else {
+                                  _specialApiSelected = label;
+                                  // Clear other regular filters when special API is picked
+                                  _selectedMode = null;
+                                  _selectedPriceRange = null;
+                                  _selectedBHKs.clear();
+                                }
+                                _load();
+                              });
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(horizontal: 14),
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: isSel ? const Color(0xFF5C46E8) : const Color(0xFFF3F4F6),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isSel ? const Color(0xFF5C46E8) : Colors.transparent,
+                                ),
+                              ),
+                              child: Text(
+                                label,
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: isSel ? Colors.white : const Color(0xFF4B5563),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
                   // Search Bar Input Trigger
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -663,75 +832,149 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
 
           // Sliver List of results
           SliverFillRemaining(
-            child: FutureBuilder<List<Property>>(
-              future: _future,
-              builder: (context, snap) {
-                if (snap.connectionState != ConnectionState.done) {
-                  return const ShimmerList();
-                }
-                final items = snap.data ?? const <Property>[];
-                if (items.isEmpty) {
-                  return EmptyState(
-                    title: 'No properties found',
-                    message: 'Try a different filter or check back later.',
-                    asset: 'assets/illustrations/empty_search.svg',
-                    action: TextButton.icon(
-                      onPressed: _load,
-                      icon: const Icon(Icons.refresh_rounded),
-                      label: const Text('Retry'),
-                    ),
-                  );
-                }
-                return ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                  itemCount: items.length + 1,
-                  separatorBuilder: (_, i) => SizedBox(height: i == 0 ? 0 : 8),
-                  itemBuilder: (context, i) {
-                    if (i == 0) {
-                      // Total count + Sort dropdown metadata row
-                      return Padding(
-                        padding: const EdgeInsets.fromLTRB(0, 4, 0, 10),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              '${items.length} Properties Found',
-                              style: const TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w800,
-                                color: _kTextDark,
+            child: RefreshIndicator(
+              onRefresh: _onRefresh,
+              color: _kPrimary,
+              child: _isLoading
+                  ? const ShimmerList()
+                  : _error != null && _items.isEmpty
+                      ? LayoutBuilder(
+                          builder: (ctx, constraints) => SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            child: SizedBox(
+                              height: constraints.maxHeight,
+                              child: EmptyState(
+                                title: 'Could not load properties',
+                                message: _error!,
+                                asset: 'assets/illustrations/empty_search.svg',
+                                action: TextButton.icon(
+                                  onPressed: _load,
+                                  icon: const Icon(Icons.refresh_rounded),
+                                  label: const Text('Retry'),
+                                ),
                               ),
                             ),
-                            const Row(
-                              children: [
-                                Text(
-                                  'Sort: Relevance',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: _kTextMid,
+                          ),
+                        )
+                      : _items.isEmpty
+                          ? LayoutBuilder(
+                              builder: (ctx, constraints) =>
+                                  SingleChildScrollView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                child: SizedBox(
+                                  height: constraints.maxHeight,
+                                  child: EmptyState(
+                                    title: 'No properties found',
+                                    message:
+                                        'Pull down to refresh or try a different filter.',
+                                    asset:
+                                        'assets/illustrations/empty_search.svg',
+                                    action: TextButton.icon(
+                                      onPressed: _resetAndLoad,
+                                      icon: const Icon(Icons.refresh_rounded),
+                                      label: const Text('Clear Filters'),
+                                    ),
                                   ),
                                 ),
-                                SizedBox(width: 4),
-                                Icon(
-                                  Icons.keyboard_arrow_down_rounded,
-                                  color: _kTextMid,
-                                  size: 16,
-                                ),
-                              ],
+                              ),
+                            )
+                          : ListView.builder(
+                              controller: _scrollController,
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              padding:
+                                  const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                              // +2: header row + bottom loader/footer
+                              itemCount: _items.length + 2,
+                              itemBuilder: (context, i) {
+                                // ── Header row ─────────────────────────────
+                                if (i == 0) {
+                                  return Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                        0, 4, 0, 10),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          '${_items.length}${_hasMore ? '+' : ''} Properties Found',
+                                          style: const TextStyle(
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.w800,
+                                            color: _kTextDark,
+                                          ),
+                                        ),
+                                        const Row(
+                                          children: [
+                                            Text(
+                                              'Sort: Relevance',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w700,
+                                                color: _kTextMid,
+                                              ),
+                                            ),
+                                            SizedBox(width: 4),
+                                            Icon(
+                                              Icons.keyboard_arrow_down_rounded,
+                                              color: _kTextMid,
+                                              size: 16,
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }
+
+                                // ── Bottom loader / end footer ────────────
+                                if (i == _items.length + 1) {
+                                  if (_isLoadingMore) {
+                                    return const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                          vertical: 20),
+                                      child: Center(
+                                        child: SizedBox(
+                                          width: 24,
+                                          height: 24,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2.5,
+                                            color: _kPrimary,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  if (!_hasMore && _items.isNotEmpty) {
+                                    return const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                          vertical: 20),
+                                      child: Center(
+                                        child: Text(
+                                          '— No more properties —',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: _kTextMid,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  return const SizedBox.shrink();
+                                }
+
+                                // ── Property card ─────────────────────────
+                                final p = _items[i - 1];
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: PropertyCard(
+                                    property: p,
+                                    onTap: () =>
+                                        context.push('/property/${p.id}'),
+                                  ),
+                                );
+                              },
                             ),
-                          ],
-                        ),
-                      );
-                    }
-                    final p = items[i - 1];
-                    return PropertyCard(
-                      property: p,
-                      onTap: () => context.push('/property/${p.id}'),
-                    );
-                  },
-                );
-              },
             ),
           ),
         ],

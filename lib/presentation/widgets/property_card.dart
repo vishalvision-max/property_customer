@@ -32,49 +32,73 @@ class PropertySpecs {
 }
 
 PropertySpecs getPropertySpecs(Property p) {
-  // Extract square feet from description
+  // Extract square feet from API or description
   String sqft = '1360 sqft';
-  final sqftMatch = RegExp(r'(\d+)\s*(sqft|sq\.ft\.|sq\s*ft|sq\.yd\.)', caseSensitive: false).firstMatch(p.description);
-  if (sqftMatch != null) {
-    sqft = '${sqftMatch.group(1)} ${sqftMatch.group(2)}';
+  if (p.superBuiltUpArea != null && p.superBuiltUpArea! > 0) {
+    sqft = '${p.superBuiltUpArea!.toInt()} sqft';
+  } else if (p.carpetArea != null && p.carpetArea! > 0) {
+    sqft = '${p.carpetArea!.toInt()} sqft';
+  } else if (p.builtUpArea != null && p.builtUpArea! > 0) {
+    sqft = '${p.builtUpArea!.toInt()} sqft';
   } else {
-    final idHash = p.id.hashCode.abs();
-    sqft = '${1000 + (idHash % 15) * 100} sqft';
+    final sqftMatch = RegExp(r'(\d+)\s*(sqft|sq\.ft\.|sq\s*ft|sq\.yd\.)', caseSensitive: false).firstMatch(p.description);
+    if (sqftMatch != null) {
+      sqft = '${sqftMatch.group(1)} ${sqftMatch.group(2)}';
+    } else {
+      final idHash = p.id.hashCode.abs();
+      sqft = '${1000 + (idHash % 15) * 100} sqft';
+    }
   }
 
-  // Extract BHK/bedrooms from name or description
+  // Extract BHK/bedrooms from API or name or description
   String bedrooms = '3 Bed';
-  final bhkMatch = RegExp(r'(\d+)\s*(BHK|Bed|Bedroom)', caseSensitive: false).firstMatch(p.name + p.description);
-  if (bhkMatch != null) {
-    bedrooms = '${bhkMatch.group(1)} Bed';
+  if (p.bhk != null && p.bhk! > 0) {
+    bedrooms = '${p.bhk} Bed';
+  } else if (p.bedrooms != null && p.bedrooms! > 0) {
+    bedrooms = '${p.bedrooms} Bed';
   } else {
-    final idHash = p.id.hashCode.abs();
-    bedrooms = '${2 + (idHash % 3)} Bed';
+    final bhkMatch = RegExp(r'(\d+)\s*(BHK|Bed|Bedroom)', caseSensitive: false).firstMatch(p.name + p.description);
+    if (bhkMatch != null) {
+      bedrooms = '${bhkMatch.group(1)} Bed';
+    } else {
+      final idHash = p.id.hashCode.abs();
+      bedrooms = '${2 + (idHash % 3)} Bed';
+    }
   }
 
   // Extract bathrooms
   String bathrooms = '2 Bath';
-  final bathMatch = RegExp(r'(\d+)\s*(Bath|Bathroom)', caseSensitive: false).firstMatch(p.description);
-  if (bathMatch != null) {
-    bathrooms = '${bathMatch.group(1)} Bath';
+  if (p.bathrooms != null && p.bathrooms! > 0) {
+    bathrooms = '${p.bathrooms} Bath';
   } else {
-    final idHash = p.id.hashCode.abs();
-    bathrooms = '${2 + (idHash % 2)} Bath';
+    final bathMatch = RegExp(r'(\d+)\s*(Bath|Bathroom)', caseSensitive: false).firstMatch(p.description);
+    if (bathMatch != null) {
+      bathrooms = '${bathMatch.group(1)} Bath';
+    } else {
+      final idHash = p.id.hashCode.abs();
+      bathrooms = '${2 + (idHash % 2)} Bath';
+    }
   }
 
   // Balconies
   String balconies = '1';
-  final balconyMatch = RegExp(r'(\d+)\s*(Balcony|Balconies)', caseSensitive: false).firstMatch(p.description);
-  if (balconyMatch != null) {
-    balconies = balconyMatch.group(1)!;
+  if (p.balconies != null) {
+    balconies = '${p.balconies}';
   } else {
-    final idHash = p.id.hashCode.abs();
-    balconies = '${1 + (idHash % 2)}';
+    final balconyMatch = RegExp(r'(\d+)\s*(Balcony|Balconies)', caseSensitive: false).firstMatch(p.description);
+    if (balconyMatch != null) {
+      balconies = balconyMatch.group(1)!;
+    } else {
+      final idHash = p.id.hashCode.abs();
+      balconies = '${1 + (idHash % 2)}';
+    }
   }
 
   // Parking
   String parking = '1';
-  if (p.amenities.contains('Parking')) {
+  if (p.parking != null) {
+    parking = '${p.parking}';
+  } else if (p.amenities.contains('Parking')) {
     parking = '1';
   } else {
     final idHash = p.id.hashCode.abs();
@@ -83,19 +107,34 @@ PropertySpecs getPropertySpecs(Property p) {
 
   // Property Type
   String type = 'Apartment';
-  final nameLower = p.name.toLowerCase();
-  if (nameLower.contains('apartment')) {
-    type = 'Apartment';
-  } else if (nameLower.contains('villa')) {
-    type = 'Villa';
-  } else if (nameLower.contains('floor') || nameLower.contains('builder')) {
-    type = 'Builder Floor';
-  } else if (nameLower.contains('shop') || nameLower.contains('commercial')) {
-    type = 'Commercial';
-  } else if (nameLower.contains('plot') || nameLower.contains('land')) {
-    type = 'Plot';
+  if (p.categoryName != null && p.categoryName!.isNotEmpty) {
+    final catLower = p.categoryName!.toLowerCase();
+    if (catLower.contains('flat') || catLower.contains('apartment')) {
+      type = 'Apartment';
+    } else if (catLower.contains('villa') || catLower.contains('house') || catLower.contains('home')) {
+      type = 'Villa';
+    } else if (catLower.contains('plot') || catLower.contains('land')) {
+      type = 'Plot';
+    } else if (catLower.contains('shop') || catLower.contains('commercial') || catLower.contains('office')) {
+      type = 'Commercial';
+    } else {
+      type = p.categoryName!;
+    }
   } else {
-    type = 'Apartment';
+    final nameLower = p.name.toLowerCase();
+    if (nameLower.contains('apartment')) {
+      type = 'Apartment';
+    } else if (nameLower.contains('villa')) {
+      type = 'Villa';
+    } else if (nameLower.contains('floor') || nameLower.contains('builder')) {
+      type = 'Builder Floor';
+    } else if (nameLower.contains('shop') || nameLower.contains('commercial')) {
+      type = 'Commercial';
+    } else if (nameLower.contains('plot') || nameLower.contains('land')) {
+      type = 'Plot';
+    } else {
+      type = 'Apartment';
+    }
   }
 
   // Status
@@ -117,7 +156,10 @@ PropertySpecs getPropertySpecs(Property p) {
     highlights.add('East Facing');
   }
 
-  if (p.amenities.contains('Semi Furnished') || p.description.toLowerCase().contains('furnished')) {
+  if (p.furnishing != null && p.furnishing!.isNotEmpty) {
+    final f = p.furnishing!.trim();
+    highlights.add(f[0].toUpperCase() + f.substring(1).toLowerCase());
+  } else if (p.amenities.contains('Semi Furnished') || p.description.toLowerCase().contains('furnished')) {
     if (p.description.toLowerCase().contains('unfurnished')) {
       highlights.add('Unfurnished');
     } else {
@@ -280,20 +322,90 @@ class PropertyCard extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      property.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF1D2939),
-                        letterSpacing: -0.2,
-                      ),
+                    // Title and Heart Toggle in same Row
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            (() {
+                              final type = specs.type;
+                              if (type.toLowerCase().contains('plot') || type.toLowerCase().contains('land')) {
+                                  return 'Residential Plot';
+                              }
+                              if (type.toLowerCase().contains('commercial') || type.toLowerCase().contains('shop')) {
+                                  return 'Commercial Space';
+                              }
+                              int bhkCount = 3;
+                              if (property.bhk != null && property.bhk! > 0) {
+                                bhkCount = property.bhk!;
+                              } else if (property.bedrooms != null && property.bedrooms! > 0) {
+                                bhkCount = property.bedrooms!;
+                              } else {
+                                final bhkMatch = RegExp(r'(\d+)\s*(BHK|Bed|Bedroom|BH|B)', caseSensitive: false)
+                                    .firstMatch(property.name + property.description);
+                                if (bhkMatch != null) {
+                                  bhkCount = int.tryParse(bhkMatch.group(1) ?? '3') ?? 3;
+                                }
+                              }
+                              return '$bhkCount BHK $type';
+                            })(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF1D2939),
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        GestureDetector(
+                          onTap: () {
+                            if (!isAuthed) {
+                              AppSnackbar.showError(
+                                context,
+                                'Please login to add favorites',
+                              );
+                              context.push(
+                                '/login?from=${Uri.encodeComponent('/property/${property.id}')}',
+                              );
+                              return;
+                            }
+                            ref
+                                .read(favoritesProvider.notifier)
+                                .toggleRemote(
+                                  type: 'property',
+                                  id: property.id,
+                                )
+                                .catchError((_) {
+                                  if (!context.mounted) return;
+                                  AppSnackbar.showError(
+                                    context,
+                                    'Failed to update wishlist. Please try again.',
+                                  );
+                                });
+                          },
+                          child: Icon(
+                            isFav ? Icons.favorite : Icons.favorite_border,
+                            color: isFav ? Colors.pinkAccent : const Color(0xFF98A2B3),
+                            size: 20,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      property.location,
+                      (() {
+                        final loc = property.location.trim();
+                        if (loc.isEmpty) return 'Panchkula';
+                        final parts = loc.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+                        if (parts.length >= 2) {
+                          return '${parts[0]}, ${parts[1]}';
+                        }
+                        return loc;
+                      })(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -308,7 +420,7 @@ class PropertyCard extends ConsumerWidget {
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF5C46E8),
+                        color: Color(0xFF1D2939),
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -335,42 +447,6 @@ class PropertyCard extends ConsumerWidget {
                     ),
                   ],
                 ),
-              ),
-              
-              // Heart Toggle
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
-                icon: Icon(
-                  isFav ? Icons.favorite : Icons.favorite_border,
-                  color: isFav ? Colors.pinkAccent : const Color(0xFF98A2B3),
-                  size: 22,
-                ),
-                onPressed: () {
-                  if (!isAuthed) {
-                    AppSnackbar.showError(
-                      context,
-                      'Please login to add favorites',
-                    );
-                    context.push(
-                      '/login?from=${Uri.encodeComponent('/property/${property.id}')}',
-                    );
-                    return;
-                  }
-                  ref
-                      .read(favoritesProvider.notifier)
-                      .toggleRemote(
-                        type: 'property',
-                        id: property.id,
-                      )
-                      .catchError((_) {
-                        if (!context.mounted) return;
-                        AppSnackbar.showError(
-                          context,
-                          'Failed to update wishlist. Please try again.',
-                        );
-                      });
-                },
               ),
             ],
           ),

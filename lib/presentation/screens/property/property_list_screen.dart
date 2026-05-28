@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../data/models/property.dart';
 import '../../../data/services/property_service.dart';
+import '../../../providers/auth_provider.dart';
 import '../../../providers/location_provider.dart';
 import '../../../providers/property_provider.dart';
 import '../../widgets/empty_state.dart';
@@ -72,7 +73,8 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
         final modeOk = p.type == f.mode;
         final subOk = f.subType == null
             ? true
-            : p.name.toLowerCase().contains(f.subType!.toLowerCase()) ||
+            : p.propertyKind.toLowerCase().contains(f.subType!.toLowerCase()) ||
+              p.name.toLowerCase().contains(f.subType!.toLowerCase()) ||
               p.type.toLowerCase().contains(f.subType!.toLowerCase());
         return modeOk && subOk;
       }).toList();
@@ -117,14 +119,48 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
               lng: loc.lng,
             );
       } else {
-        items = await ref.read(propertyProvider.notifier).search(
-              mode: extra.mode,
-              budgetRange: BudgetRange(extra.budget.start, extra.budget.end),
-              propertyType: extra.propertyType,
-              amenities: extra.amenities,
-              locationQuery: extra.locationQuery,
-              sortBy: extra.sortBy,
+        final lq = extra.locationQuery.toLowerCase().trim();
+        final token = ref.read(authProvider).user?.token ?? '';
+        final notif = ref.read(propertyProvider.notifier);
+        
+        try {
+          if (lq.contains('2 bhk')) {
+            _title = '2 BHK Flats';
+            items = await notif.fetchTwoBhkProperties(token);
+          } else if (lq.contains('50l') || lq.contains('50 lakh') || lq.contains('under 50')) {
+            _title = 'Flats Under 50 Lakhs';
+            items = await notif.fetchFlatsUnderFiftyLakh(token);
+          } else if (lq.contains('ready to move')) {
+            _title = 'Ready to Move';
+            items = await notif.fetchReadyToMoveProperties(token);
+          } else if (lq.contains('furnished')) {
+            _title = 'Furnished';
+            items = await notif.fetchFurnishedProperties(token);
+          } else if (lq.contains('gated society')) {
+            _title = 'Gated Society';
+            items = await notif.fetchGatedSocietyProperties(token);
+          } else if (lq.contains('studio')) {
+            _title = 'Studio Apartment';
+            items = await notif.fetchStudioApartmentProperties(token);
+          } else {
+            items = await notif.search(
+                  mode: extra.mode,
+                  budgetRange: BudgetRange(extra.budget.start, extra.budget.end),
+                  propertyType: extra.propertyType,
+                  amenities: extra.amenities,
+                  locationQuery: extra.locationQuery,
+                  sortBy: extra.sortBy,
+                );
+          }
+        } catch (e) {
+          debugPrint('Error loading specialized properties: $e');
+          items = [];
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Could not load properties: ${e.toString().replaceAll('Exception: ', '')}')),
             );
+          }
+        }
       }
       if (mounted) setState(() => _baseItems = items);
     } else if (extra is PropertyNameSearchArgs) {

@@ -16,6 +16,16 @@ class FavoritesScreen extends ConsumerStatefulWidget {
 }
 
 class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
+  // Key used to force a rebuild of the FutureBuilder on pull-to-refresh.
+  int _refreshKey = 0;
+
+  Future<void> _onRefresh() async {
+    // 1. Re-sync favorites IDs from the server.
+    await ref.read(favoritesProvider.notifier).refresh();
+    // 2. Bump the key so FutureBuilder re-runs _loadFavorites.
+    if (mounted) setState(() => _refreshKey++);
+  }
+
   Future<List<Property>> _loadFavorites(List<String> ids) async {
     final notifier = ref.read(propertyProvider.notifier);
     final out = <Property>[];
@@ -40,41 +50,68 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Favorites')),
-      body: favIds.isEmpty
-          ? const EmptyState(
-              title: 'No favorites yet',
-              message: 'Tap the heart on a property to save it here.',
-              asset: 'assets/illustrations/empty_favorites.svg',
-            )
-          : FutureBuilder<List<Property>>(
-              future: _loadFavorites(favIds),
-              builder: (context, snap) {
-                if (snap.connectionState != ConnectionState.done) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final favs = snap.data ?? const <Property>[];
-                if (favs.isEmpty) {
-                  return const EmptyState(
-                    title: 'No favorites found',
-                    message: 'Pull to refresh or try again later.',
-                    asset: 'assets/illustrations/empty_favorites.svg',
-                  );
-                }
-                return ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                  itemCount: favs.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 12),
-                  itemBuilder: (context, i) {
-                    final p = favs[i];
-                    return PropertyCard(
-                      property: p,
-                      onTap: () => context.push('/property/${p.id}'),
-                      videoLoop: false,
+      body: RefreshIndicator(
+        onRefresh: _onRefresh,
+        color: const Color(0xFF6C5CE7),
+        child: favIds.isEmpty
+            // Wrap empty state in a scrollable so pull-to-refresh still works.
+            ? LayoutBuilder(
+                builder: (context, constraints) => SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: SizedBox(
+                    height: constraints.maxHeight,
+                    child: const EmptyState(
+                      title: 'No favorites yet',
+                      message: 'Tap the heart on a property to save it here.',
+                      asset: 'assets/illustrations/empty_favorites.svg',
+                    ),
+                  ),
+                ),
+              )
+            : FutureBuilder<List<Property>>(
+                // _refreshKey changes force a fresh fetch on pull-to-refresh.
+                key: ValueKey(_refreshKey),
+                future: _loadFavorites(favIds),
+                builder: (context, snap) {
+                  if (snap.connectionState != ConnectionState.done) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  final favs = snap.data ?? const <Property>[];
+                  if (favs.isEmpty) {
+                    return LayoutBuilder(
+                      builder: (context, constraints) => SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: SizedBox(
+                          height: constraints.maxHeight,
+                          child: const EmptyState(
+                            title: 'No favorites found',
+                            message: 'Pull down to refresh.',
+                            asset: 'assets/illustrations/empty_favorites.svg',
+                          ),
+                        ),
+                      ),
                     );
-                  },
-                );
-              },
-            ),
+                  }
+                  return ListView.separated(
+                    // AlwaysScrollableScrollPhysics keeps pull-to-refresh
+                    // working even when there are only 1–2 items.
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                    itemCount: favs.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 12),
+                    itemBuilder: (context, i) {
+                      final p = favs[i];
+                      return PropertyCard(
+                        property: p,
+                        onTap: () => context.push('/property/${p.id}'),
+                        videoLoop: false,
+                      );
+                    },
+                  );
+                },
+              ),
+      ),
     );
   }
 }

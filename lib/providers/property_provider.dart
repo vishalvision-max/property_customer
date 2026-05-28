@@ -198,7 +198,8 @@ class PropertyNotifier extends StateNotifier<PropertyState> {
           final typeOk = p.type == mode;
           final subTypeOk = (propertyType == null || propertyType == 'Any')
               ? true
-              : p.name.toLowerCase().contains(propertyType.toLowerCase());
+              : (p.propertyKind.toLowerCase().contains(propertyType.toLowerCase()) || 
+                 p.name.toLowerCase().contains(propertyType.toLowerCase()));
           return typeOk && subTypeOk;
         })
         .toList(growable: false);
@@ -252,7 +253,125 @@ class PropertyNotifier extends StateNotifier<PropertyState> {
       state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
+
+  Future<List<Property>> fetchTwoBhkProperties(String token) {
+    return _repo.fetchTwoBhkProperties(token: token);
+  }
+
+  Future<List<Property>> fetchFlatsUnderFiftyLakh(String token) {
+    return _repo.fetchFlatsUnderFiftyLakh(token: token);
+  }
+
+  Future<List<Property>> fetchReadyToMoveProperties(String token) {
+    return _repo.fetchReadyToMoveProperties(token: token);
+  }
+
+  Future<List<Property>> fetchFurnishedProperties(String token) {
+    return _repo.fetchFurnishedProperties(token: token);
+  }
+
+  Future<List<Property>> fetchGatedSocietyProperties(String token) {
+    return _repo.fetchGatedSocietyProperties(token: token);
+  }
+
+  Future<List<Property>> fetchStudioApartmentProperties(String token) {
+    return _repo.fetchStudioApartmentProperties(token: token);
+  }
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchTwoBhkPropertiesPaged(String token, {int page = 1}) {
+    return _repo.fetchTwoBhkPropertiesPaged(token: token, page: page);
+  }
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchFlatsUnderFiftyLakhPaged(String token, {int page = 1}) {
+    return _repo.fetchFlatsUnderFiftyLakhPaged(token: token, page: page);
+  }
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchReadyToMovePropertiesPaged(String token, {int page = 1}) {
+    return _repo.fetchReadyToMovePropertiesPaged(token: token, page: page);
+  }
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchFurnishedPropertiesPaged(String token, {int page = 1}) {
+    return _repo.fetchFurnishedPropertiesPaged(token: token, page: page);
+  }
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchGatedSocietyPropertiesPaged(String token, {int page = 1}) {
+    return _repo.fetchGatedSocietyPropertiesPaged(token: token, page: page);
+  }
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchStudioApartmentPropertiesPaged(String token, {int page = 1}) {
+    return _repo.fetchStudioApartmentPropertiesPaged(token: token, page: page);
+  }
+
+  Future<List<Property>> fetchRentProperties(String token) {
+    return _repo.fetchRentProperties(token: token);
+  }
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchRentPropertiesPaged(String token, {int page = 1}) {
+    return _repo.fetchRentPropertiesPaged(token: token, page: page);
+  }
+
+  Future<List<Property>> fetchBuyProperties(String token) {
+    return _repo.fetchBuyProperties(token: token);
+  }
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchBuyPropertiesPaged(String token, {int page = 1}) {
+    return _repo.fetchBuyPropertiesPaged(token: token, page: page);
+  }
+
+  Future<List<Property>> fetchPgProperties(String token) {
+    return _repo.fetchPgProperties(token: token);
+  }
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchPgPropertiesPaged(String token, {int page = 1}) {
+    return _repo.fetchPgPropertiesPaged(token: token, page: page);
+  }
+
+  Future<List<Property>> fetchCoLivingProperties(String token) {
+    return _repo.fetchCoLivingProperties(token: token);
+  }
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchCoLivingPropertiesPaged(String token, {int page = 1}) {
+    return _repo.fetchCoLivingPropertiesPaged(token: token, page: page);
+  }
+
+  Future<List<Property>> fetchCommercialProperties(String token) {
+    return _repo.fetchCommercialProperties(token: token);
+  }
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchCommercialPropertiesPaged(String token, {int page = 1}) {
+    return _repo.fetchCommercialPropertiesPaged(token: token, page: page);
+  }
+
+  Future<List<Property>> fetchLandPlotProperties(String token) {
+    return _repo.fetchLandPlotProperties(token: token);
+  }
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchLandPlotPropertiesPaged(String token, {int page = 1}) {
+    return _repo.fetchLandPlotPropertiesPaged(token: token, page: page);
+  }
+
+  Future<List<Property>> fetchAllOwnerProperties(String token) {
+    return _repo.fetchAllOwnerProperties(token: token);
+  }
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchAllOwnerPropertiesPaged(String token, {int page = 1}) {
+    return _repo.fetchAllOwnerPropertiesPaged(token: token, page: page);
+  }
 }
+
 
 final propertyProvider = StateNotifierProvider<PropertyNotifier, PropertyState>(
   (ref) => PropertyNotifier(ref.watch(propertyRepositoryProvider)),

@@ -353,7 +353,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: _PopularSearches(
                   items: const [
-                    '2 BHK in Panchkula',
+                    '2 BHK ',
                     'Flats under 50L',
                     'Near Railway Station',
                     'Ready to Move',
@@ -436,9 +436,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     itemBuilder: (context, i) {
                       final p = featured[i];
                       return _FeaturedPropertyCard(
-                        p: p,
-                        onTap: () => context.push('/property/${p.id}'),
-                      )
+                            p: p,
+                            onTap: () => context.push('/property/${p.id}'),
+                          )
                           .animate()
                           .fadeIn(delay: (60 * i).ms, duration: 260.ms)
                           .slideX(begin: 0.05);
@@ -584,7 +584,7 @@ class _HomeHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final topPad = MediaQuery.paddingOf(context).top;
-    final totalH = topPad + 252.0;
+    final totalH = topPad + 280.0;
 
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
@@ -831,9 +831,7 @@ class _HomeHeader extends StatelessWidget {
 class _HomeDrawer extends ConsumerWidget {
   final String currentMode;
 
-  const _HomeDrawer({
-    required this.currentMode,
-  });
+  const _HomeDrawer({required this.currentMode});
 
   Widget _drawerTile({
     required Widget icon,
@@ -863,7 +861,9 @@ class _HomeDrawer extends ConsumerWidget {
                   style: TextStyle(
                     fontSize: 14.5,
                     fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                    color: isSelected ? const Color(0xFF5C46E8) : const Color(0xFF2C3E50),
+                    color: isSelected
+                        ? const Color(0xFF5C46E8)
+                        : const Color(0xFF2C3E50),
                   ),
                 ),
               ),
@@ -900,18 +900,30 @@ class _HomeDrawer extends ConsumerWidget {
     final user = ref.watch(authProvider).user;
     final isAuthed = user != null;
     final owner = ref.watch(ownerProfileProvider).profile;
-    
+
     final displayName = (owner?.name.trim().isNotEmpty ?? false)
         ? owner!.name.trim()
-        : ((user == null || user.name.trim().isEmpty) ? 'Rahul Sharma' : user.name.trim());
+        : ((user == null || user.name.trim().isEmpty)
+              ? 'Rahul Sharma'
+              : user.name.trim());
 
     // Badges: if guest, show high fidelity mock numbers from user image, else show dynamic numbers.
     final enquiriesCount = isAuthed ? ref.watch(leadProvider).items.length : 28;
     final shortlistedCount = isAuthed ? ref.watch(favoritesProvider).length : 5;
-    final myPropertiesCount = isAuthed ? ref.watch(propertyProvider).all.length : 12;
+    final myPropertiesCount = isAuthed
+        ? ref.watch(propertyProvider).all.length
+        : 12;
     // We can count contacted leads or just mock site visits
-    final siteVisitsCount = isAuthed 
-        ? ref.watch(leadProvider).items.where((e) => e.status.toLowerCase() == 'contacted' || e.status.toLowerCase() == 'converted').length 
+    final siteVisitsCount = isAuthed
+        ? ref
+              .watch(leadProvider)
+              .items
+              .where(
+                (e) =>
+                    e.status.toLowerCase() == 'contacted' ||
+                    e.status.toLowerCase() == 'converted',
+              )
+              .length
         : 3;
 
     // Check if we are currently on Home tab (index 0)
@@ -926,7 +938,12 @@ class _HomeDrawer extends ConsumerWidget {
           Container(
             color: const Color(0xFF5C46E8),
             width: double.infinity,
-            padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 8, 16, 24),
+            padding: EdgeInsets.fromLTRB(
+              20,
+              MediaQuery.of(context).padding.top + 8,
+              16,
+              24,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -934,7 +951,11 @@ class _HomeDrawer extends ConsumerWidget {
                 Align(
                   alignment: Alignment.topRight,
                   child: IconButton(
-                    icon: const Icon(Icons.close_rounded, color: Colors.white, size: 24),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ),
@@ -944,9 +965,13 @@ class _HomeDrawer extends ConsumerWidget {
                   onTap: () {
                     Navigator.of(context).pop();
                     if (!isAuthed) {
-                      context.push('/login?from=${Uri.encodeComponent('/profile')}');
+                      context.push(
+                        '/login?from=${Uri.encodeComponent('/profile')}',
+                      );
                     } else {
-                      ref.read(navProvider.notifier).goTo(3); // Go to Profile screen
+                      ref
+                          .read(navProvider.notifier)
+                          .goTo(3); // Go to Profile screen
                     }
                   },
                   child: Row(
@@ -958,7 +983,10 @@ class _HomeDrawer extends ConsumerWidget {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: Colors.white,
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.5),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            width: 1.5,
+                          ),
                         ),
                         clipBehavior: Clip.antiAlias,
                         child: const Icon(
@@ -1011,7 +1039,7 @@ class _HomeDrawer extends ConsumerWidget {
               ],
             ),
           ),
-          
+
           // Drawer Nav List Items
           Expanded(
             child: ListView(
@@ -1020,9 +1048,11 @@ class _HomeDrawer extends ConsumerWidget {
                 // SECTION 1: Nav Items
                 _drawerTile(
                   icon: Icon(
-                    Icons.home_outlined, 
-                    color: isHomeSelected ? const Color(0xFF5C46E8) : const Color(0xFF627D98), 
-                    size: 22
+                    Icons.home_outlined,
+                    color: isHomeSelected
+                        ? const Color(0xFF5C46E8)
+                        : const Color(0xFF627D98),
+                    size: 22,
                   ),
                   title: 'Home',
                   isSelected: isHomeSelected,
@@ -1032,7 +1062,11 @@ class _HomeDrawer extends ConsumerWidget {
                   },
                 ),
                 _drawerTile(
-                  icon: const Icon(Icons.apartment_outlined, color: Color(0xFF627D98), size: 22),
+                  icon: const Icon(
+                    Icons.apartment_outlined,
+                    color: Color(0xFF627D98),
+                    size: 22,
+                  ),
                   title: 'Buy Property',
                   onTap: () {
                     Navigator.of(context).pop();
@@ -1050,7 +1084,11 @@ class _HomeDrawer extends ConsumerWidget {
                   },
                 ),
                 _drawerTile(
-                  icon: const Icon(Icons.key_outlined, color: Color(0xFF627D98), size: 22),
+                  icon: const Icon(
+                    Icons.key_outlined,
+                    color: Color(0xFF627D98),
+                    size: 22,
+                  ),
                   title: 'Rent Property',
                   onTap: () {
                     Navigator.of(context).pop();
@@ -1068,7 +1106,11 @@ class _HomeDrawer extends ConsumerWidget {
                   },
                 ),
                 _drawerTile(
-                  icon: const Icon(Icons.hotel_outlined, color: Color(0xFF627D98), size: 22),
+                  icon: const Icon(
+                    Icons.hotel_outlined,
+                    color: Color(0xFF627D98),
+                    size: 22,
+                  ),
                   title: 'PG / Co-living',
                   onTap: () {
                     Navigator.of(context).pop();
@@ -1086,7 +1128,11 @@ class _HomeDrawer extends ConsumerWidget {
                   },
                 ),
                 _drawerTile(
-                  icon: const Icon(Icons.storefront_outlined, color: Color(0xFF627D98), size: 22),
+                  icon: const Icon(
+                    Icons.storefront_outlined,
+                    color: Color(0xFF627D98),
+                    size: 22,
+                  ),
                   title: 'Commercial',
                   onTap: () {
                     Navigator.of(context).pop();
@@ -1104,7 +1150,11 @@ class _HomeDrawer extends ConsumerWidget {
                   },
                 ),
                 _drawerTile(
-                  icon: const Icon(Icons.landscape_outlined, color: Color(0xFF627D98), size: 22),
+                  icon: const Icon(
+                    Icons.landscape_outlined,
+                    color: Color(0xFF627D98),
+                    size: 22,
+                  ),
                   title: 'Land / Plot',
                   onTap: () {
                     Navigator.of(context).pop();
@@ -1122,7 +1172,11 @@ class _HomeDrawer extends ConsumerWidget {
                   },
                 ),
                 _drawerTile(
-                  icon: const Icon(Icons.domain_outlined, color: Color(0xFF627D98), size: 22),
+                  icon: const Icon(
+                    Icons.domain_outlined,
+                    color: Color(0xFF627D98),
+                    size: 22,
+                  ),
                   title: 'New Projects',
                   onTap: () {
                     Navigator.of(context).pop();
@@ -1140,7 +1194,11 @@ class _HomeDrawer extends ConsumerWidget {
                   },
                 ),
                 _drawerTile(
-                  icon: const Icon(Icons.construction_outlined, color: Color(0xFF627D98), size: 22),
+                  icon: const Icon(
+                    Icons.construction_outlined,
+                    color: Color(0xFF627D98),
+                    size: 22,
+                  ),
                   title: 'Builder Projects',
                   onTap: () {
                     Navigator.of(context).pop();
@@ -1157,59 +1215,96 @@ class _HomeDrawer extends ConsumerWidget {
                     );
                   },
                 ),
-                
+
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Divider(height: 1, thickness: 1, color: Color(0xFFF2F4F7)),
+                  child: Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: Color(0xFFF2F4F7),
+                  ),
                 ),
 
                 // SECTION 2: My Enquiries, Shortlisted, My Properties, Site Visits
                 _drawerTile(
-                  icon: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF627D98), size: 22),
+                  icon: const Icon(
+                    Icons.chat_bubble_outline_rounded,
+                    color: Color(0xFF627D98),
+                    size: 22,
+                  ),
                   title: 'My Enquiries',
                   trailing: _badge(enquiriesCount),
                   onTap: () {
                     Navigator.of(context).pop();
                     if (!isAuthed) {
-                      AppSnackbar.showError(context, 'Please login to view enquiries');
-                      context.push('/login?from=${Uri.encodeComponent('/leads')}');
+                      AppSnackbar.showError(
+                        context,
+                        'Please login to view enquiries',
+                      );
+                      context.push(
+                        '/login?from=${Uri.encodeComponent('/leads')}',
+                      );
                     } else {
                       context.push('/leads');
                     }
                   },
                 ),
                 _drawerTile(
-                  icon: const Icon(Icons.favorite_border_rounded, color: Color(0xFF627D98), size: 22),
+                  icon: const Icon(
+                    Icons.favorite_border_rounded,
+                    color: Color(0xFF627D98),
+                    size: 22,
+                  ),
                   title: 'Shortlisted',
                   trailing: _badge(shortlistedCount),
                   onTap: () {
                     Navigator.of(context).pop();
                     if (!isAuthed) {
-                      AppSnackbar.showError(context, 'Please login to view saved');
-                      context.push('/login?from=${Uri.encodeComponent('/favorites')}');
+                      AppSnackbar.showError(
+                        context,
+                        'Please login to view saved',
+                      );
+                      context.push(
+                        '/login?from=${Uri.encodeComponent('/favorites')}',
+                      );
                     } else {
                       context.push('/favorites');
                     }
                   },
                 ),
                 _drawerTile(
-                  icon: const Icon(Icons.home_work_outlined, color: Color(0xFF627D98), size: 22),
+                  icon: const Icon(
+                    Icons.home_work_outlined,
+                    color: Color(0xFF627D98),
+                    size: 22,
+                  ),
                   title: 'My Properties',
                   trailing: _badge(myPropertiesCount),
                   onTap: () {
-                    ref.read(navProvider.notifier).goTo(1); // Go to Properties tab
+                    ref
+                        .read(navProvider.notifier)
+                        .goTo(1); // Go to Properties tab
                     Navigator.of(context).pop();
                   },
                 ),
                 _drawerTile(
-                  icon: const Icon(Icons.calendar_today_outlined, color: Color(0xFF627D98), size: 22),
+                  icon: const Icon(
+                    Icons.calendar_today_outlined,
+                    color: Color(0xFF627D98),
+                    size: 22,
+                  ),
                   title: 'Site Visits',
                   trailing: _badge(siteVisitsCount),
                   onTap: () {
                     Navigator.of(context).pop();
                     if (!isAuthed) {
-                      AppSnackbar.showError(context, 'Please login to view appointments');
-                      context.push('/login?from=${Uri.encodeComponent('/leads')}');
+                      AppSnackbar.showError(
+                        context,
+                        'Please login to view appointments',
+                      );
+                      context.push(
+                        '/login?from=${Uri.encodeComponent('/leads')}',
+                      );
                     } else {
                       context.push('/leads');
                     }
@@ -1218,20 +1313,35 @@ class _HomeDrawer extends ConsumerWidget {
 
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Divider(height: 1, thickness: 1, color: Color(0xFFF2F4F7)),
+                  child: Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: Color(0xFFF2F4F7),
+                  ),
                 ),
 
                 // SECTION 3: My Offers, Alerts, Saved Searches, Recently Viewed
                 _drawerTile(
-                  icon: const Icon(Icons.local_offer_outlined, color: Color(0xFF627D98), size: 22),
+                  icon: const Icon(
+                    Icons.local_offer_outlined,
+                    color: Color(0xFF627D98),
+                    size: 22,
+                  ),
                   title: 'My Offers',
                   onTap: () {
                     Navigator.of(context).pop();
-                    AppSnackbar.showMessage(context, 'No offers submitted yet.');
+                    AppSnackbar.showMessage(
+                      context,
+                      'No offers submitted yet.',
+                    );
                   },
                 ),
                 _drawerTile(
-                  icon: const Icon(Icons.notifications_none_outlined, color: Color(0xFF627D98), size: 22),
+                  icon: const Icon(
+                    Icons.notifications_none_outlined,
+                    color: Color(0xFF627D98),
+                    size: 22,
+                  ),
                   title: 'Alerts',
                   onTap: () {
                     Navigator.of(context).pop();
@@ -1239,15 +1349,26 @@ class _HomeDrawer extends ConsumerWidget {
                   },
                 ),
                 _drawerTile(
-                  icon: const Icon(Icons.saved_search_rounded, color: Color(0xFF627D98), size: 22),
+                  icon: const Icon(
+                    Icons.saved_search_rounded,
+                    color: Color(0xFF627D98),
+                    size: 22,
+                  ),
                   title: 'Saved Searches',
                   onTap: () {
                     Navigator.of(context).pop();
-                    context.push('/name-search', extra: NameSearchArgs(mode: currentMode));
+                    context.push(
+                      '/name-search',
+                      extra: NameSearchArgs(mode: currentMode),
+                    );
                   },
                 ),
                 _drawerTile(
-                  icon: const Icon(Icons.visibility_outlined, color: Color(0xFF627D98), size: 22),
+                  icon: const Icon(
+                    Icons.visibility_outlined,
+                    color: Color(0xFF627D98),
+                    size: 22,
+                  ),
                   title: 'Recently Viewed',
                   onTap: () {
                     Navigator.of(context).pop();
@@ -1257,33 +1378,55 @@ class _HomeDrawer extends ConsumerWidget {
 
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Divider(height: 1, thickness: 1, color: Color(0xFFF2F4F7)),
+                  child: Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: Color(0xFFF2F4F7),
+                  ),
                 ),
 
                 // SECTION 4: Settings, Help & Support, Logout
                 _drawerTile(
-                  icon: const Icon(Icons.settings_outlined, color: Color(0xFF627D98), size: 22),
+                  icon: const Icon(
+                    Icons.settings_outlined,
+                    color: Color(0xFF627D98),
+                    size: 22,
+                  ),
                   title: 'Settings',
                   onTap: () {
                     Navigator.of(context).pop();
                     if (!isAuthed) {
-                      AppSnackbar.showError(context, 'Please login to view settings');
-                      context.push('/login?from=${Uri.encodeComponent('/profile')}');
+                      AppSnackbar.showError(
+                        context,
+                        'Please login to view settings',
+                      );
+                      context.push(
+                        '/login?from=${Uri.encodeComponent('/profile')}',
+                      );
                     } else {
                       context.push('/profile');
                     }
                   },
                 ),
                 _drawerTile(
-                  icon: const Icon(Icons.headset_mic_outlined, color: Color(0xFF627D98), size: 22),
+                  icon: const Icon(
+                    Icons.headset_mic_outlined,
+                    color: Color(0xFF627D98),
+                    size: 22,
+                  ),
                   title: 'Help & Support',
                   onTap: () {
                     Navigator.of(context).pop();
                     showDialog(
                       context: context,
                       builder: (context) => AlertDialog(
-                        title: const Text('Help & Support', style: TextStyle(fontWeight: FontWeight.w900)),
-                        content: const Text('For support queries, please contact support@propertysearch.com or call our toll-free number.'),
+                        title: const Text(
+                          'Help & Support',
+                          style: TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                        content: const Text(
+                          'For support queries, please contact support@propertysearch.com or call our toll-free number.',
+                        ),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.of(context).pop(),
@@ -1296,7 +1439,11 @@ class _HomeDrawer extends ConsumerWidget {
                 ),
                 if (isAuthed)
                   _drawerTile(
-                    icon: const Icon(Icons.logout_rounded, color: Color(0xFF5C46E8), size: 22),
+                    icon: const Icon(
+                      Icons.logout_rounded,
+                      color: Color(0xFF5C46E8),
+                      size: 22,
+                    ),
                     title: 'Logout',
                     onTap: () async {
                       Navigator.of(context).pop();
@@ -2440,14 +2587,20 @@ class _FeaturedPropertyCard extends ConsumerWidget {
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(11),
+                  ),
                   child: CachedNetworkImage(
-                    imageUrl: p.images.isEmpty ? fallbackImage : p.images.first.trim(),
+                    imageUrl: p.images.isEmpty
+                        ? fallbackImage
+                        : p.images.first.trim(),
                     height: 115,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(color: Colors.black12),
-                    errorWidget: (context, url, error) => Container(color: Colors.black12),
+                    placeholder: (context, url) =>
+                        Container(color: Colors.black12),
+                    errorWidget: (context, url, error) =>
+                        Container(color: Colors.black12),
                   ),
                 ),
                 Positioned(
@@ -2464,8 +2617,12 @@ class _FeaturedPropertyCard extends ConsumerWidget {
                       ),
                       child: Center(
                         child: Icon(
-                          isFav ? Icons.favorite : Icons.favorite_border_rounded,
-                          color: isFav ? Colors.pinkAccent : const Color(0xFF5C46E8),
+                          isFav
+                              ? Icons.favorite
+                              : Icons.favorite_border_rounded,
+                          color: isFav
+                              ? Colors.pinkAccent
+                              : const Color(0xFF5C46E8),
                           size: 18,
                         ),
                       ),
@@ -2476,7 +2633,10 @@ class _FeaturedPropertyCard extends ConsumerWidget {
                   bottom: 8,
                   left: 8,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.55),
                       borderRadius: BorderRadius.circular(6),

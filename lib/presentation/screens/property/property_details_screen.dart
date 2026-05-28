@@ -12,6 +12,7 @@ import '../../../providers/property_provider.dart';
 import '../../widgets/autoplay_video_preview.dart';
 import '../../widgets/zoomable_video_page.dart';
 import '../../widgets/property_card.dart'; // to reuse specs extraction and price formatter
+import 'package:url_launcher/url_launcher.dart';
 
 const _kPrimary = Color(0xFF5C46E8);
 const _fallbackImage =
@@ -335,6 +336,9 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
               });
         }
 
+        final specs = getPropertySpecs(p);
+        final displayPrice = _formatIndianPrice(p.price, p.type);
+
         void scheduleVisit() {
           if (!isAuthed) {
             AppSnackbar.showError(context, 'Please login to schedule a visit');
@@ -346,17 +350,85 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
           context.push('/schedule/${p.id}');
         }
 
-        void contactAgent() {
+        void handleCall() async {
           if (!isAuthed) {
-            AppSnackbar.showError(context, 'Please login to contact');
-            context.push('/login?from=${Uri.encodeComponent('/leads/new?property_id=${p.id}&type=${p.type}')}');
+            AppSnackbar.showError(context, 'Please login to contact the agent.');
+            context.push('/login?from=${Uri.encodeComponent('/property/${p.id}')}');
             return;
           }
-          context.push('/leads/new?property_id=${p.id}&type=${p.type}');
+          final phone = p.ownerPhone?.trim() ?? '';
+          if (phone.isEmpty) {
+            AppSnackbar.showMessage(
+              context,
+              'Please schedule a visit to know more about this property.',
+            );
+            return;
+          }
+          final uri = Uri.parse('tel:$phone');
+          try {
+            await launchUrl(uri);
+          } catch (e) {
+            if (!context.mounted) return;
+            AppSnackbar.showError(context, 'Could not open the phone dialer.');
+          }
         }
 
-        final specs = getPropertySpecs(p);
-        final displayPrice = _formatIndianPrice(p.price, p.type);
+        void handleChat() async {
+          if (!isAuthed) {
+            AppSnackbar.showError(context, 'Please login to contact the agent.');
+            context.push('/login?from=${Uri.encodeComponent('/property/${p.id}')}');
+            return;
+          }
+          final phone = p.ownerPhone?.trim() ?? '';
+          if (phone.isEmpty) {
+            AppSnackbar.showMessage(
+              context,
+              'Please schedule a visit to know more about this property.',
+            );
+            return;
+          }
+          String cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
+          if (!cleanPhone.startsWith('+') && cleanPhone.length == 10) {
+            cleanPhone = '91$cleanPhone';
+          }
+          final message = Uri.encodeComponent('Hi, I am interested in your property: "${(() {
+            final type = specs.type;
+            if (type.toLowerCase().contains('plot') || type.toLowerCase().contains('land')) {
+              return 'Residential Plot in ${p.location.split(',').first}';
+            }
+            if (type.toLowerCase().contains('commercial') || type.toLowerCase().contains('shop')) {
+              return 'Commercial Space in ${p.location.split(',').first}';
+            }
+            int bhkCount = 3;
+            if (p.bhk != null && p.bhk! > 0) {
+              bhkCount = p.bhk!;
+            } else if (p.bedrooms != null && p.bedrooms! > 0) {
+              bhkCount = p.bedrooms!;
+            } else {
+              final bhkMatch = RegExp(r'(\d+)\s*(BHK|Bed|Bedroom|BH|B)', caseSensitive: false)
+                  .firstMatch(p.name + p.description);
+              if (bhkMatch != null) {
+                bhkCount = int.tryParse(bhkMatch.group(1) ?? '3') ?? 3;
+              }
+            }
+            final sector = p.location.split(',').first.trim();
+            return '$bhkCount BHK $type in $sector';
+          })()}" (${p.location}).');
+          
+          final uri = Uri.parse('https://wa.me/$cleanPhone?text=$message');
+          try {
+            // First try launching directly as external application for WhatsApp
+            await launchUrl(uri, mode: LaunchMode.externalNonBrowserApplication);
+          } catch (e) {
+            try {
+              // Fallback to standard external application
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            } catch (e2) {
+              if (!context.mounted) return;
+              AppSnackbar.showError(context, 'Could not open WhatsApp.');
+            }
+          }
+        }
 
         return Scaffold(
           backgroundColor: Colors.white,
@@ -387,7 +459,29 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
                       child: Text(
-                        p.name,
+                        (() {
+                          final type = specs.type;
+                          if (type.toLowerCase().contains('plot') || type.toLowerCase().contains('land')) {
+                            return 'Residential Plot in ${p.location.split(',').first}';
+                          }
+                          if (type.toLowerCase().contains('commercial') || type.toLowerCase().contains('shop')) {
+                            return 'Commercial Space in ${p.location.split(',').first}';
+                          }
+                          int bhkCount = 3;
+                          if (p.bhk != null && p.bhk! > 0) {
+                            bhkCount = p.bhk!;
+                          } else if (p.bedrooms != null && p.bedrooms! > 0) {
+                            bhkCount = p.bedrooms!;
+                          } else {
+                            final bhkMatch = RegExp(r'(\d+)\s*(BHK|Bed|Bedroom|BH|B)', caseSensitive: false)
+                                .firstMatch(p.name + p.description);
+                            if (bhkMatch != null) {
+                              bhkCount = int.tryParse(bhkMatch.group(1) ?? '3') ?? 3;
+                            }
+                          }
+                          final sector = p.location.split(',').first.trim();
+                          return '$bhkCount BHK $type in $sector';
+                        })(),
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
@@ -401,7 +495,14 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
-                        p.location,
+                        (() {
+                          final loc = p.location.trim();
+                          final parts = loc.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+                          if (parts.length >= 2) {
+                            return parts.skip(1).join(', ');
+                          }
+                          return loc;
+                        })(),
                         style: const TextStyle(
                           fontSize: 13.5,
                           fontWeight: FontWeight.w600,
@@ -495,7 +596,7 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                         Expanded(
                           child: InkWell(
                             borderRadius: BorderRadius.circular(10),
-                            onTap: contactAgent,
+                            onTap: handleCall,
                             child: Container(
                               height: 48,
                               decoration: BoxDecoration(
@@ -534,7 +635,7 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                         Expanded(
                           child: InkWell(
                             borderRadius: BorderRadius.circular(10),
-                            onTap: contactAgent,
+                            onTap: handleChat,
                             child: Container(
                               height: 48,
                               decoration: BoxDecoration(
