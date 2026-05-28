@@ -10,7 +10,7 @@ class Property {
   final List<String> videos;
   final String description;
   final DateTime availability;
-
+  final String? facing;
   // Rich API Fields to display details accurately without guessing
   final int? bhk;
   final int? bedrooms;
@@ -25,6 +25,7 @@ class Property {
   final String? ownerPhone;
 
   const Property({
+    this.facing,
     required this.id,
     required this.name,
     required this.location,
@@ -56,56 +57,135 @@ class Property {
       location: (json['location'] ?? '').toString(),
       price: (json['price'] as num?)?.toInt() ?? 0,
       type: (json['type'] ?? 'rent').toString(),
-      propertyKind: (json['property_kind'] ?? json['propertyKind'] ?? '').toString(),
-      amenities:
-          (json['amenities'] as List?)?.map((e) => e.toString()).toList() ??
-          const [],
-      images:
-          (json['images'] as List?)?.map((e) => e.toString()).toList() ??
-          const [],
-      videos:
-          (json['videos'] as List?)?.map((e) => e.toString()).toList() ??
-          const [],
+      propertyKind: (json['property_kind'] ?? json['propertyKind'] ?? '')
+          .toString(),
+      amenities: (() {
+        final rawAmenities = json['amenities'];
+
+        if (rawAmenities is List) {
+          return rawAmenities
+              .map((e) {
+                // Amenity object
+                if (e is Map<String, dynamic>) {
+                  return (e['name'] ?? e['title'] ?? e['amenity_name'] ?? '')
+                      .toString();
+                }
+
+                // Plain string
+                return e.toString();
+              })
+              .where((e) => e.trim().isNotEmpty)
+              .toList();
+        }
+
+        return <String>[];
+      })(),
+      images: (() {
+        final rawImages = json['images'];
+
+        if (rawImages is List) {
+          return rawImages
+              .map((e) {
+                // IMAGE OBJECT
+                if (e is Map<String, dynamic>) {
+                  return (e['image'] ?? e['url'] ?? e['path'] ?? '').toString();
+                }
+
+                // STRING URL
+                return e.toString();
+              })
+              .where((e) => e.trim().isNotEmpty)
+              .toList();
+        }
+
+        return <String>[];
+      })(),
+
+      videos: (() {
+        final rawVideos = json['videos'];
+
+        if (rawVideos is List) {
+          return rawVideos
+              .map((e) {
+                // VIDEO OBJECT
+                if (e is Map<String, dynamic>) {
+                  return (e['video'] ?? e['url'] ?? e['path'] ?? '').toString();
+                }
+
+                // STRING URL
+                return e.toString();
+              })
+              .where((e) => e.trim().isNotEmpty)
+              .toList();
+        }
+
+        return <String>[];
+      })(),
       description: (json['description'] ?? '').toString(),
       availability:
           DateTime.tryParse((json['availability'] ?? '').toString()) ??
           DateTime.now(),
+      facing: json['facing']?.toString(),
       bhk: json['bhk'] != null ? int.tryParse(json['bhk'].toString()) : null,
-      bedrooms: json['bedrooms'] != null ? int.tryParse(json['bedrooms'].toString()) : null,
-      bathrooms: json['bathrooms'] != null ? int.tryParse(json['bathrooms'].toString()) : null,
-      balconies: json['balconies'] != null ? int.tryParse(json['balconies'].toString()) : null,
-      parking: json['parking'] != null ? int.tryParse(json['parking'].toString()) : null,
-      superBuiltUpArea: json['super_built_up_area'] != null ? double.tryParse(json['super_built_up_area'].toString()) : null,
-      carpetArea: json['carpet_area'] != null ? double.tryParse(json['carpet_area'].toString()) : null,
-      builtUpArea: json['built_up_area'] != null ? double.tryParse(json['built_up_area'].toString()) : null,
-      furnishing: json['furnishing']?.toString(),
-      categoryName: json['category'] is Map ? (json['category']['name']?.toString()) : null,
+      bedrooms: json['bedrooms'] != null
+          ? int.tryParse(json['bedrooms'].toString())
+          : null,
+      bathrooms: json['bathrooms'] != null
+          ? int.tryParse(json['bathrooms'].toString())
+          : null,
+      balconies: json['balconies'] != null
+          ? int.tryParse(json['balconies'].toString())
+          : null,
+      parking: json['parking'] != null
+          ? int.tryParse(json['parking'].toString())
+          : null,
+      superBuiltUpArea: json['super_built_up_area'] != null
+          ? double.tryParse(json['super_built_up_area'].toString())
+          : null,
+      carpetArea: json['carpet_area'] != null
+          ? double.tryParse(json['carpet_area'].toString())
+          : null,
+      builtUpArea: json['built_up_area'] != null
+          ? double.tryParse(json['built_up_area'].toString())
+          : null,
+      furnishing: (() {
+        final furnishing = json['furnishing'];
+
+        if (furnishing is Map<String, dynamic>) {
+          return (furnishing['name'] ?? furnishing['title'] ?? '').toString();
+        }
+
+        return (json['furnishing'] ?? json['furnishing_status'])?.toString();
+      })(),
+      categoryName: json['category'] is Map
+          ? (json['category']['name']?.toString())
+          : null,
       ownerPhone: json['owner_phone']?.toString(),
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'location': location,
-        'price': price,
-        'type': type,
-        'property_kind': propertyKind,
-        'amenities': amenities,
-        'images': images,
-        'videos': videos,
-        'description': description,
-        'availability': availability.toIso8601String(),
-        'bhk': bhk,
-        'bedrooms': bedrooms,
-        'bathrooms': bathrooms,
-        'balconies': balconies,
-        'parking': parking,
-        'super_built_up_area': superBuiltUpArea,
-        'carpet_area': carpetArea,
-        'built_up_area': builtUpArea,
-        'furnishing': furnishing,
-        'category_name': categoryName,
-        'owner_phone': ownerPhone,
-      };
+    'id': id,
+    'name': name,
+    'location': location,
+    'price': price,
+    'type': type,
+    'property_kind': propertyKind,
+    'amenities': amenities,
+    'images': images,
+    'videos': videos,
+    'description': description,
+    'availability': availability.toIso8601String(),
+    'bhk': bhk,
+    'bedrooms': bedrooms,
+    'bathrooms': bathrooms,
+    'balconies': balconies,
+    'parking': parking,
+    'super_built_up_area': superBuiltUpArea,
+    'carpet_area': carpetArea,
+    'built_up_area': builtUpArea,
+    'furnishing': furnishing,
+    'category_name': categoryName,
+    'owner_phone': ownerPhone,
+  };
 }

@@ -22,12 +22,16 @@ const _fallbackImage =
 String _getCleanLocality(String fullLocation) {
   final loc = fullLocation.trim();
   if (loc.isEmpty) return 'Panchkula';
-  final parts = loc.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
-  
+  final parts = loc
+      .split(',')
+      .map((e) => e.trim())
+      .where((e) => e.isNotEmpty)
+      .toList();
+
   if (parts.isNotEmpty && parts.last.toLowerCase() == 'india') {
     parts.removeLast();
   }
-  
+
   if (parts.isNotEmpty) {
     final cleanState = parts.last.replaceAll(RegExp(r'\d+'), '').trim();
     if (cleanState.isNotEmpty) {
@@ -39,14 +43,17 @@ String _getCleanLocality(String fullLocation) {
 
   if (parts.isNotEmpty) {
     final first = parts.first;
-    final isFlatNo = RegExp(r'^(\d+|\w-\d+|\d+\w|\bflat\b|\broom\b|\bshop\b|\bfloor\b|\bplot\b)', caseSensitive: false).hasMatch(first);
+    final isFlatNo = RegExp(
+      r'^(\d+|\w-\d+|\d+\w|\bflat\b|\broom\b|\bshop\b|\bfloor\b|\bplot\b)',
+      caseSensitive: false,
+    ).hasMatch(first);
     if (isFlatNo || first.length <= 5) {
       parts.removeAt(0);
     }
   }
-  
+
   if (parts.isEmpty) return 'Panchkula';
-  
+
   if (parts.length >= 2) {
     return '${parts[0]}, ${parts[1]}';
   }
@@ -56,12 +63,16 @@ String _getCleanLocality(String fullLocation) {
 String _getCleanSmallAddress(String fullLocation) {
   final loc = fullLocation.trim();
   if (loc.isEmpty) return 'Panchkula, Haryana';
-  final parts = loc.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
-  
+  final parts = loc
+      .split(',')
+      .map((e) => e.trim())
+      .where((e) => e.isNotEmpty)
+      .toList();
+
   if (parts.isNotEmpty && parts.last.toLowerCase() == 'india') {
     parts.removeLast();
   }
-  
+
   if (parts.isNotEmpty) {
     final cleanState = parts.last.replaceAll(RegExp(r'\d+'), '').trim();
     if (cleanState.isNotEmpty) {
@@ -73,14 +84,17 @@ String _getCleanSmallAddress(String fullLocation) {
 
   if (parts.isNotEmpty) {
     final first = parts.first;
-    final isFlatNo = RegExp(r'^(\d+|\w-\d+|\d+\w|\bflat\b|\broom\b|\bshop\b|\bfloor\b|\bplot\b)', caseSensitive: false).hasMatch(first);
+    final isFlatNo = RegExp(
+      r'^(\d+|\w-\d+|\d+\w|\bflat\b|\broom\b|\bshop\b|\bfloor\b|\bplot\b)',
+      caseSensitive: false,
+    ).hasMatch(first);
     if (isFlatNo || first.length <= 5) {
       parts.removeAt(0);
     }
   }
-  
+
   if (parts.isEmpty) return 'Panchkula, Haryana';
-  
+
   if (parts.length > 3) {
     return parts.sublist(parts.length - 3).join(', ');
   }
@@ -116,7 +130,9 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
       String priceStr = price.toString();
       if (priceStr.length > 3) {
         priceStr = priceStr.replaceAllMapped(
-            RegExp(r'(\d+?)(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},');
+          RegExp(r'(\d+?)(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]},',
+        );
       }
       return '₹$priceStr / month';
     } else {
@@ -150,11 +166,11 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
   Widget _buildThumbnailStrip(BuildContext context, Property p) {
     final images = p.images;
     if (images.length <= 1) return const SizedBox.shrink();
-    
+
     final maxThumbnails = 4;
     final displayImages = images.skip(1).take(maxThumbnails).toList();
     final remainingCount = images.length - 1 - displayImages.length;
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: SingleChildScrollView(
@@ -184,8 +200,10 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                         child: CachedNetworkImage(
                           imageUrl: displayImages[i].trim(),
                           fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(color: Colors.black12),
-                          errorWidget: (context, url, error) => Container(color: Colors.black12),
+                          placeholder: (context, url) =>
+                              Container(color: Colors.black12),
+                          errorWidget: (context, url, error) =>
+                              Container(color: Colors.black12),
                         ),
                       ),
                     ),
@@ -215,8 +233,10 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                           CachedNetworkImage(
                             imageUrl: images[displayImages.length + 1].trim(),
                             fit: BoxFit.cover,
-                            placeholder: (context, url) => Container(color: Colors.black12),
-                            errorWidget: (context, url, error) => Container(color: Colors.black12),
+                            placeholder: (context, url) =>
+                                Container(color: Colors.black12),
+                            errorWidget: (context, url, error) =>
+                                Container(color: Colors.black12),
                           ),
                           Container(
                             color: Colors.black.withValues(alpha: 0.5),
@@ -333,14 +353,14 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
             runSpacing: 8,
             children: specs.highlights.map((h) {
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: const Color(0xFFE4E7EC),
-                    width: 1,
-                  ),
+                  border: Border.all(color: const Color(0xFFE4E7EC), width: 1),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -427,8 +447,13 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
 
         void handleCall() async {
           if (!isAuthed) {
-            AppSnackbar.showError(context, 'Please login to contact the agent.');
-            context.push('/login?from=${Uri.encodeComponent('/property/${p.id}')}');
+            AppSnackbar.showError(
+              context,
+              'Please login to contact the agent.',
+            );
+            context.push(
+              '/login?from=${Uri.encodeComponent('/property/${p.id}')}',
+            );
             return;
           }
           final phone = p.ownerPhone?.trim() ?? '';
@@ -450,8 +475,13 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
 
         void handleChat() async {
           if (!isAuthed) {
-            AppSnackbar.showError(context, 'Please login to contact the agent.');
-            context.push('/login?from=${Uri.encodeComponent('/property/${p.id}')}');
+            AppSnackbar.showError(
+              context,
+              'Please login to contact the agent.',
+            );
+            context.push(
+              '/login?from=${Uri.encodeComponent('/property/${p.id}')}',
+            );
             return;
           }
           final phone = p.ownerPhone?.trim() ?? '';
@@ -466,34 +496,38 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
           if (!cleanPhone.startsWith('+') && cleanPhone.length == 10) {
             cleanPhone = '91$cleanPhone';
           }
-          final message = Uri.encodeComponent('Hi, I am interested in your property: "${(() {
-            final type = specs.type;
-            final cleanLocality = _getCleanLocality(p.location);
-            if (type.toLowerCase().contains('plot') || type.toLowerCase().contains('land')) {
-              return 'Residential Plot in $cleanLocality';
-            }
-            if (type.toLowerCase().contains('commercial') || type.toLowerCase().contains('shop')) {
-              return 'Commercial Space in $cleanLocality';
-            }
-            int bhkCount = 3;
-            if (p.bhk != null && p.bhk! > 0) {
-              bhkCount = p.bhk!;
-            } else if (p.bedrooms != null && p.bedrooms! > 0) {
-              bhkCount = p.bedrooms!;
-            } else {
-              final bhkMatch = RegExp(r'(\d+)\s*(BHK|Bed|Bedroom|BH|B)', caseSensitive: false)
-                  .firstMatch(p.name + p.description);
-              if (bhkMatch != null) {
-                bhkCount = int.tryParse(bhkMatch.group(1) ?? '3') ?? 3;
+          final message = Uri.encodeComponent(
+            'Hi, I am interested in your property: "${(() {
+              final type = specs.type;
+              final cleanLocality = _getCleanLocality(p.location);
+              if (type.toLowerCase().contains('plot') || type.toLowerCase().contains('land')) {
+                return 'Residential Plot in $cleanLocality';
               }
-            }
-            return '$bhkCount BHK $type in $cleanLocality';
-          })()}" (${p.location}).');
-          
+              if (type.toLowerCase().contains('commercial') || type.toLowerCase().contains('shop')) {
+                return 'Commercial Space in $cleanLocality';
+              }
+              int bhkCount = 3;
+              if (p.bhk != null && p.bhk! > 0) {
+                bhkCount = p.bhk!;
+              } else if (p.bedrooms != null && p.bedrooms! > 0) {
+                bhkCount = p.bedrooms!;
+              } else {
+                final bhkMatch = RegExp(r'(\d+)\s*(BHK|Bed|Bedroom|BH|B)', caseSensitive: false).firstMatch(p.name + p.description);
+                if (bhkMatch != null) {
+                  bhkCount = int.tryParse(bhkMatch.group(1) ?? '3') ?? 3;
+                }
+              }
+              return '$bhkCount BHK $type in $cleanLocality';
+            })()}" (${p.location}).',
+          );
+
           final uri = Uri.parse('https://wa.me/$cleanPhone?text=$message');
           try {
             // First try launching directly as external application for WhatsApp
-            await launchUrl(uri, mode: LaunchMode.externalNonBrowserApplication);
+            await launchUrl(
+              uri,
+              mode: LaunchMode.externalNonBrowserApplication,
+            );
           } catch (e) {
             try {
               // Fallback to standard external application
@@ -525,12 +559,13 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                       ),
                       onToggleFavorite: toggleFavorite,
                       isFavorited: isFav,
-                      isLoading: snapshot.connectionState == ConnectionState.waiting,
+                      isLoading:
+                          snapshot.connectionState == ConnectionState.waiting,
                     ),
-                    
+
                     // Thumbnail Strip
                     _buildThumbnailStrip(context, p),
-                    
+
                     // Name/Title
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
@@ -538,10 +573,12 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                         (() {
                           final type = specs.type;
                           final cleanLocality = _getCleanLocality(p.location);
-                          if (type.toLowerCase().contains('plot') || type.toLowerCase().contains('land')) {
+                          if (type.toLowerCase().contains('plot') ||
+                              type.toLowerCase().contains('land')) {
                             return 'Residential Plot in $cleanLocality';
                           }
-                          if (type.toLowerCase().contains('commercial') || type.toLowerCase().contains('shop')) {
+                          if (type.toLowerCase().contains('commercial') ||
+                              type.toLowerCase().contains('shop')) {
                             return 'Commercial Space in $cleanLocality';
                           }
                           int bhkCount = 3;
@@ -550,10 +587,13 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                           } else if (p.bedrooms != null && p.bedrooms! > 0) {
                             bhkCount = p.bedrooms!;
                           } else {
-                            final bhkMatch = RegExp(r'(\d+)\s*(BHK|Bed|Bedroom|BH|B)', caseSensitive: false)
-                                .firstMatch(p.name + p.description);
+                            final bhkMatch = RegExp(
+                              r'(\d+)\s*(BHK|Bed|Bedroom|BH|B)',
+                              caseSensitive: false,
+                            ).firstMatch(p.name + p.description);
                             if (bhkMatch != null) {
-                              bhkCount = int.tryParse(bhkMatch.group(1) ?? '3') ?? 3;
+                              bhkCount =
+                                  int.tryParse(bhkMatch.group(1) ?? '3') ?? 3;
                             }
                           }
                           return '$bhkCount BHK $type in $cleanLocality';
@@ -566,7 +606,7 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                         ),
                       ),
                     ),
-                    
+
                     // Subtitle / Location
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -579,7 +619,7 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                         ),
                       ),
                     ),
-                    
+
                     // Price
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
@@ -592,26 +632,151 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                         ),
                       ),
                     ),
-                    
+
                     // Specs Grid Row
                     _buildSpecsRow(specs),
-                    
+
                     const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      child: Divider(height: 1, thickness: 1, color: Color(0xFFF2F4F7)),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      child: Divider(
+                        height: 1,
+                        thickness: 1,
+                        color: Color(0xFFF2F4F7),
+                      ),
                     ),
-                    
+
                     // Property Highlights Wrap
                     _buildHighlights(specs),
-                    
+
+                    const SizedBox(height: 20),
+
+                    // Amenities Section
+                    if (p.amenities.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Amenities',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF1D2939),
+                              ),
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: p.amenities.map((a) {
+                                final clean = a.replaceAll('_', ' ').trim();
+
+                                final formatted = clean
+                                    .split(' ')
+                                    .map(
+                                      (w) => w.isEmpty
+                                          ? w
+                                          : '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}',
+                                    )
+                                    .join(' ');
+
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF2F4F7),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    formatted,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF344054),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    const SizedBox(height: 20),
+
+                    // Furnishing Section
+                    if (p.furnishing != null && p.furnishing!.trim().isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Furnishing',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF1D2939),
+                              ),
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF2F4F7),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                p.furnishing!
+                                    .replaceAll('_', ' ')
+                                    .split(' ')
+                                    .map(
+                                      (e) => e.isEmpty
+                                          ? e
+                                          : '${e[0].toUpperCase()}${e.substring(1).toLowerCase()}',
+                                    )
+                                    .join(' '),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF344054),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: Divider(height: 1, thickness: 1, color: Color(0xFFF2F4F7)),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: Divider(
+                        height: 1,
+                        thickness: 1,
+                        color: Color(0xFFF2F4F7),
+                      ),
                     ),
-                    
+
                     // Description
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -625,7 +790,9 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            p.description.isEmpty ? 'No description provided.' : p.description,
+                            p.description.isEmpty
+                                ? 'No description provided.'
+                                : p.description,
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -636,12 +803,12 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                         ],
                       ),
                     ),
-                    
+
                     const SizedBox(height: 120),
                   ],
                 ),
               ),
-              
+
               // Bottom Action Buttons bar
               Positioned(
                 left: 0,
@@ -824,9 +991,7 @@ class _HeroMediaLightState extends State<_HeroMediaLight> {
 
     String fallbackImage() {
       final first = images.isNotEmpty ? images.first.trim() : '';
-      return first.isEmpty
-          ? _fallbackImage
-          : first;
+      return first.isEmpty ? _fallbackImage : first;
     }
 
     return SizedBox(
@@ -852,55 +1017,56 @@ class _HeroMediaLightState extends State<_HeroMediaLight> {
                 enableInfiniteScroll: total > 1,
                 onPageChanged: (i, _) => setState(() => _index = i),
               ),
-            items: [
-              for (final v in videos)
-                GestureDetector(
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => ZoomableVideoPage(url: v),
+              items: [
+                for (final v in videos)
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ZoomableVideoPage(url: v),
+                      ),
                     ),
-                  ),
-                  child: AutoplayVideoPreview(
-                    url: v,
-                    loop: false,
-                    fit: BoxFit.cover,
-                    visibleFractionToPlay: 0.20,
-                    loading: Container(color: Colors.black12),
-                    error: CachedNetworkImage(
-                      imageUrl: fallbackImage(),
+                    child: AutoplayVideoPreview(
+                      url: v,
+                      loop: false,
                       fit: BoxFit.cover,
-                      width: double.infinity,
-                    ),
-                  ),
-                ),
-              for (var i = 0; i < images.length; i++)
-                GestureDetector(
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => _ZoomGallery(
-                        images: images,
-                        initialIndex: i,
-                        title: widget.title,
+                      visibleFractionToPlay: 0.20,
+                      loading: Container(color: Colors.black12),
+                      error: CachedNetworkImage(
+                        imageUrl: fallbackImage(),
+                        fit: BoxFit.cover,
+                        width: double.infinity,
                       ),
                     ),
                   ),
-                  child: CachedNetworkImage(
-                    imageUrl: images[i].trim().isEmpty
-                        ? _fallbackImage
-                        : images[i].trim(),
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    placeholder: (context, url) => Container(color: Colors.black12),
-                    errorWidget: (context, url, error) => CachedNetworkImage(
-                      imageUrl: _fallbackImage,
+                for (var i = 0; i < images.length; i++)
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => _ZoomGallery(
+                          images: images,
+                          initialIndex: i,
+                          title: widget.title,
+                        ),
+                      ),
+                    ),
+                    child: CachedNetworkImage(
+                      imageUrl: images[i].trim().isEmpty
+                          ? _fallbackImage
+                          : images[i].trim(),
                       fit: BoxFit.cover,
                       width: double.infinity,
+                      placeholder: (context, url) =>
+                          Container(color: Colors.black12),
+                      errorWidget: (context, url, error) => CachedNetworkImage(
+                        imageUrl: _fallbackImage,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                      ),
                     ),
                   ),
-                ),
-            ],
-          ),
-          
+              ],
+            ),
+
           // Floating overlay controls
           Positioned(
             top: MediaQuery.paddingOf(context).top + 8,
@@ -935,8 +1101,12 @@ class _HeroMediaLightState extends State<_HeroMediaLight> {
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
-                          widget.isFavorited ? Icons.favorite : Icons.favorite_border_rounded,
-                          color: widget.isFavorited ? Colors.pinkAccent : Colors.white,
+                          widget.isFavorited
+                              ? Icons.favorite
+                              : Icons.favorite_border_rounded,
+                          color: widget.isFavorited
+                              ? Colors.pinkAccent
+                              : Colors.white,
                           size: 22,
                         ),
                       ),
@@ -962,13 +1132,16 @@ class _HeroMediaLightState extends State<_HeroMediaLight> {
               ],
             ),
           ),
-          
+
           if (total > 1)
             Positioned(
               bottom: 12,
               right: 12,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(12),

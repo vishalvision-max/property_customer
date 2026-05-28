@@ -41,7 +41,10 @@ PropertySpecs getPropertySpecs(Property p) {
   } else if (p.builtUpArea != null && p.builtUpArea! > 0) {
     sqft = '${p.builtUpArea!.toInt()} sqft';
   } else {
-    final sqftMatch = RegExp(r'(\d+)\s*(sqft|sq\.ft\.|sq\s*ft|sq\.yd\.)', caseSensitive: false).firstMatch(p.description);
+    final sqftMatch = RegExp(
+      r'(\d+)\s*(sqft|sq\.ft\.|sq\s*ft|sq\.yd\.)',
+      caseSensitive: false,
+    ).firstMatch(p.description);
     if (sqftMatch != null) {
       sqft = '${sqftMatch.group(1)} ${sqftMatch.group(2)}';
     } else {
@@ -57,7 +60,10 @@ PropertySpecs getPropertySpecs(Property p) {
   } else if (p.bedrooms != null && p.bedrooms! > 0) {
     bedrooms = '${p.bedrooms} Bed';
   } else {
-    final bhkMatch = RegExp(r'(\d+)\s*(BHK|Bed|Bedroom)', caseSensitive: false).firstMatch(p.name + p.description);
+    final bhkMatch = RegExp(
+      r'(\d+)\s*(BHK|Bed|Bedroom)',
+      caseSensitive: false,
+    ).firstMatch(p.name + p.description);
     if (bhkMatch != null) {
       bedrooms = '${bhkMatch.group(1)} Bed';
     } else {
@@ -71,7 +77,10 @@ PropertySpecs getPropertySpecs(Property p) {
   if (p.bathrooms != null && p.bathrooms! > 0) {
     bathrooms = '${p.bathrooms} Bath';
   } else {
-    final bathMatch = RegExp(r'(\d+)\s*(Bath|Bathroom)', caseSensitive: false).firstMatch(p.description);
+    final bathMatch = RegExp(
+      r'(\d+)\s*(Bath|Bathroom)',
+      caseSensitive: false,
+    ).firstMatch(p.description);
     if (bathMatch != null) {
       bathrooms = '${bathMatch.group(1)} Bath';
     } else {
@@ -85,7 +94,10 @@ PropertySpecs getPropertySpecs(Property p) {
   if (p.balconies != null) {
     balconies = '${p.balconies}';
   } else {
-    final balconyMatch = RegExp(r'(\d+)\s*(Balcony|Balconies)', caseSensitive: false).firstMatch(p.description);
+    final balconyMatch = RegExp(
+      r'(\d+)\s*(Balcony|Balconies)',
+      caseSensitive: false,
+    ).firstMatch(p.description);
     if (balconyMatch != null) {
       balconies = balconyMatch.group(1)!;
     } else {
@@ -111,11 +123,15 @@ PropertySpecs getPropertySpecs(Property p) {
     final catLower = p.categoryName!.toLowerCase();
     if (catLower.contains('flat') || catLower.contains('apartment')) {
       type = 'Apartment';
-    } else if (catLower.contains('villa') || catLower.contains('house') || catLower.contains('home')) {
+    } else if (catLower.contains('villa') ||
+        catLower.contains('house') ||
+        catLower.contains('home')) {
       type = 'Villa';
     } else if (catLower.contains('plot') || catLower.contains('land')) {
       type = 'Plot';
-    } else if (catLower.contains('shop') || catLower.contains('commercial') || catLower.contains('office')) {
+    } else if (catLower.contains('shop') ||
+        catLower.contains('commercial') ||
+        catLower.contains('office')) {
       type = 'Commercial';
     } else {
       type = p.categoryName!;
@@ -139,38 +155,68 @@ PropertySpecs getPropertySpecs(Property p) {
 
   // Status
   String status = 'Ready to Move';
-  if (p.description.toLowerCase().contains('ready to move') || p.availability.isBefore(DateTime.now().add(const Duration(days: 1)))) {
+  if (p.description.toLowerCase().contains('ready to move') ||
+      p.availability.isBefore(DateTime.now().add(const Duration(days: 1)))) {
     status = 'Ready to Move';
   } else {
     status = 'Under Construction';
   }
 
   // Highlights matching the mockup
+  // Highlights
   List<String> highlights = [];
+
   highlights.add(type);
   highlights.add(status);
-  
-  if (p.amenities.contains('East Facing') || p.description.toLowerCase().contains('east')) {
-    highlights.add('East Facing');
-  } else {
-    highlights.add('East Facing');
-  }
 
-  if (p.furnishing != null && p.furnishing!.isNotEmpty) {
-    final f = p.furnishing!.trim();
-    highlights.add(f[0].toUpperCase() + f.substring(1).toLowerCase());
-  } else if (p.amenities.contains('Semi Furnished') || p.description.toLowerCase().contains('furnished')) {
-    if (p.description.toLowerCase().contains('unfurnished')) {
-      highlights.add('Unfurnished');
-    } else {
-      highlights.add('Semi Furnished');
+  // Facing
+  if (p.facing != null) {
+    final facing = p.facing!.trim();
+
+    if (facing.isNotEmpty) {
+      final formattedFacing =
+          facing[0].toUpperCase() + facing.substring(1).toLowerCase();
+
+      highlights.add('$formattedFacing Facing');
     }
-  } else {
-    highlights.add('Semi Furnished');
   }
 
-  highlights.add('Gated Society');
-  highlights.add('24x7 Security');
+  // Furnishing
+  if (p.furnishing != null && p.furnishing!.trim().isNotEmpty) {
+    final furnishing = p.furnishing!.replaceAll('_', ' ').trim();
+
+    highlights.add(
+      furnishing
+          .split(' ')
+          .map(
+            (e) => e.isEmpty
+                ? e
+                : '${e[0].toUpperCase()}${e.substring(1).toLowerCase()}',
+          )
+          .join(' '),
+    );
+  }
+
+  // Amenities
+  if (p.amenities.isNotEmpty) {
+    highlights.addAll(
+      p.amenities.where((e) => e.trim().isNotEmpty).map((e) {
+        final clean = e.replaceAll('_', ' ').trim();
+
+        return clean
+            .split(' ')
+            .map(
+              (w) => w.isEmpty
+                  ? w
+                  : '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}',
+            )
+            .join(' ');
+      }),
+    );
+  }
+
+  // Remove duplicates
+  highlights = highlights.toSet().toList();
 
   return PropertySpecs(
     sqft: sqft,
@@ -214,7 +260,9 @@ class PropertyCard extends ConsumerWidget {
       String priceStr = price.toString();
       if (priceStr.length > 3) {
         priceStr = priceStr.replaceAllMapped(
-            RegExp(r'(\d+?)(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},');
+          RegExp(r'(\d+?)(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]},',
+        );
       }
       return '₹$priceStr / month';
     } else {
@@ -235,7 +283,7 @@ class PropertyCard extends ConsumerWidget {
     final isFav = ref.watch(
       favoritesProvider.select((s) => s.contains(property.id)),
     );
-    
+
     final specs = getPropertySpecs(property);
     final displayPrice = _formatIndianPrice(property.price, property.type);
     final isFeatured = featured || (property.id.hashCode.abs() % 3 == 0);
@@ -256,10 +304,7 @@ class PropertyCard extends ConsumerWidget {
                 offset: const Offset(0, 4),
               ),
             ],
-            border: Border.all(
-              color: const Color(0xFFF2F4F7),
-              width: 1,
-            ),
+            border: Border.all(color: const Color(0xFFF2F4F7), width: 1),
           ),
           padding: const EdgeInsets.all(10),
           child: Row(
@@ -277,12 +322,15 @@ class PropertyCard extends ConsumerWidget {
                           ? CachedNetworkImage(
                               imageUrl: property.images.first.trim(),
                               fit: BoxFit.cover,
-                              placeholder: (context, url) => Container(
-                                color: const Color(0xFFF9FAFB),
-                              ),
+                              placeholder: (context, url) =>
+                                  Container(color: const Color(0xFFF9FAFB)),
                               errorWidget: (context, url, error) => Container(
                                 color: const Color(0xFFF9FAFB),
-                                child: const Icon(Icons.photo, color: Colors.grey, size: 24),
+                                child: const Icon(
+                                  Icons.photo,
+                                  color: Colors.grey,
+                                  size: 24,
+                                ),
                               ),
                             )
                           : _LazyPropertyImage(
@@ -296,7 +344,10 @@ class PropertyCard extends ConsumerWidget {
                       top: 6,
                       left: 6,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF5C46E8),
                           borderRadius: BorderRadius.circular(4),
@@ -315,7 +366,7 @@ class PropertyCard extends ConsumerWidget {
                 ],
               ),
               const SizedBox(width: 12),
-              
+
               // Right Column
               Expanded(
                 child: Column(
@@ -330,22 +381,32 @@ class PropertyCard extends ConsumerWidget {
                           child: Text(
                             (() {
                               final type = specs.type;
-                              if (type.toLowerCase().contains('plot') || type.toLowerCase().contains('land')) {
-                                  return 'Residential Plot';
+                              if (type.toLowerCase().contains('plot') ||
+                                  type.toLowerCase().contains('land')) {
+                                return 'Residential Plot';
                               }
-                              if (type.toLowerCase().contains('commercial') || type.toLowerCase().contains('shop')) {
-                                  return 'Commercial Space';
+                              if (type.toLowerCase().contains('commercial') ||
+                                  type.toLowerCase().contains('shop')) {
+                                return 'Commercial Space';
                               }
                               int bhkCount = 3;
                               if (property.bhk != null && property.bhk! > 0) {
                                 bhkCount = property.bhk!;
-                              } else if (property.bedrooms != null && property.bedrooms! > 0) {
+                              } else if (property.bedrooms != null &&
+                                  property.bedrooms! > 0) {
                                 bhkCount = property.bedrooms!;
                               } else {
-                                final bhkMatch = RegExp(r'(\d+)\s*(BHK|Bed|Bedroom|BH|B)', caseSensitive: false)
-                                    .firstMatch(property.name + property.description);
+                                final bhkMatch =
+                                    RegExp(
+                                      r'(\d+)\s*(BHK|Bed|Bedroom|BH|B)',
+                                      caseSensitive: false,
+                                    ).firstMatch(
+                                      property.name + property.description,
+                                    );
                                 if (bhkMatch != null) {
-                                  bhkCount = int.tryParse(bhkMatch.group(1) ?? '3') ?? 3;
+                                  bhkCount =
+                                      int.tryParse(bhkMatch.group(1) ?? '3') ??
+                                      3;
                                 }
                               }
                               return '$bhkCount BHK $type';
@@ -375,10 +436,7 @@ class PropertyCard extends ConsumerWidget {
                             }
                             ref
                                 .read(favoritesProvider.notifier)
-                                .toggleRemote(
-                                  type: 'property',
-                                  id: property.id,
-                                )
+                                .toggleRemote(type: 'property', id: property.id)
                                 .catchError((_) {
                                   if (!context.mounted) return;
                                   AppSnackbar.showError(
@@ -389,7 +447,9 @@ class PropertyCard extends ConsumerWidget {
                           },
                           child: Icon(
                             isFav ? Icons.favorite : Icons.favorite_border,
-                            color: isFav ? Colors.pinkAccent : const Color(0xFF98A2B3),
+                            color: isFav
+                                ? Colors.pinkAccent
+                                : const Color(0xFF98A2B3),
                             size: 20,
                           ),
                         ),
@@ -400,14 +460,21 @@ class PropertyCard extends ConsumerWidget {
                       (() {
                         final loc = property.location.trim();
                         if (loc.isEmpty) return 'Panchkula';
-                        final parts = loc.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
-                        
-                        if (parts.isNotEmpty && parts.last.toLowerCase() == 'india') {
+                        final parts = loc
+                            .split(',')
+                            .map((e) => e.trim())
+                            .where((e) => e.isNotEmpty)
+                            .toList();
+
+                        if (parts.isNotEmpty &&
+                            parts.last.toLowerCase() == 'india') {
                           parts.removeLast();
                         }
-                        
+
                         if (parts.isNotEmpty) {
-                          final cleanState = parts.last.replaceAll(RegExp(r'\d+'), '').trim();
+                          final cleanState = parts.last
+                              .replaceAll(RegExp(r'\d+'), '')
+                              .trim();
                           if (cleanState.isNotEmpty) {
                             parts[parts.length - 1] = cleanState;
                           } else {
@@ -417,7 +484,10 @@ class PropertyCard extends ConsumerWidget {
 
                         if (parts.isNotEmpty) {
                           final first = parts.first;
-                          final isFlatNo = RegExp(r'^(\d+|\w-\d+|\d+\w|\bflat\b|\broom\b|\bshop\b|\bfloor\b|\bplot\b)', caseSensitive: false).hasMatch(first);
+                          final isFlatNo = RegExp(
+                            r'^(\d+|\w-\d+|\d+\w|\bflat\b|\broom\b|\bshop\b|\bfloor\b|\bplot\b)',
+                            caseSensitive: false,
+                          ).hasMatch(first);
                           if (isFlatNo || first.length <= 5) {
                             parts.removeAt(0);
                           }
@@ -458,15 +528,31 @@ class PropertyCard extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      '${specs.type}  •  ${specs.status}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF667085),
-                      ),
+                    const SizedBox(height: 6),
+
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: specs.highlights.take(6).map((h) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF2F4F7),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            h,
+                            style: const TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF475467),
+                            ),
+                          ),
+                        );
+                      }).toList(),
                     ),
                   ],
                 ),
@@ -507,7 +593,8 @@ class _LazyPropertyImage extends ConsumerWidget {
       error: (_, __) => CachedNetworkImage(
         imageUrl: fallback,
         fit: BoxFit.cover,
-        placeholder: (context, url) => Container(color: cs.surfaceContainerHighest),
+        placeholder: (context, url) =>
+            Container(color: cs.surfaceContainerHighest),
         errorWidget: (context, url, error) => Container(
           color: cs.surfaceContainerHighest,
           child: const Icon(Icons.photo, size: 30),
@@ -516,8 +603,10 @@ class _LazyPropertyImage extends ConsumerWidget {
       data: (images) => CachedNetworkImage(
         imageUrl: images.isNotEmpty ? images.first : fallback,
         fit: BoxFit.cover,
-        placeholder: (context, url) => Container(color: cs.surfaceContainerHighest),
-        errorWidget: (context, url, error) => CachedNetworkImage(imageUrl: fallback, fit: BoxFit.cover),
+        placeholder: (context, url) =>
+            Container(color: cs.surfaceContainerHighest),
+        errorWidget: (context, url, error) =>
+            CachedNetworkImage(imageUrl: fallback, fit: BoxFit.cover),
       ),
     );
   }
