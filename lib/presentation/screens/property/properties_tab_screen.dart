@@ -1465,12 +1465,12 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                           isSelected: _selectedPriceRange != null,
                           icon: Icons.keyboard_arrow_down_rounded,
                         ),
-                        const SizedBox(width: 8),
-                        _FilterChip(
-                          label: 'More Filters',
-                          onTap: () => context.push('/search'),
-                          icon: Icons.keyboard_arrow_down_rounded,
-                        ),
+                        // const SizedBox(width: 8),
+                        // _FilterChip(
+                        //   label: 'More Filters',
+                        //   onTap: () => context.push('/search'),
+                        //   icon: Icons.keyboard_arrow_down_rounded,
+                        // ),
                       ],
                     ),
                   ),

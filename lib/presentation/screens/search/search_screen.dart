@@ -44,11 +44,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   ];
   static const _propertyTypes = [
     'Any',
+    'Apartments',
+    'Independent House',
+    'Builder Floor',
+    'Plot',
     'Studio',
-    '1BHK',
-    '2BHK',
-    'Condo',
-    'House',
+    'Duplex',
+    'Villa',
   ];
   static const Map<String, String> _sortOptions = {
     '': 'Relevance',
@@ -71,7 +73,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         ref.read(commonFilterNotifierProvider.notifier).updateListingType('rent');
       }
       if (currentFilters.priceRange == null) {
-        ref.read(commonFilterNotifierProvider.notifier).updatePriceRange(const RangeValues(500, 5000));
+        final mode = currentFilters.listingType == 'Any' ? 'rent' : currentFilters.listingType;
+        final defaultRange = mode == 'rent'
+            ? const RangeValues(5000, 50000)
+            : const RangeValues(1000000, 8000000);
+        ref.read(commonFilterNotifierProvider.notifier).updatePriceRange(defaultRange);
       }
       _scheduleSearch();
     });
@@ -97,14 +103,17 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     _debounce = Timer(const Duration(milliseconds: 350), () {
       if (!mounted) return;
       final filters = ref.read(commonFilterNotifierProvider);
+      final isRent = (filters.listingType == 'Any' ? 'rent' : filters.listingType) == 'rent';
+      final defStart = isRent ? 5000.0 : 1000000.0;
+      final defEnd = isRent ? 50000.0 : 8000000.0;
       setState(() {
         _resultsFuture = ref
             .read(propertyNotifierProvider.notifier)
             .search(
               mode: filters.listingType == 'Any' ? 'rent' : filters.listingType,
               budgetRange: BudgetRange(
-                filters.priceRange?.start ?? 500,
-                filters.priceRange?.end ?? 5000,
+                filters.priceRange?.start ?? defStart,
+                filters.priceRange?.end ?? defEnd,
               ),
               propertyType: filters.propertyType,
               amenities: filters.amenities,
@@ -117,8 +126,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   bool get _hasAtLeastOneFilter {
     final filters = ref.read(commonFilterNotifierProvider);
+    final isRent = (filters.listingType == 'Any' ? 'rent' : filters.listingType) == 'rent';
+    final defStart = isRent ? 5000.0 : 1000000.0;
+    final defEnd = isRent ? 50000.0 : 8000000.0;
     final budgetChanged = filters.priceRange != null &&
-        (filters.priceRange!.start != 500 || filters.priceRange!.end != 5000);
+        (filters.priceRange!.start != defStart || filters.priceRange!.end != defEnd);
     final typeChanged = filters.propertyType != 'Any';
     final amenChanged = filters.amenities.isNotEmpty;
     final locChanged = filters.searchText.isNotEmpty;
@@ -131,7 +143,35 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final cs = Theme.of(context).colorScheme;
     final filters = ref.watch(commonFilterNotifierProvider);
     final currentMode = filters.listingType == 'Any' ? 'rent' : filters.listingType;
-    final currentBudget = filters.priceRange ?? const RangeValues(500, 5000);
+
+    // Limits
+    final double minLimit = 0;
+    final double maxLimit = currentMode == 'rent' ? 100000 : 10000000;
+
+    // Sensible defaults if priceRange is null
+    final defaultRange = currentMode == 'rent'
+        ? const RangeValues(5000, 50000)
+        : const RangeValues(1000000, 8000000);
+
+    final currentBudget = filters.priceRange ?? defaultRange;
+
+    // Safe clamp to avoid RangeSlider assertion crashes
+    final double startVal = currentBudget.start.clamp(minLimit, maxLimit);
+    final double endVal = currentBudget.end.clamp(startVal, maxLimit);
+    final safeBudget = RangeValues(startVal, endVal);
+
+    final String effectivePropertyType = _propertyTypes.contains(filters.propertyType)
+        ? filters.propertyType
+        : 'Any';
+
+    String formatPrice(double val) {
+      if (val >= 10000000) {
+        return '₹${(val / 10000000).toStringAsFixed(1)} Cr';
+      } else if (val >= 100000) {
+        return '₹${(val / 100000).toStringAsFixed(0)} Lakh';
+      }
+      return '₹${val.toInt()}';
+    }
 
     return Scaffold(
       backgroundColor: _kBg,
@@ -157,7 +197,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   onPressed: () {
                     ref.read(commonFilterNotifierProvider.notifier).resetFilters();
                     ref.read(commonFilterNotifierProvider.notifier).updateListingType('rent');
-                    ref.read(commonFilterNotifierProvider.notifier).updatePriceRange(const RangeValues(500, 5000));
+                    ref.read(commonFilterNotifierProvider.notifier).updatePriceRange(const RangeValues(5000, 50000));
                     _location.clear();
                     _scheduleSearch();
                   },
@@ -276,6 +316,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                 selected: currentMode == 'rent',
                                 onTap: () {
                                   ref.read(commonFilterNotifierProvider.notifier).updateListingType('rent');
+                                  ref.read(commonFilterNotifierProvider.notifier).updatePriceRange(const RangeValues(5000, 50000));
                                   _scheduleSearch();
                                 },
                               ),
@@ -287,6 +328,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                 selected: currentMode == 'buy',
                                 onTap: () {
                                   ref.read(commonFilterNotifierProvider.notifier).updateListingType('buy');
+                                  ref.read(commonFilterNotifierProvider.notifier).updatePriceRange(const RangeValues(1000000, 8000000));
                                   _scheduleSearch();
                                 },
                               ),
@@ -307,8 +349,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                             ),
                             Text(
                               currentMode == 'rent'
-                                  ? '\$${currentBudget.start.toInt()} - \$${currentBudget.end.toInt()}/mo'
-                                  : '\$${currentBudget.start.toInt()} - \$${currentBudget.end.toInt()}',
+                                  ? '${formatPrice(safeBudget.start)} - ${formatPrice(safeBudget.end)}/mo'
+                                  : '${formatPrice(safeBudget.start)} - ${formatPrice(safeBudget.end)}',
                               style: const TextStyle(
                                 color: _kTextMid,
                                 fontWeight: FontWeight.w700,
@@ -318,10 +360,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           ],
                         ),
                         RangeSlider(
-                          values: currentBudget,
-                          min: 0,
-                          max: currentMode == 'rent' ? 10000 : 3000000,
-                          divisions: currentMode == 'rent' ? 100 : 120,
+                          values: safeBudget,
+                          min: minLimit,
+                          max: maxLimit,
+                          divisions: 100,
                           activeColor: _kPrimary,
                           onChanged: (v) {
                             ref.read(commonFilterNotifierProvider.notifier).updatePriceRange(v);
@@ -330,7 +372,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         ),
                         const SizedBox(height: 8),
                         DropdownButtonFormField<String>(
-                          value: filters.propertyType,
+                          value: effectivePropertyType,
                           decoration: InputDecoration(
                             prefixIcon: const Icon(Icons.home_work_outlined),
                             labelText: 'Property type',
@@ -426,8 +468,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                     '/properties',
                                     extra: SearchArgs(
                                       mode: currentMode,
-                                      budget: currentBudget,
-                                      propertyType: filters.propertyType,
+                                      budget: safeBudget,
+                                      propertyType: effectivePropertyType,
                                       amenities: filters.amenities,
                                       locationQuery: filters.searchText,
                                       sortBy: filters.sortBy,
