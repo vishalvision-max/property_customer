@@ -1,65 +1,42 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../data/models/property.dart';
-import '../data/repositories/property_repository.dart';
 import '../data/services/property_service.dart';
 import 'app_providers.dart';
 
-class PropertyState {
-  final bool isLoading;
-  final List<Property> all;
-  final List<Property> featured;
-  final List<Property> recommended;
-  final List<Property> nearby;
-  final Property? selected;
-  final String? error;
+part 'property_provider.freezed.dart';
+part 'property_provider.g.dart';
 
-  const PropertyState({
-    required this.isLoading,
-    required this.all,
-    required this.featured,
-    required this.recommended,
-    required this.nearby,
-    required this.selected,
-    required this.error,
-  });
+@freezed
+class PropertyState with _$PropertyState {
+  const factory PropertyState({
+    required bool isLoading,
+    required List<Property> all,
+    required List<Property> featured,
+    required List<Property> recommended,
+    required List<Property> nearby,
+    required Property? selected,
+    required String? error,
+  }) = _PropertyState;
 
   factory PropertyState.initial() => const PropertyState(
-    isLoading: false,
-    all: [],
-    featured: [],
-    recommended: [],
-    nearby: [],
-    selected: null,
-    error: null,
-  );
-
-  PropertyState copyWith({
-    bool? isLoading,
-    List<Property>? all,
-    List<Property>? featured,
-    List<Property>? recommended,
-    List<Property>? nearby,
-    Object? selected = _unset,
-    String? error,
-  }) {
-    return PropertyState(
-      isLoading: isLoading ?? this.isLoading,
-      all: all ?? this.all,
-      featured: featured ?? this.featured,
-      recommended: recommended ?? this.recommended,
-      nearby: nearby ?? this.nearby,
-      selected: selected == _unset ? this.selected : selected as Property?,
-      error: error,
-    );
-  }
-
-  static const Object _unset = Object();
+        isLoading: false,
+        all: [],
+        featured: [],
+        recommended: [],
+        nearby: [],
+        selected: null,
+        error: null,
+      );
 }
 
-class PropertyNotifier extends StateNotifier<PropertyState> {
-  final PropertyRepository _repo;
-  PropertyNotifier(this._repo) : super(PropertyState.initial());
+@riverpod
+class PropertyNotifier extends _$PropertyNotifier {
+  @override
+  PropertyState build() {
+    return PropertyState.initial();
+  }
 
   Future<void> loadHome({
     String? token,
@@ -69,19 +46,18 @@ class PropertyNotifier extends StateNotifier<PropertyState> {
   }) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      // /nearby is the only endpoint currently returning real data.
-      // Fall back to fetchAll if no coordinates.
+      final repo = ref.read(propertyRepositoryProvider);
       List<Property> all;
       if (lat != null && lng != null) {
-        all = await _repo.fetchNearby(lat: lat, lng: lng, radius: radius);
+        all = await repo.fetchNearby(lat: lat, lng: lng, radius: radius);
       } else {
-        all = await _repo.fetchAll();
+        all = await repo.fetchAll();
       }
 
       List<Property> recommendations = const [];
       if (token != null && token.trim().isNotEmpty) {
         try {
-          recommendations = await _repo.fetchRecommendations(
+          recommendations = await repo.fetchRecommendations(
             token: token.trim(),
           );
         } catch (_) {
@@ -104,13 +80,6 @@ class PropertyNotifier extends StateNotifier<PropertyState> {
     }
   }
 
-  /// Reload home data filtered by [type] ('rent' or 'buy').
-  /// Called when the user switches the Rent/Buy tab so each section
-  /// shows only properties matching the selected mode.
-  ///
-  /// Strategy: the main /properties endpoint currently returns 0 results
-  /// (backend issue). The /nearby endpoint is the only one returning real
-  /// data, so we use it as the primary source and filter by type client-side.
   Future<void> loadHomeForMode({
     required String type,
     String? token,
@@ -120,18 +89,15 @@ class PropertyNotifier extends StateNotifier<PropertyState> {
   }) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      // Use nearby as primary source when coordinates are available,
-      // otherwise fall back to the main endpoint.
+      final repo = ref.read(propertyRepositoryProvider);
       List<Property> allProps = const [];
 
       if (lat != null && lng != null) {
-        allProps = await _repo.fetchNearby(lat: lat, lng: lng, radius: radius);
+        allProps = await repo.fetchNearby(lat: lat, lng: lng, radius: radius);
       } else {
-        allProps = await _repo.fetchAll();
+        allProps = await repo.fetchAll();
       }
 
-      // Filter by the selected mode client-side.
-      // Backend type field: 'rent' stays 'rent', 'sale' is normalised to 'buy'.
       final filtered = allProps
           .where((p) => p.type == type)
           .toList(growable: false);
@@ -179,31 +145,31 @@ class PropertyNotifier extends StateNotifier<PropertyState> {
     List<String> amenities = const [],
     String? locationQuery,
     String? sortBy,
-  }) => _repo.search(
-    mode: mode,
-    budgetRange: budgetRange,
-    propertyType: propertyType,
-    amenities: amenities,
-    locationQuery: locationQuery,
-    sortBy: sortBy,
-  );
+  }) {
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.search(
+      mode: mode,
+      budgetRange: budgetRange,
+      propertyType: propertyType,
+      amenities: amenities,
+      locationQuery: locationQuery,
+      sortBy: sortBy,
+    );
+  }
 
-  /// Fetch properties for a quick-action tab (Rent, Buy, PG, Commercial, etc.).
-  /// Uses /nearby (or /properties as fallback) as the data source and filters
-  /// client-side, because the backend /properties endpoint returns 0 results
-  /// when type/price filters are applied.
   Future<List<Property>> fetchForType({
     required String mode,
-    String? propertyType, // optional sub-type filter (client-side)
+    String? propertyType,
     double? lat,
     double? lng,
     int radius = 100,
   }) async {
+    final repo = ref.read(propertyRepositoryProvider);
     List<Property> all;
     if (lat != null && lng != null) {
-      all = await _repo.fetchNearby(lat: lat, lng: lng, radius: radius);
+      all = await repo.fetchNearby(lat: lat, lng: lng, radius: radius);
     } else {
-      all = await _repo.fetchAll();
+      all = await repo.fetchAll();
     }
 
     return all
@@ -223,16 +189,15 @@ class PropertyNotifier extends StateNotifier<PropertyState> {
     required String query,
   }) async {
     final q = query.trim();
-    // Delegate to the backend keyword search so results are not limited
-    // to what is already cached locally.
-    return _repo.searchByKeyword(keyword: q);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.searchByKeyword(keyword: q);
   }
 
   Future<Property> fetchDetails(String id) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final p = await _repo.fetchDetails(id);
-      // Upsert into `all` so other screens can use it too.
+      final repo = ref.read(propertyRepositoryProvider);
+      final p = await repo.fetchDetails(id);
       final nextAll = [...state.all];
       final idx = nextAll.indexWhere((e) => e.id == p.id);
       if (idx >= 0) {
@@ -260,7 +225,8 @@ class PropertyNotifier extends StateNotifier<PropertyState> {
   }) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final items = await _repo.fetchNearby(lat: lat, lng: lng, radius: radius);
+      final repo = ref.read(propertyRepositoryProvider);
+      final items = await repo.fetchNearby(lat: lat, lng: lng, radius: radius);
       state = state.copyWith(isLoading: false, nearby: items, error: null);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -268,124 +234,145 @@ class PropertyNotifier extends StateNotifier<PropertyState> {
   }
 
   Future<List<Property>> fetchTwoBhkProperties(String token) {
-    return _repo.fetchTwoBhkProperties(token: token);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchTwoBhkProperties(token: token);
   }
 
   Future<List<Property>> fetchFlatsUnderFiftyLakh(String token) {
-    return _repo.fetchFlatsUnderFiftyLakh(token: token);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchFlatsUnderFiftyLakh(token: token);
   }
 
   Future<List<Property>> fetchReadyToMoveProperties(String token) {
-    return _repo.fetchReadyToMoveProperties(token: token);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchReadyToMoveProperties(token: token);
   }
 
   Future<List<Property>> fetchFurnishedProperties(String token) {
-    return _repo.fetchFurnishedProperties(token: token);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchFurnishedProperties(token: token);
   }
 
   Future<List<Property>> fetchGatedSocietyProperties(String token) {
-    return _repo.fetchGatedSocietyProperties(token: token);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchGatedSocietyProperties(token: token);
   }
 
   Future<List<Property>> fetchStudioApartmentProperties(String token) {
-    return _repo.fetchStudioApartmentProperties(token: token);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchStudioApartmentProperties(token: token);
   }
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
   fetchTwoBhkPropertiesPaged(String token, {int page = 1}) {
-    return _repo.fetchTwoBhkPropertiesPaged(token: token, page: page);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchTwoBhkPropertiesPaged(token: token, page: page);
   }
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
   fetchFlatsUnderFiftyLakhPaged(String token, {int page = 1}) {
-    return _repo.fetchFlatsUnderFiftyLakhPaged(token: token, page: page);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchFlatsUnderFiftyLakhPaged(token: token, page: page);
   }
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
   fetchReadyToMovePropertiesPaged(String token, {int page = 1}) {
-    return _repo.fetchReadyToMovePropertiesPaged(token: token, page: page);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchReadyToMovePropertiesPaged(token: token, page: page);
   }
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
   fetchFurnishedPropertiesPaged(String token, {int page = 1}) {
-    return _repo.fetchFurnishedPropertiesPaged(token: token, page: page);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchFurnishedPropertiesPaged(token: token, page: page);
   }
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
   fetchGatedSocietyPropertiesPaged(String token, {int page = 1}) {
-    return _repo.fetchGatedSocietyPropertiesPaged(token: token, page: page);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchGatedSocietyPropertiesPaged(token: token, page: page);
   }
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
   fetchStudioApartmentPropertiesPaged(String token, {int page = 1}) {
-    return _repo.fetchStudioApartmentPropertiesPaged(token: token, page: page);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchStudioApartmentPropertiesPaged(token: token, page: page);
   }
 
   Future<List<Property>> fetchRentProperties(String token) {
-    return _repo.fetchRentProperties(token: token);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchRentProperties(token: token);
   }
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
   fetchRentPropertiesPaged(String token, {int page = 1}) {
-    return _repo.fetchRentPropertiesPaged(token: token, page: page);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchRentPropertiesPaged(token: token, page: page);
   }
 
   Future<List<Property>> fetchBuyProperties(String token) {
-    return _repo.fetchBuyProperties(token: token);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchBuyProperties(token: token);
   }
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
   fetchBuyPropertiesPaged(String token, {int page = 1}) {
-    return _repo.fetchBuyPropertiesPaged(token: token, page: page);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchBuyPropertiesPaged(token: token, page: page);
   }
 
   Future<List<Property>> fetchPgProperties(String token) {
-    return _repo.fetchPgProperties(token: token);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchPgProperties(token: token);
   }
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
   fetchPgPropertiesPaged(String token, {int page = 1}) {
-    return _repo.fetchPgPropertiesPaged(token: token, page: page);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchPgPropertiesPaged(token: token, page: page);
   }
 
   Future<List<Property>> fetchCoLivingProperties(String token) {
-    return _repo.fetchCoLivingProperties(token: token);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchCoLivingProperties(token: token);
   }
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
   fetchCoLivingPropertiesPaged(String token, {int page = 1}) {
-    return _repo.fetchCoLivingPropertiesPaged(token: token, page: page);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchCoLivingPropertiesPaged(token: token, page: page);
   }
 
   Future<List<Property>> fetchCommercialProperties(String token) {
-    return _repo.fetchCommercialProperties(token: token);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchCommercialProperties(token: token);
   }
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
   fetchCommercialPropertiesPaged(String token, {int page = 1}) {
-    return _repo.fetchCommercialPropertiesPaged(token: token, page: page);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchCommercialPropertiesPaged(token: token, page: page);
   }
 
   Future<List<Property>> fetchLandPlotProperties(String token) {
-    return _repo.fetchLandPlotProperties(token: token);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchLandPlotProperties(token: token);
   }
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
   fetchLandPlotPropertiesPaged(String token, {int page = 1}) {
-    return _repo.fetchLandPlotPropertiesPaged(token: token, page: page);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchLandPlotPropertiesPaged(token: token, page: page);
   }
 
   Future<List<Property>> fetchAllOwnerProperties(String token) {
-    return _repo.fetchAllOwnerProperties(token: token);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchAllOwnerProperties(token: token);
   }
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
   fetchAllOwnerPropertiesPaged(String token, {int page = 1, String? city}) {
-    return _repo.fetchAllOwnerPropertiesPaged(token: token, page: page, city: city);
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchAllOwnerPropertiesPaged(token: token, page: page, city: city);
   }
 }
-
-
-final propertyProvider = StateNotifierProvider<PropertyNotifier, PropertyState>(
-  (ref) => PropertyNotifier(ref.watch(propertyRepositoryProvider)),
-);

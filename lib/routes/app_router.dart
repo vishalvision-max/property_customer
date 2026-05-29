@@ -21,11 +21,17 @@ import '../presentation/screens/search/name_search_screen.dart';
 import '../presentation/screens/search/search_screen.dart';
 import '../presentation/screens/shell/main_shell.dart';
 import '../providers/auth_provider.dart';
-import 'go_router_refresh_stream.dart';
+
+class GoRouterRefreshListenable extends ChangeNotifier {
+  GoRouterRefreshListenable(Ref ref) {
+    ref.listen<AuthState>(authProvider, (_, __) {
+      notifyListeners();
+    });
+  }
+}
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authProvider);
-  final authStream = ref.watch(authProvider.notifier).stream;
 
   String? redirect(BuildContext context, GoRouterState state) {
     final path = state.uri.path;
@@ -69,7 +75,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     initialLocation: '/splash',
-    refreshListenable: GoRouterRefreshStream(authStream),
+    refreshListenable: GoRouterRefreshListenable(ref),
     redirect: redirect,
     routes: [
       GoRoute(

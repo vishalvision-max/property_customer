@@ -37,7 +37,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
   }
 
   Future<List<Property>> _loadFavorites(List<String> ids) async {
-    final notifier = ref.read(propertyProvider.notifier);
+    final notifier = ref.read(propertyNotifierProvider.notifier);
     final out = <Property>[];
     for (final id in ids) {
       final cached = notifier.getById(id);

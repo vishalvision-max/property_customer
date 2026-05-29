@@ -1,27 +1,23 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../data/services/google_geocoding_service.dart';
-import '../data/services/local_storage_service.dart';
 import 'app_providers.dart';
 
-class LocationState {
-  final bool isLoading;
-  final String currentLabel;
-  final double? lat;
-  final double? lng;
-  final List<String> saved;
-  final String? error;
+part 'location_provider.freezed.dart';
+part 'location_provider.g.dart';
 
-  const LocationState({
-    required this.isLoading,
-    required this.currentLabel,
-    required this.lat,
-    required this.lng,
-    required this.saved,
-    required this.error,
-  });
+@freezed
+class LocationState with _$LocationState {
+  const factory LocationState({
+    required bool isLoading,
+    required String currentLabel,
+    required double? lat,
+    required double? lng,
+    required List<String> saved,
+    required String? error,
+  }) = _LocationState;
 
   factory LocationState.initial() => const LocationState(
         isLoading: false,
@@ -31,35 +27,19 @@ class LocationState {
         saved: [],
         error: null,
       );
-
-  LocationState copyWith({
-    bool? isLoading,
-    String? currentLabel,
-    double? lat,
-    double? lng,
-    List<String>? saved,
-    String? error,
-  }) {
-    return LocationState(
-      isLoading: isLoading ?? this.isLoading,
-      currentLabel: currentLabel ?? this.currentLabel,
-      lat: lat ?? this.lat,
-      lng: lng ?? this.lng,
-      saved: saved ?? this.saved,
-      error: error,
-    );
-  }
 }
 
-class LocationNotifier extends StateNotifier<LocationState> {
-  final LocalStorageService _storage;
-  final GoogleGeocodingService _googleGeocoding;
-  LocationNotifier(this._storage, this._googleGeocoding)
-      : super(LocationState.initial());
+@riverpod
+class Location extends _$Location {
+  @override
+  LocationState build() {
+    return LocationState.initial();
+  }
 
   Future<void> load() async {
-    final saved = await _storage.getLocations();
-    final preferred = await _storage.getPreferredLocation();
+    final storage = ref.read(localStorageProvider);
+    final saved = await storage.getLocations();
+    final preferred = await storage.getPreferredLocation();
     state = state.copyWith(saved: saved, currentLabel: preferred ?? state.currentLabel);
   }
 
@@ -69,8 +49,9 @@ class LocationNotifier extends StateNotifier<LocationState> {
     final nextSaved = {...state.saved};
     nextSaved.add(v);
     state = state.copyWith(currentLabel: v, saved: nextSaved.toList(), error: null);
-    await _storage.setPreferredLocation(v);
-    await _storage.saveLocations(nextSaved.toList());
+    final storage = ref.read(localStorageProvider);
+    await storage.setPreferredLocation(v);
+    await storage.saveLocations(nextSaved.toList());
   }
 
   Future<void> fetchCurrent() async {
@@ -91,7 +72,8 @@ class LocationNotifier extends StateNotifier<LocationState> {
         locationSettings: const LocationSettings(accuracy: LocationAccuracy.low),
       );
 
-      String? label = await _googleGeocoding.reverseGeocode(
+      final googleGeocoding = ref.read(googleGeocodingServiceProvider);
+      String? label = await googleGeocoding.reverseGeocode(
         lat: pos.latitude,
         lng: pos.longitude,
       );
@@ -116,17 +98,11 @@ class LocationNotifier extends StateNotifier<LocationState> {
         saved: nextSaved.toList(),
         error: null,
       );
-      await _storage.setPreferredLocation(label);
-      await _storage.saveLocations(nextSaved.toList());
+      final storage = ref.read(localStorageProvider);
+      await storage.setPreferredLocation(label);
+      await storage.saveLocations(nextSaved.toList());
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 }
-
-final locationProvider = StateNotifierProvider<LocationNotifier, LocationState>(
-  (ref) => LocationNotifier(
-    ref.watch(localStorageProvider),
-    ref.watch(googleGeocodingServiceProvider),
-  ),
-);

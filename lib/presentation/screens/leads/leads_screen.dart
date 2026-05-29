@@ -25,7 +25,7 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
     Future<void>.microtask(() {
       final user = ref.read(authProvider).user;
       if (user != null && user.token.trim().isNotEmpty) {
-        ref.read(leadProvider.notifier).loadMyLeads();
+        ref.read(leadNotifierProvider.notifier).loadMyLeads();
       }
     });
   }
@@ -33,17 +33,17 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
-    final state = ref.watch(leadProvider);
+    final state = ref.watch(leadNotifierProvider);
 
     ref.listen(authProvider, (prev, next) {
       final wasAuthed = prev?.user != null;
       final isAuthed = next.user != null;
       if (!wasAuthed && isAuthed) {
-        ref.read(leadProvider.notifier).loadMyLeads(page: 1);
+        ref.read(leadNotifierProvider.notifier).loadMyLeads(page: 1);
       }
     });
 
-    ref.listen(leadProvider, (prev, next) {
+    ref.listen(leadNotifierProvider, (prev, next) {
       final err = next.error;
       if (err != null && err.trim().isNotEmpty) {
         AppSnackbar.showError(context, err);
@@ -108,7 +108,7 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
               )
             : RefreshIndicator(
                 onRefresh: () =>
-                    ref.read(leadProvider.notifier).loadMyLeads(page: 1),
+                    ref.read(leadNotifierProvider.notifier).loadMyLeads(page: 1),
                 child: Builder(
                   builder: (context) {
                     if (state.isLoading && state.items.isEmpty) {
@@ -119,7 +119,7 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
                         title: 'Failed to load leads',
                         message: state.error!,
                         onRetry: () =>
-                            ref.read(leadProvider.notifier).loadMyLeads(),
+                            ref.read(leadNotifierProvider.notifier).loadMyLeads(),
                       );
                     }
                     if (state.items.isEmpty) {
@@ -148,7 +148,7 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
                             if (picked == null) return;
                             try {
                               await ref
-                                  .read(leadProvider.notifier)
+                                  .read(leadNotifierProvider.notifier)
                                   .updateStatus(
                                     leadId: lead.id,
                                     status: picked,

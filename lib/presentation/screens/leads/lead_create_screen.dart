@@ -64,7 +64,7 @@ class _LeadCreateScreenState extends ConsumerState<LeadCreateScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final busy = ref.watch(leadProvider).isLoading;
+    final busy = ref.watch(leadNotifierProvider).isLoading;
     final isAuthed = ref.watch(authProvider).user != null;
 
     Future<void> submit() async {
@@ -81,7 +81,7 @@ class _LeadCreateScreenState extends ConsumerState<LeadCreateScreen> {
         final propertyId = int.tryParse(_propertyIdController.text.trim()) ?? 0;
         final type = _typeController.text.trim().toLowerCase();
 
-        await ref.read(leadProvider.notifier).createBuyerLead(
+        await ref.read(leadNotifierProvider.notifier).createBuyerLead(
               name: _name.text.trim(),
               phone: _phone.text.trim(),
               email: _email.text.trim(),

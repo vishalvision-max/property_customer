@@ -33,9 +33,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   Future<void> _bootstrap(
-    AuthNotifier authNotifier,
-    FavoritesNotifier favoritesNotifier,
-    LocationNotifier locationNotifier,
+    Auth authNotifier,
+    Favorites favoritesNotifier,
+    Location locationNotifier,
   ) async {
     setState(() {
       _booting = true;

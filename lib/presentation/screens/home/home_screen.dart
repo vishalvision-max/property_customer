@@ -66,7 +66,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         if (!mounted) return;
         final token = ref.read(authProvider).user?.token;
         ref
-            .read(propertyProvider.notifier)
+            .read(propertyNotifierProvider.notifier)
             .loadHomeForMode(
               type: _mode,
               token: token,
@@ -83,7 +83,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           if (!mounted) return;
           final token = ref.read(authProvider).user?.token;
           ref
-              .read(propertyProvider.notifier)
+              .read(propertyNotifierProvider.notifier)
               .loadHomeForMode(
                 type: _mode,
                 token: token,
@@ -99,7 +99,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       final loc = ref.read(locationProvider);
       // Load with the default mode ('rent') so the initial view is already filtered.
       ref
-          .read(propertyProvider.notifier)
+          .read(propertyNotifierProvider.notifier)
           .loadHomeForMode(
             type: _mode,
             token: token,
@@ -107,7 +107,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             lng: loc.lng,
           );
       if (token != null && token.trim().isNotEmpty) {
-        ref.read(ownerProfileProvider.notifier).load(token: token.trim());
+        ref.read(ownerProfileNotifierProvider.notifier).load(token: token.trim());
       }
     });
   }
@@ -122,10 +122,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final conn = ref.watch(connectivityProvider);
     final location = ref.watch(locationProvider);
-    final state = ref.watch(propertyProvider);
+    final state = ref.watch(propertyNotifierProvider);
     final isAuthed = ref.watch(authProvider).user != null;
 
-    ref.listen(propertyProvider, (prev, next) {
+    ref.listen(propertyNotifierProvider, (prev, next) {
       if (next.error != null && next.error != prev?.error) {
         AppSnackbar.showError(
           context,
@@ -163,7 +163,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             _visibleCount = 3;
           });
           return ref
-              .read(propertyProvider.notifier)
+              .read(propertyNotifierProvider.notifier)
               .loadHomeForMode(
                 type: _mode,
                 token: token,
@@ -880,7 +880,7 @@ class _HomeDrawer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider).user;
     final isAuthed = user != null;
-    final owner = ref.watch(ownerProfileProvider).profile;
+    final owner = ref.watch(ownerProfileNotifierProvider).profile;
 
     final displayName = (owner?.name.trim().isNotEmpty ?? false)
         ? owner!.name.trim()
@@ -889,15 +889,15 @@ class _HomeDrawer extends ConsumerWidget {
               : user.name.trim());
 
     // Badges: if guest, show high fidelity mock numbers from user image, else show dynamic numbers.
-    final enquiriesCount = isAuthed ? ref.watch(leadProvider).items.length : 28;
+    final enquiriesCount = isAuthed ? ref.watch(leadNotifierProvider).items.length : 28;
     final shortlistedCount = isAuthed ? ref.watch(favoritesProvider).length : 5;
     final myPropertiesCount = isAuthed
-        ? ref.watch(propertyProvider).all.length
+        ? ref.watch(propertyNotifierProvider).all.length
         : 12;
     // We can count contacted leads or just mock site visits
     final siteVisitsCount = isAuthed
         ? ref
-              .watch(leadProvider)
+              .watch(leadNotifierProvider)
               .items
               .where(
                 (e) =>

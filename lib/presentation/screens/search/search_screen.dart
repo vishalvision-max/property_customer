@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/filters/common_filter_provider.dart';
 import '../../../data/models/property.dart';
 import '../../../data/services/property_service.dart';
 import '../../../providers/property_provider.dart';
@@ -31,11 +32,6 @@ class SearchScreen extends ConsumerStatefulWidget {
 }
 
 class _SearchScreenState extends ConsumerState<SearchScreen> {
-  String _mode = 'rent';
-  RangeValues _budget = const RangeValues(500, 5000);
-  String _propertyType = 'Any';
-  final Set<String> _amenities = <String>{};
-  String _sortBy = '';
   final _location = TextEditingController();
   Future<List<Property>>? _resultsFuture;
   Timer? _debounce;
@@ -64,49 +60,79 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   @override
   void initState() {
     super.initState();
-    _location.addListener(_scheduleSearch);
-    _scheduleSearch();
+    // Initialize controller with current filter searchText if any
+    final initialText = ref.read(commonFilterNotifierProvider).searchText;
+    _location.text = initialText;
+
+    // Set initial values if they are default to match search screen expected defaults
+    final currentFilters = ref.read(commonFilterNotifierProvider);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (currentFilters.listingType == 'Any') {
+        ref.read(commonFilterNotifierProvider.notifier).updateListingType('rent');
+      }
+      if (currentFilters.priceRange == null) {
+        ref.read(commonFilterNotifierProvider.notifier).updatePriceRange(const RangeValues(500, 5000));
+      }
+      _scheduleSearch();
+    });
+
+    _location.addListener(_onLocationChanged);
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
-    _location.removeListener(_scheduleSearch);
+    _location.removeListener(_onLocationChanged);
     _location.dispose();
     super.dispose();
+  }
+
+  void _onLocationChanged() {
+    ref.read(commonFilterNotifierProvider.notifier).updateSearchText(_location.text.trim());
+    _scheduleSearch();
   }
 
   void _scheduleSearch() {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 350), () {
       if (!mounted) return;
+      final filters = ref.read(commonFilterNotifierProvider);
       setState(() {
         _resultsFuture = ref
-            .read(propertyProvider.notifier)
+            .read(propertyNotifierProvider.notifier)
             .search(
-              mode: _mode,
-              budgetRange: BudgetRange(_budget.start, _budget.end),
-              propertyType: _propertyType,
-              amenities: _amenities.toList(),
-              locationQuery: _location.text.trim(),
-              sortBy: _sortBy,
+              mode: filters.listingType == 'Any' ? 'rent' : filters.listingType,
+              budgetRange: BudgetRange(
+                filters.priceRange?.start ?? 500,
+                filters.priceRange?.end ?? 5000,
+              ),
+              propertyType: filters.propertyType,
+              amenities: filters.amenities,
+              locationQuery: filters.searchText,
+              sortBy: filters.sortBy,
             );
       });
     });
   }
 
   bool get _hasAtLeastOneFilter {
-    final budgetChanged = _budget.start != 500 || _budget.end != 5000;
-    final typeChanged = _propertyType != 'Any';
-    final amenChanged = _amenities.isNotEmpty;
-    final locChanged = _location.text.trim().isNotEmpty;
-    final sortChanged = _sortBy.trim().isNotEmpty;
+    final filters = ref.read(commonFilterNotifierProvider);
+    final budgetChanged = filters.priceRange != null &&
+        (filters.priceRange!.start != 500 || filters.priceRange!.end != 5000);
+    final typeChanged = filters.propertyType != 'Any';
+    final amenChanged = filters.amenities.isNotEmpty;
+    final locChanged = filters.searchText.isNotEmpty;
+    final sortChanged = filters.sortBy.isNotEmpty;
     return budgetChanged || typeChanged || amenChanged || locChanged || sortChanged;
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final filters = ref.watch(commonFilterNotifierProvider);
+    final currentMode = filters.listingType == 'Any' ? 'rent' : filters.listingType;
+    final currentBudget = filters.priceRange ?? const RangeValues(500, 5000);
+
     return Scaffold(
       backgroundColor: _kBg,
       body: CustomScrollView(
@@ -129,15 +155,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               if (_hasAtLeastOneFilter)
                 TextButton(
                   onPressed: () {
-                    setState(() {
-                      _mode = 'rent';
-                      _budget = const RangeValues(500, 5000);
-                      _propertyType = 'Any';
-                      _amenities.clear();
-                      _sortBy = '';
-                      _location.clear();
-                      _scheduleSearch();
-                    });
+                    ref.read(commonFilterNotifierProvider.notifier).resetFilters();
+                    ref.read(commonFilterNotifierProvider.notifier).updateListingType('rent');
+                    ref.read(commonFilterNotifierProvider.notifier).updatePriceRange(const RangeValues(500, 5000));
+                    _location.clear();
+                    _scheduleSearch();
                   },
                   child: const Text(
                     'Reset',
@@ -152,9 +174,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           ),
           SliverToBoxAdapter(
             child: ClipRRect(
-              // borderRadius: const BorderRadius.vertical(
-              //   bottom: Radius.circular(26),
-              // ),
               child: SizedBox(
                 height: 160,
                 child: Stack(
@@ -202,8 +221,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                   icon: const Icon(Icons.close_rounded),
                                   onPressed: () {
                                     _location.clear();
-                                    setState(() {});
-                                    _scheduleSearch();
                                   },
                                 ),
                           border: OutlineInputBorder(
@@ -211,7 +228,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                             borderSide: BorderSide.none,
                           ),
                         ),
-                        onChanged: (_) => setState(() {}),
                       ),
                     ),
                   ],
@@ -257,9 +273,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                             Expanded(
                               child: _SegmentChip(
                                 label: 'Rent',
-                                selected: _mode == 'rent',
+                                selected: currentMode == 'rent',
                                 onTap: () {
-                                  setState(() => _mode = 'rent');
+                                  ref.read(commonFilterNotifierProvider.notifier).updateListingType('rent');
                                   _scheduleSearch();
                                 },
                               ),
@@ -268,9 +284,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                             Expanded(
                               child: _SegmentChip(
                                 label: 'Buy',
-                                selected: _mode == 'buy',
+                                selected: currentMode == 'buy',
                                 onTap: () {
-                                  setState(() => _mode = 'buy');
+                                  ref.read(commonFilterNotifierProvider.notifier).updateListingType('buy');
                                   _scheduleSearch();
                                 },
                               ),
@@ -290,9 +306,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                               ),
                             ),
                             Text(
-                              _mode == 'rent'
-                                  ? '\$${_budget.start.toInt()} - \$${_budget.end.toInt()}/mo'
-                                  : '\$${_budget.start.toInt()} - \$${_budget.end.toInt()}',
+                              currentMode == 'rent'
+                                  ? '\$${currentBudget.start.toInt()} - \$${currentBudget.end.toInt()}/mo'
+                                  : '\$${currentBudget.start.toInt()} - \$${currentBudget.end.toInt()}',
                               style: const TextStyle(
                                 color: _kTextMid,
                                 fontWeight: FontWeight.w700,
@@ -302,19 +318,19 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           ],
                         ),
                         RangeSlider(
-                          values: _budget,
+                          values: currentBudget,
                           min: 0,
-                          max: _mode == 'rent' ? 10000 : 3000000,
-                          divisions: _mode == 'rent' ? 100 : 120,
+                          max: currentMode == 'rent' ? 10000 : 3000000,
+                          divisions: currentMode == 'rent' ? 100 : 120,
                           activeColor: _kPrimary,
                           onChanged: (v) {
-                            setState(() => _budget = v);
+                            ref.read(commonFilterNotifierProvider.notifier).updatePriceRange(v);
                             _scheduleSearch();
                           },
                         ),
                         const SizedBox(height: 8),
                         DropdownButtonFormField<String>(
-                          initialValue: _propertyType,
+                          value: filters.propertyType,
                           decoration: InputDecoration(
                             prefixIcon: const Icon(Icons.home_work_outlined),
                             labelText: 'Property type',
@@ -329,13 +345,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                               )
                               .toList(),
                           onChanged: (v) {
-                            setState(() => _propertyType = v ?? 'Any');
+                            ref.read(commonFilterNotifierProvider.notifier).updatePropertyType(v ?? 'Any');
                             _scheduleSearch();
                           },
                         ),
                         const SizedBox(height: 14),
                         DropdownButtonFormField<String>(
-                          initialValue: _sortBy,
+                          value: filters.sortBy,
                           decoration: InputDecoration(
                             prefixIcon: const Icon(Icons.sort_rounded),
                             labelText: 'Sort by',
@@ -352,7 +368,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                               )
                               .toList(),
                           onChanged: (v) {
-                            setState(() => _sortBy = v ?? '');
+                            ref.read(commonFilterNotifierProvider.notifier).updateSort(v ?? '', 'asc');
                             _scheduleSearch();
                           },
                         ),
@@ -372,28 +388,30 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                             for (final a in _amenityOptions)
                               FilterChip(
                                 label: Text(a),
-                                selected: _amenities.contains(a),
+                                selected: filters.amenities.contains(a),
                                 selectedColor: _kPrimary.withValues(
                                   alpha: 0.15,
                                 ),
                                 checkmarkColor: _kPrimary,
                                 side: BorderSide(
-                                  color: _amenities.contains(a)
+                                  color: filters.amenities.contains(a)
                                       ? _kPrimary.withValues(alpha: 0.35)
                                       : _kBorder,
                                 ),
                                 labelStyle: TextStyle(
-                                  color: _amenities.contains(a)
+                                  color: filters.amenities.contains(a)
                                       ? _kPrimary
                                       : _kTextDark,
                                   fontWeight: FontWeight.w700,
                                 ),
                                 onSelected: (s) {
-                                  setState(
-                                    () => s
-                                        ? _amenities.add(a)
-                                        : _amenities.remove(a),
-                                  );
+                                  final nextAmenities = List<String>.from(filters.amenities);
+                                  if (s) {
+                                    nextAmenities.add(a);
+                                  } else {
+                                    nextAmenities.remove(a);
+                                  }
+                                  ref.read(commonFilterNotifierProvider.notifier).updateAmenities(nextAmenities);
                                   _scheduleSearch();
                                 },
                               ),
@@ -407,12 +425,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                   context.push(
                                     '/properties',
                                     extra: SearchArgs(
-                                      mode: _mode,
-                                      budget: _budget,
-                                      propertyType: _propertyType,
-                                      amenities: _amenities.toList(),
-                                      locationQuery: _location.text.trim(),
-                                      sortBy: _sortBy,
+                                      mode: currentMode,
+                                      budget: currentBudget,
+                                      propertyType: filters.propertyType,
+                                      amenities: filters.amenities,
+                                      locationQuery: filters.searchText,
+                                      sortBy: filters.sortBy,
                                     ),
                                   );
                                 }

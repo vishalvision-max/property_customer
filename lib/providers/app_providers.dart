@@ -1,4 +1,4 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/repositories/auth_repository.dart';
 import '../data/repositories/lead_repository.dart';
 import '../data/repositories/owner_repository.dart';
@@ -12,55 +12,73 @@ import '../data/services/local_storage_service.dart';
 import '../data/services/owner_service.dart';
 import '../data/services/property_service.dart';
 
-final localStorageProvider = Provider<LocalStorageService>(
-  (ref) => LocalStorageService(),
-);
+part 'app_providers.g.dart';
 
-final authServiceProvider = Provider<AuthService>((ref) => AuthService());
-final propertyServiceProvider = Provider<PropertyService>(
-  (ref) => PropertyService(),
-);
-final leadServiceProvider = Provider<LeadService>((ref) => LeadService());
-final favoritesServiceProvider = Provider<FavoritesService>(
-  (ref) => FavoritesService(),
-);
+@riverpod
+LocalStorageService localStorage(LocalStorageRef ref) {
+  return LocalStorageService();
+}
 
-final ownerServiceProvider = Provider<OwnerService>((ref) => OwnerService());
+@riverpod
+AuthService authService(AuthServiceRef ref) {
+  return AuthService();
+}
 
-final googleGeocodingServiceProvider = Provider<GoogleGeocodingService>(
-  (ref) =>
-      GoogleGeocodingService(apiKey: "AIzaSyB9zroafCQGFNKoU1g5-ScptQBJo2FgpKw"),
-);
+@riverpod
+PropertyService propertyService(PropertyServiceRef ref) {
+  return PropertyService();
+}
 
-final videoCacheServiceProvider = Provider<VideoCacheService>(
-  (ref) => VideoCacheService(),
-);
+@riverpod
+LeadService leadService(LeadServiceRef ref) {
+  return LeadService();
+}
 
-final authRepositoryProvider = Provider<AuthRepository>(
-  (ref) => AuthRepository(
+@riverpod
+FavoritesService favoritesService(FavoritesServiceRef ref) {
+  return FavoritesService();
+}
+
+@riverpod
+OwnerService ownerService(OwnerServiceRef ref) {
+  return OwnerService();
+}
+
+@riverpod
+GoogleGeocodingService googleGeocodingService(GoogleGeocodingServiceRef ref) {
+  return GoogleGeocodingService(apiKey: "AIzaSyB9zroafCQGFNKoU1g5-ScptQBJo2FgpKw");
+}
+
+@riverpod
+VideoCacheService videoCacheService(VideoCacheServiceRef ref) {
+  return VideoCacheService();
+}
+
+@riverpod
+AuthRepository authRepository(AuthRepositoryRef ref) {
+  return AuthRepository(
     ref.watch(authServiceProvider),
     ref.watch(localStorageProvider),
-  ),
-);
+  );
+}
 
-final propertyRepositoryProvider = Provider<PropertyRepository>(
-  (ref) => PropertyRepository(ref.watch(propertyServiceProvider)),
-);
+@riverpod
+PropertyRepository propertyRepository(PropertyRepositoryRef ref) {
+  return PropertyRepository(ref.watch(propertyServiceProvider));
+}
 
-final leadRepositoryProvider = Provider<LeadRepository>(
-  (ref) => LeadRepository(ref.watch(leadServiceProvider)),
-);
+@riverpod
+LeadRepository leadRepository(LeadRepositoryRef ref) {
+  return LeadRepository(ref.watch(leadServiceProvider));
+}
 
-final ownerRepositoryProvider = Provider<OwnerRepository>(
-  (ref) => OwnerRepository(ref.watch(ownerServiceProvider)),
-);
+@riverpod
+OwnerRepository ownerRepository(OwnerRepositoryRef ref) {
+  return OwnerRepository(ref.watch(ownerServiceProvider));
+}
 
-/// Lazily fetches and caches the image URLs for a single property by ID.
-/// Used by PropertyCard when the list endpoint returns images: null.
-final propertyImagesProvider = FutureProvider.family<List<String>, String>((
-  ref,
-  propertyId,
-) {
+@riverpod
+Future<List<String>> propertyImages(PropertyImagesRef ref, String propertyId) {
   final repo = ref.watch(propertyRepositoryProvider);
   return repo.fetchPropertyImages(propertyId);
-});
+}

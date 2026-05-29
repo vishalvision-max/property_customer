@@ -58,6 +58,7 @@ class MainShell extends ConsumerStatefulWidget {
 
 class _MainShellState extends ConsumerState<MainShell> {
   late final PageController _pageController;
+  int? _pendingIndex;
 
   // Auth-gated tab indices (0-based)
   static const _authGated = {2, 3}; // Saved, Profile
@@ -81,16 +82,18 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   // ── Called by bottom nav tap ──────────────────────────────
   void _onNavTap(int index) {
+    if (index == ref.read(navProvider)) return;
     final isAuthed = ref.read(authProvider).user != null;
 
     if (_authGated.contains(index) && !isAuthed) {
       final labels = ['', '', 'saved', 'profile'];
       AppSnackbar.showError(context, 'Please login to view ${labels[index]}');
-      ref.read(navProvider.notifier).goTo(index);
+      _pendingIndex = index;
       context.push('/login?from=${Uri.encodeComponent('/home')}');
       return;
     }
 
+    _pendingIndex = null;
     ref.read(navProvider.notifier).goTo(index);
     _pageController.animateToPage(
       index,
@@ -101,6 +104,11 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   // ── Called by PageView swipe ──────────────────────────────
   void _onPageChanged(int index) {
+    if (index == ref.read(navProvider)) {
+      // Settle back to original page after snap-back or redundant trigger
+      return;
+    }
+
     final isAuthed = ref.read(authProvider).user != null;
 
     if (_authGated.contains(index) && !isAuthed) {
@@ -113,11 +121,12 @@ class _MainShellState extends ConsumerState<MainShell> {
       );
       final labels = ['', '', 'saved', 'profile'];
       AppSnackbar.showError(context, 'Please login to view ${labels[index]}');
-      ref.read(navProvider.notifier).goTo(index);
+      _pendingIndex = index;
       context.push('/login?from=${Uri.encodeComponent('/home')}');
       return;
     }
 
+    _pendingIndex = null;
     ref.read(navProvider.notifier).goTo(index);
     // Haptic on swipe too
     HapticFeedback.selectionClick();
@@ -136,6 +145,21 @@ class _MainShellState extends ConsumerState<MainShell> {
           duration: const Duration(milliseconds: 320),
           curve: Curves.easeInOutCubic,
         );
+      }
+    });
+
+    ref.listen(authProvider, (prev, next) {
+      if (next.user != null && _pendingIndex != null) {
+        final target = _pendingIndex!;
+        _pendingIndex = null;
+        ref.read(navProvider.notifier).goTo(target);
+        if (_pageController.hasClients) {
+          _pageController.animateToPage(
+            target,
+            duration: const Duration(milliseconds: 320),
+            curve: Curves.easeInOutCubic,
+          );
+        }
       }
     });
 

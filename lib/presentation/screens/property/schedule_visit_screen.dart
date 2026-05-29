@@ -26,7 +26,7 @@ class _ScheduleVisitScreenState extends ConsumerState<ScheduleVisitScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final property = ref.watch(propertyProvider.notifier).getById(widget.propertyId);
+    final property = ref.watch(propertyNotifierProvider.notifier).getById(widget.propertyId);
     final fmt = DateFormat('EEE, MMM d, yyyy');
 
     return Scaffold(

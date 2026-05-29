@@ -35,7 +35,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
-    final owner = ref.watch(ownerProfileProvider).profile;
+    final owner = ref.watch(ownerProfileNotifierProvider).profile;
     final ownerImage = owner == null ? '' : _normalizeImage(owner.imageUrl);
     final displayName = (owner?.name.trim().isNotEmpty ?? false)
         ? owner!.name.trim()

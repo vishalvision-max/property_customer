@@ -42,7 +42,7 @@ class _NameSearchScreenState extends ConsumerState<NameSearchScreen> {
   void _run(String q) {
     final query = q.trim();
     setState(() {
-      _future = ref.read(propertyProvider.notifier).searchByName(mode: _mode, query: query);
+      _future = ref.read(propertyNotifierProvider.notifier).searchByName(mode: _mode, query: query);
     });
   }
 

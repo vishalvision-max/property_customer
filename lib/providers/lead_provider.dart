@@ -1,62 +1,42 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../data/models/lead.dart';
-import '../data/repositories/lead_repository.dart';
 import 'app_providers.dart';
 import 'auth_provider.dart';
 
-class LeadState {
-  final bool isLoading;
-  final List<Lead> items;
-  final int currentPage;
-  final int lastPage;
-  final int total;
-  final String? error;
+part 'lead_provider.freezed.dart';
+part 'lead_provider.g.dart';
 
-  const LeadState({
-    required this.isLoading,
-    required this.items,
-    required this.currentPage,
-    required this.lastPage,
-    required this.total,
-    required this.error,
-  });
+@freezed
+class LeadState with _$LeadState {
+  const factory LeadState({
+    required bool isLoading,
+    required List<Lead> items,
+    required int currentPage,
+    required int lastPage,
+    required int total,
+    required String? error,
+  }) = _LeadState;
 
   factory LeadState.initial() => const LeadState(
-    isLoading: false,
-    items: [],
-    currentPage: 1,
-    lastPage: 1,
-    total: 0,
-    error: null,
-  );
-
-  LeadState copyWith({
-    bool? isLoading,
-    List<Lead>? items,
-    int? currentPage,
-    int? lastPage,
-    int? total,
-    String? error,
-  }) {
-    return LeadState(
-      isLoading: isLoading ?? this.isLoading,
-      items: items ?? this.items,
-      currentPage: currentPage ?? this.currentPage,
-      lastPage: lastPage ?? this.lastPage,
-      total: total ?? this.total,
-      error: error,
-    );
-  }
+        isLoading: false,
+        items: [],
+        currentPage: 1,
+        lastPage: 1,
+        total: 0,
+        error: null,
+      );
 }
 
-class LeadNotifier extends StateNotifier<LeadState> {
-  final LeadRepository _repo;
-  final Ref _ref;
+@riverpod
+class LeadNotifier extends _$LeadNotifier {
+  @override
+  LeadState build() {
+    return LeadState.initial();
+  }
 
-  LeadNotifier(this._repo, this._ref) : super(LeadState.initial());
-
-  String? _tokenOrNull() => _ref.read(authProvider).user?.token;
+  String? _tokenOrNull() => ref.read(authProvider).user?.token;
 
   Future<bool> _maybeLogoutOnUnauthorized(Object e) async {
     final msg = e.toString();
@@ -65,7 +45,7 @@ class LeadNotifier extends StateNotifier<LeadState> {
         msg.contains(' 401') ||
         msg.contains('401 ');
     if (!unauthorized) return false;
-    await _ref.read(authProvider.notifier).logout();
+    await ref.read(authProvider.notifier).logout();
     state = state.copyWith(
       isLoading: false,
       error: 'Session expired. Please login again.',
@@ -82,7 +62,8 @@ class LeadNotifier extends StateNotifier<LeadState> {
 
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final res = await _repo.fetchMyLeads(token: token.trim(), page: page);
+      final repo = ref.read(leadRepositoryProvider);
+      final res = await repo.fetchMyLeads(token: token.trim(), page: page);
       state = state.copyWith(
         isLoading: false,
         items: res.data,
@@ -107,7 +88,8 @@ class LeadNotifier extends StateNotifier<LeadState> {
     }
     state = state.copyWith(isLoading: true, error: null);
     try {
-      await _repo.updateStatus(
+      final repo = ref.read(leadRepositoryProvider);
+      await repo.updateStatus(
         token: token.trim(),
         leadId: leadId,
         status: status,
@@ -144,7 +126,8 @@ class LeadNotifier extends StateNotifier<LeadState> {
     }
     state = state.copyWith(isLoading: true, error: null);
     try {
-      await _repo.create(
+      final repo = ref.read(leadRepositoryProvider);
+      await repo.create(
         token: token.trim(),
         name: name,
         phone: phone,
@@ -185,7 +168,8 @@ class LeadNotifier extends StateNotifier<LeadState> {
     }
     state = state.copyWith(isLoading: true, error: null);
     try {
-      await _repo.createBuyerLead(
+      final repo = ref.read(leadRepositoryProvider);
+      await repo.createBuyerLead(
         token: token.trim(),
         name: name,
         phone: phone,
@@ -202,7 +186,3 @@ class LeadNotifier extends StateNotifier<LeadState> {
     }
   }
 }
-
-final leadProvider = StateNotifierProvider<LeadNotifier, LeadState>(
-  (ref) => LeadNotifier(ref.watch(leadRepositoryProvider), ref),
-);

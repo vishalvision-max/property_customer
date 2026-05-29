@@ -12,6 +12,7 @@ import '../../../providers/property_provider.dart';
 import '../../widgets/autoplay_video_preview.dart';
 import '../../widgets/zoomable_video_page.dart';
 import '../../widgets/property_card.dart'; // to reuse specs extraction and price formatter
+import '../../widgets/responsive_item_grid.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -112,12 +113,15 @@ class PropertyDetailsScreen extends ConsumerStatefulWidget {
 
 class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
   Future<Property>? _future;
+  bool _isAmenitiesExpanded = false;
+  bool _isHighlightsExpanded = false;
+  bool _isDescriptionExpanded = false;
 
   @override
   void initState() {
     super.initState();
     _future = Future<Property>.microtask(
-      () => ref.read(propertyProvider.notifier).fetchDetails(widget.propertyId),
+      () => ref.read(propertyNotifierProvider.notifier).fetchDetails(widget.propertyId),
     );
   }
 
@@ -161,6 +165,33 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
     if (s.contains('society')) return Icons.fence_outlined;
     if (s.contains('security')) return Icons.security_outlined;
     return Icons.check_circle_outline;
+  }
+
+  IconData _getAmenityIcon(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('pool') || lower.contains('swim')) return Icons.pool;
+    if (lower.contains('gym') || lower.contains('fitness'))
+      return Icons.fitness_center;
+    if (lower.contains('park') || lower.contains('garden')) return Icons.park;
+    if (lower.contains('wifi') || lower.contains('internet')) return Icons.wifi;
+    if (lower.contains('power') ||
+        lower.contains('backup') ||
+        lower.contains('generator'))
+      return Icons.power;
+    if (lower.contains('security') ||
+        lower.contains('cctv') ||
+        lower.contains('guard'))
+      return Icons.security;
+    if (lower.contains('lift') || lower.contains('elevator'))
+      return Icons.elevator;
+    if (lower.contains('club') || lower.contains('lounge'))
+      return Icons.meeting_room;
+    if (lower.contains('kid') || lower.contains('play'))
+      return Icons.child_care;
+    if (lower.contains('gas') || lower.contains('pipeline'))
+      return Icons.local_fire_department;
+    if (lower.contains('water')) return Icons.water_drop;
+    return Icons.check_circle_outline_rounded;
   }
 
   Widget _buildThumbnailStrip(BuildContext context, Property p) {
@@ -340,7 +371,7 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Property Highlights',
+            'furnishing',
             style: TextStyle(
               fontSize: 15.5,
               fontWeight: FontWeight.w800,
@@ -348,41 +379,57 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          Wrap(
+          ResponsiveItemGrid<String>(
+            items: specs.highlights,
+            fixedColumns: 4,
             spacing: 8,
             runSpacing: 8,
-            children: specs.highlights.map((h) {
+            isCollapsible: true,
+            isExpanded: _isHighlightsExpanded,
+            onToggle: () {
+              setState(() {
+                _isHighlightsExpanded = !_isHighlightsExpanded;
+              });
+            },
+            itemBuilder: (context, h) {
               return Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: const Color(0xFFE4E7EC), width: 1),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x06000000),
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       _highlightIcon(h),
-                      color: const Color(0xFF667085),
-                      size: 15,
+                      color: const Color(0xFF5C46E8),
+                      size: 13,
                     ),
                     const SizedBox(width: 6),
-                    Text(
-                      h,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF344054),
+                    Expanded(
+                      child: Text(
+                        h,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF344054),
+                        ),
                       ),
                     ),
                   ],
                 ),
               );
-            }).toList(),
+            },
           ),
         ],
       ),
@@ -392,7 +439,7 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final cached = ref
-        .watch(propertyProvider.notifier)
+        .watch(propertyNotifierProvider.notifier)
         .getById(widget.propertyId);
 
     return FutureBuilder<Property>(
@@ -668,13 +715,20 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                                 color: Color(0xFF1D2939),
                               ),
                             ),
-
                             const SizedBox(height: 12),
-
-                            Wrap(
+                            ResponsiveItemGrid<String>(
+                              items: p.amenities,
+                              fixedColumns: 4,
                               spacing: 8,
                               runSpacing: 8,
-                              children: p.amenities.map((a) {
+                              isCollapsible: true,
+                              isExpanded: _isAmenitiesExpanded,
+                              onToggle: () {
+                                setState(() {
+                                  _isAmenitiesExpanded = !_isAmenitiesExpanded;
+                                });
+                              },
+                              itemBuilder: (context, a) {
                                 final clean = a.replaceAll('_', ' ').trim();
 
                                 final formatted = clean
@@ -688,23 +742,41 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
 
                                 return Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
+                                    horizontal: 6,
+                                    vertical: 6,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFF2F4F7),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    formatted,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF344054),
+                                    color: const Color(0xFFF9F9FF),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: const Color(0xFFE4E1FC),
+                                      width: 1,
                                     ),
                                   ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        _getAmenityIcon(clean),
+                                        color: const Color(0xFF5C46E8),
+                                        size: 13,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          formatted,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: Color(0xFF344054),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 );
-                              }).toList(),
+                              },
                             ),
                           ],
                         ),
@@ -712,53 +784,53 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
 
                     const SizedBox(height: 20),
 
-                    // Furnishing Section
-                    if (p.furnishing != null && p.furnishing!.trim().isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Furnishing',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF1D2939),
-                              ),
-                            ),
+                    // // Furnishing Section
+                    // if (p.furnishing != null && p.furnishing!.trim().isNotEmpty)
+                    //   Padding(
+                    //     padding: const EdgeInsets.symmetric(horizontal: 16),
+                    //     child: Column(
+                    //       crossAxisAlignment: CrossAxisAlignment.start,
+                    //       children: [
+                    //         const Text(
+                    //           'Furnishing',
+                    //           style: TextStyle(
+                    //             fontSize: 16,
+                    //             fontWeight: FontWeight.w800,
+                    //             color: Color(0xFF1D2939),
+                    //           ),
+                    //         ),
 
-                            const SizedBox(height: 12),
+                    //         const SizedBox(height: 12),
 
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF2F4F7),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                p.furnishing!
-                                    .replaceAll('_', ' ')
-                                    .split(' ')
-                                    .map(
-                                      (e) => e.isEmpty
-                                          ? e
-                                          : '${e[0].toUpperCase()}${e.substring(1).toLowerCase()}',
-                                    )
-                                    .join(' '),
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF344054),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                    //         Container(
+                    //           padding: const EdgeInsets.symmetric(
+                    //             horizontal: 12,
+                    //             vertical: 10,
+                    //           ),
+                    //           decoration: BoxDecoration(
+                    //             color: const Color(0xFFF2F4F7),
+                    //             borderRadius: BorderRadius.circular(8),
+                    //           ),
+                    //           child: Text(
+                    //             p.furnishing!
+                    //                 .replaceAll('_', ' ')
+                    //                 .split(' ')
+                    //                 .map(
+                    //                   (e) => e.isEmpty
+                    //                       ? e
+                    //                       : '${e[0].toUpperCase()}${e.substring(1).toLowerCase()}',
+                    //                 )
+                    //                 .join(' '),
+                    //             style: const TextStyle(
+                    //               fontSize: 13,
+                    //               fontWeight: FontWeight.w700,
+                    //               color: Color(0xFF344054),
+                    //             ),
+                    //           ),
+                    //         ),
+                    //       ],
+                    //     ),
+                    //   ),
                     const Padding(
                       padding: EdgeInsets.symmetric(
                         horizontal: 16,
@@ -789,16 +861,91 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          Text(
-                            p.description.isEmpty
-                                ? 'No description provided.'
-                                : p.description,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF667085),
-                              height: 1.6,
-                            ),
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final text = p.description.isEmpty
+                                  ? 'No description provided.'
+                                  : p.description;
+
+                              // Style of our description text
+                              const textStyle = TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF667085),
+                                height: 1.6,
+                              );
+
+                              // Use TextPainter to check if it exceeds 3 lines in the given width
+                              final span = TextSpan(
+                                text: text,
+                                style: textStyle,
+                              );
+                              final tp = TextPainter(
+                                text: span,
+                                maxLines: 3,
+                                textDirection: TextDirection.ltr,
+                              );
+                              tp.layout(maxWidth: constraints.maxWidth);
+                              final isExceeding = tp.didExceedMaxLines;
+
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    text,
+                                    maxLines: _isDescriptionExpanded ? null : 3,
+                                    overflow: _isDescriptionExpanded
+                                        ? null
+                                        : TextOverflow.ellipsis,
+                                    style: textStyle,
+                                  ),
+                                  if (isExceeding) ...[
+                                    const SizedBox(height: 6),
+                                    GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _isDescriptionExpanded =
+                                              !_isDescriptionExpanded;
+                                        });
+                                      },
+                                      child: MouseRegion(
+                                        cursor: SystemMouseCursors.click,
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 4,
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                _isDescriptionExpanded
+                                                    ? 'Show Less'
+                                                    : 'Read More',
+                                                style: const TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: Color(0xFF5C46E8),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Icon(
+                                                _isDescriptionExpanded
+                                                    ? Icons
+                                                          .keyboard_arrow_up_rounded
+                                                    : Icons
+                                                          .keyboard_arrow_down_rounded,
+                                                size: 16,
+                                                color: const Color(0xFF5C46E8),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              );
+                            },
                           ),
                         ],
                       ),

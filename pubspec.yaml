@@ -52,10 +52,15 @@ dependencies:
   video_player: ^2.9.2
   visibility_detector: ^0.4.0+2
   url_launcher: ^6.3.2
+  riverpod_annotation: ^2.3.5
+  freezed_annotation: ^2.4.4
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  riverpod_generator: ^2.4.0
+  freezed: ^2.4.7
+  build_runner: ^2.4.11
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

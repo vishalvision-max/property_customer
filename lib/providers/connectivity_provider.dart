@@ -1,6 +1,11 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-final connectivityProvider = StreamProvider<ConnectivityResult>(
-  (ref) => Connectivity().onConnectivityChanged.map((list) => list.isEmpty ? ConnectivityResult.none : list.first),
-);
+part 'connectivity_provider.g.dart';
+
+@riverpod
+Stream<ConnectivityResult> connectivity(ConnectivityRef ref) {
+  return Connectivity()
+      .onConnectivityChanged
+      .map((list) => list.isEmpty ? ConnectivityResult.none : list.first);
+}

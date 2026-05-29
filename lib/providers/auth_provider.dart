@@ -1,68 +1,55 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/models/user.dart';
-import '../data/repositories/auth_repository.dart';
 import 'app_providers.dart';
 
-class AuthState {
-  final bool isLoading;
-  final User? user;
-  final String? error;
-  final String? message;
-  final bool seenOnboarding;
+part 'auth_provider.freezed.dart';
+part 'auth_provider.g.dart';
 
-  static const Object _unset = Object();
+@freezed
+class AuthState with _$AuthState {
+  const factory AuthState({
+    required bool isLoading,
+    required User? user,
+    required String? error,
+    required String? message,
+    required bool seenOnboarding,
+  }) = _AuthState;
 
-  const AuthState({
-    required this.isLoading,
-    required this.user,
-    required this.error,
-    required this.message,
-    required this.seenOnboarding,
-  });
-
-  // Start in a loading state so the router keeps the user on `/splash` until
-  // `bootstrap()` loads cached session/onboarding flags.
   factory AuthState.initial() => const AuthState(
-    isLoading: true,
-    user: null,
-    error: null,
-    message: null,
-    seenOnboarding: false,
-  );
-
-  AuthState copyWith({
-    bool? isLoading,
-    Object? user = _unset,
-    String? error,
-    String? message,
-    bool? seenOnboarding,
-  }) {
-    return AuthState(
-      isLoading: isLoading ?? this.isLoading,
-      user: user == _unset ? this.user : user as User?,
-      error: error,
-      message: message,
-      seenOnboarding: seenOnboarding ?? this.seenOnboarding,
-    );
-  }
+        isLoading: true,
+        user: null,
+        error: null,
+        message: null,
+        seenOnboarding: false,
+      );
 }
 
-class AuthNotifier extends StateNotifier<AuthState> {
-  final AuthRepository _repo;
-  final Ref _ref;
-  AuthNotifier(this._repo, this._ref) : super(AuthState.initial());
-
+@riverpod
+class Auth extends _$Auth {
   static const _kOnboarding = 'seen_onboarding';
+
+  @override
+  AuthState build() {
+    return AuthState.initial();
+  }
 
   Future<AuthState> bootstrap() async {
     state = state.copyWith(isLoading: true, error: null, message: null);
     try {
-      final user = await _repo.getCachedUser();
-      final sp = await _ref.read(_sharedPrefsProvider.future);
+      final repo = ref.read(authRepositoryProvider);
+      final user = await repo.getCachedUser();
+      final sp = await ref.read(sharedPrefsProvider.future);
       final seen = sp.getBool(_kOnboarding) ?? false;
-      state = state.copyWith(isLoading: false, user: user, seenOnboarding: seen, error: null, message: null);
+      state = state.copyWith(
+        isLoading: false,
+        user: user,
+        seenOnboarding: seen,
+        error: null,
+        message: null,
+      );
       return state;
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString(), message: null);
@@ -71,18 +58,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> setSeenOnboarding() async {
-    final sp = await _ref.read(_sharedPrefsProvider.future);
+    final sp = await ref.read(sharedPrefsProvider.future);
     await sp.setBool(_kOnboarding, true);
     state = state.copyWith(seenOnboarding: true);
   }
 
   Future<void> login({required String email, required String password}) async {
-    // Treat an explicit login attempt as a new session.
-    // This prevents stale cached `user` state from causing router redirects
-    // when the login request fails (e.g. 401/500).
     state = state.copyWith(isLoading: true, error: null, message: null, user: null);
     try {
-      final user = await _repo.login(email: email, password: password);
+      final repo = ref.read(authRepositoryProvider);
+      final user = await repo.login(email: email, password: password);
       state = state.copyWith(isLoading: false, user: user, error: null, message: null);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString(), message: null);
@@ -97,7 +82,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }) async {
     state = state.copyWith(isLoading: true, error: null, message: null, user: null);
     try {
-      final user = await _repo.signup(
+      final repo = ref.read(authRepositoryProvider);
+      final user = await repo.signup(
         name: name,
         email: email,
         password: password,
@@ -112,7 +98,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> forgotPassword({required String email}) async {
     state = state.copyWith(isLoading: true, error: null, message: null);
     try {
-      final msg = await _repo.forgotPassword(email: email);
+      final repo = ref.read(authRepositoryProvider);
+      final msg = await repo.forgotPassword(email: email);
       state = state.copyWith(isLoading: false, error: null, message: msg);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString(), message: null);
@@ -120,16 +107,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
-    await _repo.logout();
+    final repo = ref.read(authRepositoryProvider);
+    await repo.logout();
     state = state.copyWith(user: null);
   }
 }
 
-final authProvider = StateNotifierProvider<AuthNotifier, AuthState>(
-  (ref) => AuthNotifier(ref.watch(authRepositoryProvider), ref),
-);
-
-// SharedPreferences is used in a small, isolated provider so tests/mocks can override it later.
-final _sharedPrefsProvider = FutureProvider((ref) async {
+@riverpod
+Future<SharedPreferences> sharedPrefs(SharedPrefsRef ref) async {
   return await SharedPreferences.getInstance();
-});
+}

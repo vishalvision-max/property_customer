@@ -51,7 +51,7 @@ class _EditOwnerProfileScreenState
       if (!mounted) return;
       final token = ref.read(authProvider).user?.token;
       if (token != null && token.trim().isNotEmpty) {
-        ref.read(ownerProfileProvider.notifier).load(token: token.trim());
+        ref.read(ownerProfileNotifierProvider.notifier).load(token: token.trim());
       }
     });
   }
@@ -75,7 +75,7 @@ class _EditOwnerProfileScreenState
 
   Future<void> _showImageOptions() async {
     if (kIsWeb) return;
-    if (_saving || ref.read(ownerProfileProvider).isLoading) return;
+    if (_saving || ref.read(ownerProfileNotifierProvider).isLoading) return;
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -126,12 +126,12 @@ class _EditOwnerProfileScreenState
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
-    final ownerState = ref.watch(ownerProfileProvider);
+    final ownerState = ref.watch(ownerProfileNotifierProvider);
     final ownerImage = ownerState.profile == null
         ? ''
         : _normalizeImage(ownerState.profile!.imageUrl);
 
-    ref.listen(ownerProfileProvider, (prev, next) {
+    ref.listen(ownerProfileNotifierProvider, (prev, next) {
       final p = next.profile;
       if (p != null && p.name.trim().isNotEmpty && _name.text.trim().isEmpty) {
         _name.text = p.name.trim();
@@ -348,7 +348,7 @@ class _EditOwnerProfileScreenState
                             final messenger = ScaffoldMessenger.of(context);
                             setState(() => _saving = true);
                             final updated = await ref
-                                .read(ownerProfileProvider.notifier)
+                                .read(ownerProfileNotifierProvider.notifier)
                                 .update(
                                   token: token.trim(),
                                   name: _name.text.trim(),

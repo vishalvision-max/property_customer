@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
-import 'package:http/http.dart';
 
+import '../../../core/filters/common_filter_provider.dart';
 import '../../../data/models/property.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/location_provider.dart';
@@ -38,14 +38,36 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
   bool _loaded = false;
   String? _error;
 
-  // ── Filter state ──────────────────────────────────────────────────────────
-  bool _panchkulaSelected = false;
-  String _selectedCity = 'Panchkula';
-  String _selectedState = 'Haryana';
-  String? _selectedMode;
-  String? _specialApiSelected;
-  RangeValues? _selectedPriceRange;
-  Set<int> _selectedBHKs = {};
+  // ── Centralized Filter Mappings (watching commonFilterNotifierProvider) ────
+  String get _selectedCity {
+    final city = ref.watch(commonFilterNotifierProvider).city;
+    return city.isEmpty ? 'Panchkula' : city;
+  }
+
+  String get _selectedState {
+    final state = ref.watch(commonFilterNotifierProvider).state;
+    return state.isEmpty ? 'Haryana' : state;
+  }
+
+  bool get _panchkulaSelected => ref.watch(commonFilterNotifierProvider).city.isNotEmpty;
+
+  String? get _selectedMode {
+    final mode = ref.watch(commonFilterNotifierProvider).listingType;
+    return mode == 'Any' ? null : mode;
+  }
+
+  String? get _specialApiSelected {
+    final search = ref.watch(commonFilterNotifierProvider).searchText;
+    const specials = ['2 BHK', 'Under 50 Lakhs', 'Ready to Move', 'Furnished', 'Gated Society', 'Studio Apartment'];
+    return specials.contains(search) ? search : null;
+  }
+
+  RangeValues? get _selectedPriceRange => ref.watch(commonFilterNotifierProvider).priceRange;
+
+  Set<int> get _selectedBHKs {
+    final beds = ref.watch(commonFilterNotifierProvider).bedrooms;
+    return beds != null ? {beds} : {};
+  }
 
   late final TextEditingController _cityController;
   late final TextEditingController _stateController;
@@ -56,8 +78,11 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
   @override
   void initState() {
     super.initState();
-    _cityController = TextEditingController(text: _selectedCity);
-    _stateController = TextEditingController(text: _selectedState);
+    final filter = ref.read(commonFilterNotifierProvider);
+    final initialCity = filter.city.isEmpty ? 'Panchkula' : filter.city;
+    final initialState = filter.state.isEmpty ? 'Haryana' : filter.state;
+    _cityController = TextEditingController(text: initialCity);
+    _stateController = TextEditingController(text: initialState);
     _scrollController = ScrollController()..addListener(_onScroll);
   }
 
@@ -112,7 +137,7 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
       int currentPage = page;
 
       if (_specialApiSelected != null) {
-        final notif = ref.read(propertyProvider.notifier);
+        final notif = ref.read(propertyNotifierProvider.notifier);
         final result = switch (_specialApiSelected) {
           '2 BHK' => await notif.fetchTwoBhkPropertiesPaged(token, page: page),
           'Under 50 Lakhs' => await notif.fetchFlatsUnderFiftyLakhPaged(
@@ -143,7 +168,7 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
       } else if (_selectedMode == null) {
         // Default: paginated all-properties API
         final result = await ref
-            .read(propertyProvider.notifier)
+            .read(propertyNotifierProvider.notifier)
             .fetchAllOwnerPropertiesPaged(
               token,
               page: page,
@@ -153,7 +178,7 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
         hasMore = result.hasMore;
         currentPage = result.currentPage;
       } else {
-        final notif = ref.read(propertyProvider.notifier);
+        final notif = ref.read(propertyNotifierProvider.notifier);
         switch (_selectedMode) {
           case 'Buy':
             final result = await notif.fetchBuyPropertiesPaged(
@@ -317,12 +342,7 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
 
   // ── Reset filters and reload ───────────────────────────────────────────────
   void _resetAndLoad() {
-    setState(() {
-      _specialApiSelected = null;
-      _selectedMode = null;
-      _selectedPriceRange = null;
-      _selectedBHKs = {};
-    });
+    ref.read(commonFilterNotifierProvider.notifier).resetFilters();
     _loadPage(1, replace: true);
   }
 
@@ -749,9 +769,8 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                         Expanded(
                           child: TextButton(
                             onPressed: () {
-                              setState(() {
-                                _panchkulaSelected = false;
-                              });
+                              ref.read(commonFilterNotifierProvider.notifier).updateCity('');
+                              ref.read(commonFilterNotifierProvider.notifier).updateState('');
                               Navigator.pop(context);
                               _load();
                             },
@@ -774,11 +793,9 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                               final city = _cityController.text.trim();
                               final state = _stateController.text.trim();
                               if (city.isNotEmpty) {
-                                setState(() {
-                                  _selectedCity = city;
-                                  _selectedState = state;
-                                  _panchkulaSelected = true;
-                                });
+                                final notifier = ref.read(commonFilterNotifierProvider.notifier);
+                                notifier.updateCity(city);
+                                notifier.updateState(state);
                                 Navigator.pop(context);
                                 _load();
                               }
@@ -843,14 +860,13 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                   final isSel = _selectedMode == mode;
                   return GestureDetector(
                     onTap: () {
-                      setState(() {
-                        if (_selectedMode == mode) {
-                          _selectedMode = null; // Toggle off to unselect!
-                        } else {
-                          _selectedMode = mode;
-                        }
-                        _load();
-                      });
+                      final notifier = ref.read(commonFilterNotifierProvider.notifier);
+                      if (_selectedMode == mode) {
+                        notifier.updateListingType('Any');
+                      } else {
+                        notifier.updateListingType(mode);
+                      }
+                      _load();
                       Navigator.pop(context);
                     },
                     child: Container(
@@ -958,10 +974,8 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () {
-                            setState(() {
-                              _selectedPriceRange = null;
-                              _load();
-                            });
+                            ref.read(commonFilterNotifierProvider.notifier).updatePriceRange(null);
+                            _load();
                             Navigator.pop(context);
                           },
                           style: OutlinedButton.styleFrom(
@@ -977,10 +991,8 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () {
-                            setState(() {
-                              _selectedPriceRange = current;
-                              _load();
-                            });
+                            ref.read(commonFilterNotifierProvider.notifier).updatePriceRange(current);
+                            _load();
                             Navigator.pop(context);
                           },
                           style: ElevatedButton.styleFrom(
@@ -1084,10 +1096,8 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () {
-                            setState(() {
-                              _selectedBHKs.clear();
-                              _load();
-                            });
+                            ref.read(commonFilterNotifierProvider.notifier).updateBedrooms(null);
+                            _load();
                             Navigator.pop(context);
                           },
                           style: OutlinedButton.styleFrom(
@@ -1103,10 +1113,8 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () {
-                            setState(() {
-                              _selectedBHKs = tempSelected;
-                              _load();
-                            });
+                            ref.read(commonFilterNotifierProvider.notifier).updateBedrooms(tempSelected.isNotEmpty ? tempSelected.first : null);
+                            _load();
                             Navigator.pop(context);
                           },
                           style: ElevatedButton.styleFrom(
@@ -1209,9 +1217,8 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                           label: _selectedCity,
                           onTap: () {
                             if (_panchkulaSelected) {
-                              setState(() {
-                                _panchkulaSelected = false;
-                              });
+                              ref.read(commonFilterNotifierProvider.notifier).updateCity('');
+                              ref.read(commonFilterNotifierProvider.notifier).updateState('');
                               _load();
                             } else {
                               _showLocationPickerDialog();
@@ -1290,18 +1297,14 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                               padding: const EdgeInsets.only(right: 8),
                               child: GestureDetector(
                                 onTap: () {
-                                  setState(() {
-                                    if (isSel) {
-                                      _specialApiSelected = null;
-                                    } else {
-                                      _specialApiSelected = label;
-                                      // Clear other regular filters when special API is picked
-                                      _selectedMode = null;
-                                      _selectedPriceRange = null;
-                                      _selectedBHKs.clear();
-                                    }
-                                    _load();
-                                  });
+                                  final notifier = ref.read(commonFilterNotifierProvider.notifier);
+                                  if (isSel) {
+                                    notifier.updateSearchText('');
+                                  } else {
+                                    notifier.resetFilters();
+                                    notifier.updateSearchText(label);
+                                  }
+                                  _load();
                                 },
                                 child: AnimatedContainer(
                                   duration: const Duration(milliseconds: 200),

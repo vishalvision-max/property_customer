@@ -1,28 +1,23 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../data/services/favorites_service.dart';
-import '../data/services/local_storage_service.dart';
 import 'auth_provider.dart';
 import '../data/models/property.dart';
 import 'property_provider.dart';
 import 'app_providers.dart';
 
-class FavoritesNotifier extends StateNotifier<Set<String>> {
-  final LocalStorageService _storage;
-  final FavoritesService _favoritesService;
-  final Ref _ref;
+part 'favorites_provider.g.dart';
 
-  FavoritesNotifier(this._storage, this._favoritesService, this._ref)
-      : super(const <String>{});
-
-  /// When a user taps like/unlike we optimistically update UI.
-  /// Some backends can be eventually-consistent or cached for a short time, so
-  /// a subsequent `load()` may temporarily return stale favorite ids and would
-  /// flip the UI back. Keep a short-lived local override per id to prevent
-  /// this "auto-like again" behavior.
-  static const Duration _kOverrideTtl = Duration(seconds: 20);
+@riverpod
+class Favorites extends _$Favorites {
+  // Short-lived local overrides map
   final Map<String, ({bool isFavorited, DateTime at})> _localOverrides = {};
+  static const Duration _kOverrideTtl = Duration(seconds: 20);
+
+  @override
+  Set<String> build() {
+    return const <String>{};
+  }
 
   void _setOverride(String id, bool isFavorited) {
     _localOverrides[id] = (isFavorited: isFavorited, at: DateTime.now());
@@ -57,21 +52,23 @@ class FavoritesNotifier extends StateNotifier<Set<String>> {
   }
 
   Future<void> load() async {
-    state = await _storage.getFavorites();
-    if (kIsWeb) return; // Web uses local storage only!
-    
-    final token = _ref.read(authProvider).user?.token;
+    final storage = ref.read(localStorageProvider);
+    state = await storage.getFavorites();
+    if (kIsWeb) return;
+
+    final token = ref.read(authProvider).user?.token;
     if (token == null || token.trim().isEmpty) return;
     try {
-      final remote = await _favoritesService.fetchFavoriteIds(token: token);
+      final favoritesService = ref.read(favoritesServiceProvider);
+      final remote = await favoritesService.fetchFavoriteIds(token: token);
       state = _applyOverrides(remote);
-      await _storage.saveFavorites(state);
+      await storage.saveFavorites(state);
 
       // Pre-populate nested favoritable property objects into the property provider's cache!
-      final rawProps = await _favoritesService.fetchFavoriteProperties(token: token);
+      final rawProps = await favoritesService.fetchFavoriteProperties(token: token);
       if (rawProps.isNotEmpty) {
-        final propNotifier = _ref.read(propertyProvider.notifier);
-        final service = _ref.read(propertyServiceProvider);
+        final propNotifier = ref.read(propertyNotifierProvider.notifier);
+        final service = ref.read(propertyServiceProvider);
         final List<Property> parsed = [];
         for (final raw in rawProps) {
           try {
@@ -90,18 +87,19 @@ class FavoritesNotifier extends StateNotifier<Set<String>> {
   Future<void> refresh() => load();
 
   Future<void> removeRemote({required String id}) async {
+    final storage = ref.read(localStorageProvider);
     if (kIsWeb) {
       final next = {...state}..remove(id);
       state = next;
-      await _storage.saveFavorites(state);
+      await storage.saveFavorites(state);
       return;
     }
 
-    final token = _ref.read(authProvider).user?.token;
+    final token = ref.read(authProvider).user?.token;
     if (token == null || token.trim().isEmpty) {
       final next = {...state}..remove(id);
       state = next;
-      await _storage.saveFavorites(state);
+      await storage.saveFavorites(state);
       return;
     }
 
@@ -109,16 +107,17 @@ class FavoritesNotifier extends StateNotifier<Set<String>> {
     _setOverride(id, false);
     final optimistic = {...state}..remove(id);
     state = optimistic;
-    await _storage.saveFavorites(state);
+    await storage.saveFavorites(state);
 
     try {
-      await _favoritesService.delete(token: token, id: id);
+      final favoritesService = ref.read(favoritesServiceProvider);
+      await favoritesService.delete(token: token, id: id);
       _clearOverride(id);
     } catch (e) {
       if (wasFav) {
         final rollback = {...state}..add(id);
         state = rollback;
-        await _storage.saveFavorites(state);
+        await storage.saveFavorites(state);
       }
       _setOverride(id, wasFav);
       rethrow;
@@ -126,6 +125,7 @@ class FavoritesNotifier extends StateNotifier<Set<String>> {
   }
 
   Future<void> toggle(String propertyId) async {
+    final storage = ref.read(localStorageProvider);
     final next = {...state};
     if (next.contains(propertyId)) {
       next.remove(propertyId);
@@ -133,7 +133,7 @@ class FavoritesNotifier extends StateNotifier<Set<String>> {
       next.add(propertyId);
     }
     state = next;
-    await _storage.saveFavorites(state);
+    await storage.saveFavorites(state);
   }
 
   Future<void> toggleRemote({
@@ -145,9 +145,8 @@ class FavoritesNotifier extends StateNotifier<Set<String>> {
       return;
     }
 
-    final token = _ref.read(authProvider).user?.token;
+    final token = ref.read(authProvider).user?.token;
     if (token == null || token.trim().isEmpty) {
-      // UI already guards this, but keep this safe for programmatic calls.
       await toggle(id);
       return;
     }
@@ -161,11 +160,13 @@ class FavoritesNotifier extends StateNotifier<Set<String>> {
     }
     _setOverride(id, !wasFav);
     state = optimistic;
-    await _storage.saveFavorites(state);
+    final storage = ref.read(localStorageProvider);
+    await storage.saveFavorites(state);
 
     try {
+      final favoritesService = ref.read(favoritesServiceProvider);
       final result =
-          await _favoritesService.toggle(token: token, type: type, id: id);
+          await favoritesService.toggle(token: token, type: type, id: id);
       if (result.isFavorited != null) {
         final reconciled = {...state};
         if (result.isFavorited!) {
@@ -174,12 +175,11 @@ class FavoritesNotifier extends StateNotifier<Set<String>> {
           reconciled.remove(id);
         }
         state = reconciled;
-        await _storage.saveFavorites(state);
+        await storage.saveFavorites(state);
         _setOverride(id, result.isFavorited!);
         _clearOverride(id);
       }
     } catch (e) {
-      // Roll back local state if API call failed.
       final rollback = {...state};
       if (wasFav) {
         rollback.add(id);
@@ -187,7 +187,7 @@ class FavoritesNotifier extends StateNotifier<Set<String>> {
         rollback.remove(id);
       }
       state = rollback;
-      await _storage.saveFavorites(state);
+      await storage.saveFavorites(state);
       _setOverride(id, wasFav);
       rethrow;
     }
@@ -195,11 +195,3 @@ class FavoritesNotifier extends StateNotifier<Set<String>> {
 
   bool isFavorite(String id) => state.contains(id);
 }
-
-final favoritesProvider = StateNotifierProvider<FavoritesNotifier, Set<String>>(
-  (ref) => FavoritesNotifier(
-    ref.watch(localStorageProvider),
-    ref.watch(favoritesServiceProvider),
-    ref,
-  ),
-);

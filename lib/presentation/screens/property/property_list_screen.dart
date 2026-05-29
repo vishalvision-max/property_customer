@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/filters/common_filter_provider.dart';
 import '../../../data/models/property.dart';
 import '../../../data/services/property_service.dart';
 import '../../../providers/auth_provider.dart';
@@ -57,31 +58,52 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
 
   // ─── manual area/locality search ───
   final TextEditingController _areaController = TextEditingController();
-  String _areaQuery = '';
 
-  // ─── active filter index (null = no filter active, "All") ───
-  int? _activeFilterIndex;
+  // ─── active filter index mapped from Riverpod central state ───
+  int? get _activeFilterIndex {
+    final filters = ref.watch(commonFilterNotifierProvider);
+    if (filters.listingType == 'buy' && filters.propertyType == 'Any') return 0;
+    if (filters.listingType == 'rent' && filters.propertyType == 'Any') return 1;
+    if (filters.listingType == 'rent' && filters.propertyType == 'PG') return 2;
+    if (filters.listingType == 'buy' && (filters.propertyType == 'Commercial' || filters.propertyType == 'Office')) return 3;
+    if (filters.listingType == 'buy' && (filters.propertyType == 'Plot' || filters.propertyType == 'Land')) return 4;
+    return null;
+  }
+
+  void _onFilterChipTapped(int? index) {
+    final notifier = ref.read(commonFilterNotifierProvider.notifier);
+    if (index == null) {
+      notifier.updateListingType('Any');
+      notifier.updatePropertyType('Any');
+    } else {
+      final chip = _kFilters[index];
+      notifier.updateListingType(chip.mode);
+      notifier.updatePropertyType(chip.subType ?? 'Any');
+    }
+  }
 
   // ─── items after applying the active chip filter and manual area search ───
   List<Property> get _filteredItems {
     final base = _baseItems;
     if (base == null) return [];
     var items = base;
-    if (_activeFilterIndex != null) {
-      final f = _kFilters[_activeFilterIndex!];
+    final filters = ref.read(commonFilterNotifierProvider);
+
+    if (filters.listingType != 'Any') {
+      items = items.where((p) => p.type == filters.listingType).toList();
+    }
+
+    if (filters.propertyType != 'Any') {
+      final query = filters.propertyType.toLowerCase();
       items = items.where((p) {
-        final modeOk = p.type == f.mode;
-        final subOk = f.subType == null
-            ? true
-            : p.propertyKind.toLowerCase().contains(f.subType!.toLowerCase()) ||
-              p.name.toLowerCase().contains(f.subType!.toLowerCase()) ||
-              p.type.toLowerCase().contains(f.subType!.toLowerCase());
-        return modeOk && subOk;
+        return p.propertyKind.toLowerCase().contains(query) ||
+               p.name.toLowerCase().contains(query) ||
+               p.type.toLowerCase().contains(query);
       }).toList();
     }
 
-    if (_areaQuery.trim().isNotEmpty) {
-      final q = _areaQuery.trim().toLowerCase();
+    if (filters.searchText.trim().isNotEmpty) {
+      final q = filters.searchText.trim().toLowerCase();
       items = items.where((p) {
         return p.location.toLowerCase().contains(q) ||
                p.name.toLowerCase().contains(q);
@@ -111,7 +133,7 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
       List<Property> items;
       if (extra.fromTab) {
         final loc = ref.read(locationProvider);
-        items = await ref.read(propertyProvider.notifier).fetchForType(
+        items = await ref.read(propertyNotifierProvider.notifier).fetchForType(
               mode: extra.mode,
               propertyType:
                   extra.propertyType == 'Any' ? null : extra.propertyType,
@@ -121,7 +143,7 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
       } else {
         final lq = extra.locationQuery.toLowerCase().trim();
         final token = ref.read(authProvider).user?.token ?? '';
-        final notif = ref.read(propertyProvider.notifier);
+        final notif = ref.read(propertyNotifierProvider.notifier);
         
         try {
           if (lq.contains('2 bhk')) {
@@ -166,14 +188,14 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
     } else if (extra is PropertyNameSearchArgs) {
       _title = 'Search: ${extra.query}';
       final items = await ref
-          .read(propertyProvider.notifier)
+          .read(propertyNotifierProvider.notifier)
           .searchByName(mode: extra.mode, query: extra.query);
       if (mounted) setState(() => _baseItems = items);
     } else if (extra is PropertyListArgs) {
       _title = extra.title;
       setState(() => _baseItems = extra.items);
     } else {
-      setState(() => _baseItems = ref.read(propertyProvider).all);
+      setState(() => _baseItems = ref.read(propertyNotifierProvider).all);
     }
   }
 
@@ -207,6 +229,12 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
   @override
   Widget build(BuildContext context) {
     final location = ref.watch(locationProvider);
+    final filters = ref.watch(commonFilterNotifierProvider);
+
+    // Synchronize controller with search text if updated externally
+    if (_areaController.text != filters.searchText) {
+      _areaController.text = filters.searchText;
+    }
 
     return Scaffold(
       backgroundColor: _kBg,
@@ -310,9 +338,7 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
                               child: TextField(
                                 controller: _areaController,
                                 onChanged: (val) {
-                                  setState(() {
-                                    _areaQuery = val;
-                                  });
+                                  ref.read(commonFilterNotifierProvider.notifier).updateSearchText(val);
                                 },
                                 style: const TextStyle(
                                   fontSize: 12.5,
@@ -332,13 +358,10 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
                                 ),
                               ),
                             ),
-                            if (_areaQuery.isNotEmpty)
+                            if (filters.searchText.isNotEmpty)
                               GestureDetector(
                                 onTap: () {
-                                  _areaController.clear();
-                                  setState(() {
-                                    _areaQuery = '';
-                                  });
+                                  ref.read(commonFilterNotifierProvider.notifier).updateSearchText('');
                                 },
                                 child: const Icon(
                                   Icons.close_rounded,
@@ -366,11 +389,7 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
                       if (i == 0) {
                         final isSelected = _activeFilterIndex == null;
                         return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _activeFilterIndex = null;
-                            });
-                          },
+                          onTap: () => _onFilterChipTapped(null),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 180),
                             curve: Curves.easeInOut,
@@ -413,11 +432,8 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
                       final isSelected = _activeFilterIndex == i - 1;
                       return GestureDetector(
                         onTap: () {
-                          setState(() {
-                            // Tap selected chip → deselect (toggle off) to show all
-                            _activeFilterIndex =
-                                isSelected ? null : i - 1;
-                          });
+                          // Tap selected chip → deselect (toggle off) to show all
+                          _onFilterChipTapped(isSelected ? null : i - 1);
                         },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
