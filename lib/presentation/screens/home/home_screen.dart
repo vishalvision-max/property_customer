@@ -107,7 +107,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             lng: loc.lng,
           );
       if (token != null && token.trim().isNotEmpty) {
-        ref.read(ownerProfileNotifierProvider.notifier).load(token: token.trim());
+        ref
+            .read(ownerProfileNotifierProvider.notifier)
+            .load(token: token.trim());
       }
     });
   }
@@ -469,9 +471,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   itemBuilder: (context, i) {
                     final p = recommended[i];
                     return PropertyCard(
-                      property: p,
-                      onTap: () => context.push('/property/${p.id}'),
-                    )
+                          property: p,
+                          onTap: () => context.push('/property/${p.id}'),
+                        )
                         .animate()
                         .fadeIn(delay: (50 * i).ms, duration: 240.ms)
                         .slideY(begin: 0.04);
@@ -490,7 +492,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               _visibleCount += 3;
                             });
                           },
-                          icon: const Icon(Icons.expand_more_rounded, color: Colors.white, size: 20),
+                          icon: const Icon(
+                            Icons.expand_more_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                           label: const Text(
                             'Load More Properties',
                             style: TextStyle(
@@ -779,22 +785,22 @@ class _HomeHeader extends StatelessWidget {
                               ),
                             ),
                           ),
-                          GestureDetector(
-                            onTap: onTapFilters,
-                            child: Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: _kPrimary.withValues(alpha: 0.04),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(
-                                Icons.tune_rounded,
-                                color: _kPrimary,
-                                size: 18,
-                              ),
-                            ),
-                          ),
+                          // GestureDetector(
+                          //   onTap: onTapFilters,
+                          //   child: Container(
+                          //     width: 32,
+                          //     height: 32,
+                          //     decoration: BoxDecoration(
+                          //       color: _kPrimary.withValues(alpha: 0.04),
+                          //       borderRadius: BorderRadius.circular(8),
+                          //     ),
+                          //     child: const Icon(
+                          //       Icons.tune_rounded,
+                          //       color: _kPrimary,
+                          //       size: 18,
+                          //     ),
+                          //   ),
+                          // ),
                         ],
                       ),
                     ),
@@ -889,7 +895,9 @@ class _HomeDrawer extends ConsumerWidget {
               : user.name.trim());
 
     // Badges: if guest, show high fidelity mock numbers from user image, else show dynamic numbers.
-    final enquiriesCount = isAuthed ? ref.watch(leadNotifierProvider).items.length : 28;
+    final enquiriesCount = isAuthed
+        ? ref.watch(leadNotifierProvider).items.length
+        : 28;
     final shortlistedCount = isAuthed ? ref.watch(favoritesProvider).length : 5;
     final myPropertiesCount = isAuthed
         ? ref.watch(propertyNotifierProvider).all.length
@@ -1984,10 +1992,6 @@ class _SectionHeader extends StatelessWidget {
     );
   }
 }
-
-
-
-
 
 // ─────────────────────────────────────────────────────────────
 //  BUILDER CHIP
