@@ -12,7 +12,6 @@ import '../../../providers/property_provider.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/property_card.dart';
 import '../../widgets/shimmer_list.dart';
-import '../search/search_args.dart';
 import '../../../providers/nav_provider.dart';
 
 const _kPrimary = Color(0xFF5C46E8);
@@ -49,7 +48,8 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
     return state.isEmpty ? 'Haryana' : state;
   }
 
-  bool get _panchkulaSelected => ref.watch(commonFilterNotifierProvider).city.isNotEmpty;
+  bool get _panchkulaSelected =>
+      ref.watch(commonFilterNotifierProvider).city.isNotEmpty;
 
   String? get _selectedMode {
     final mode = ref.watch(commonFilterNotifierProvider).listingType;
@@ -58,11 +58,24 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
 
   String? get _specialApiSelected {
     final search = ref.watch(commonFilterNotifierProvider).searchText;
-    const specials = ['2 BHK', 'Under 50 Lakhs', 'Ready to Move', 'Furnished', 'Gated Society', 'Studio Apartment'];
+    const specials = [
+      '2 BHK',
+      'Under 50 Lakhs',
+      'Ready to Move',
+      'Furnished',
+      'Gated Society',
+      'Studio Apartment',
+    ];
     return specials.contains(search) ? search : null;
   }
 
-  RangeValues? get _selectedPriceRange => ref.watch(commonFilterNotifierProvider).priceRange;
+  String? get _selectedPropertyType {
+    final pt = ref.watch(commonFilterNotifierProvider).propertyType;
+    return pt.isEmpty || pt == 'Any' ? null : pt;
+  }
+
+  RangeValues? get _selectedPriceRange =>
+      ref.watch(commonFilterNotifierProvider).priceRange;
 
   Set<int> get _selectedBHKs {
     final beds = ref.watch(commonFilterNotifierProvider).bedrooms;
@@ -305,6 +318,13 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                   p.price <= _selectedPriceRange!.end,
             )
             .toList();
+      }
+      
+      if (_selectedPropertyType != null) {
+        filtered = filtered.where((p) {
+          final text = '${p.propertyKind} ${p.name} ${p.description}'.toLowerCase();
+          return text.contains(_selectedPropertyType!.toLowerCase());
+        }).toList();
       }
 
       if (mounted) {
@@ -769,8 +789,12 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                         Expanded(
                           child: TextButton(
                             onPressed: () {
-                              ref.read(commonFilterNotifierProvider.notifier).updateCity('');
-                              ref.read(commonFilterNotifierProvider.notifier).updateState('');
+                              ref
+                                  .read(commonFilterNotifierProvider.notifier)
+                                  .updateCity('');
+                              ref
+                                  .read(commonFilterNotifierProvider.notifier)
+                                  .updateState('');
                               Navigator.pop(context);
                               _load();
                             },
@@ -793,7 +817,9 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                               final city = _cityController.text.trim();
                               final state = _stateController.text.trim();
                               if (city.isNotEmpty) {
-                                final notifier = ref.read(commonFilterNotifierProvider.notifier);
+                                final notifier = ref.read(
+                                  commonFilterNotifierProvider.notifier,
+                                );
                                 notifier.updateCity(city);
                                 notifier.updateState(state);
                                 Navigator.pop(context);
@@ -832,17 +858,20 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
   void _showModePicker() {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
         const modes = ['Buy', 'Rent', 'PG/Living', 'Commercial', 'Land/Plot'];
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+        return SizedBox(
+          width: double.infinity,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
                 'Select Mode / Category',
@@ -860,7 +889,9 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                   final isSel = _selectedMode == mode;
                   return GestureDetector(
                     onTap: () {
-                      final notifier = ref.read(commonFilterNotifierProvider.notifier);
+                      final notifier = ref.read(
+                        commonFilterNotifierProvider.notifier,
+                      );
                       if (_selectedMode == mode) {
                         notifier.updateListingType('Any');
                       } else {
@@ -900,6 +931,98 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
               ),
               const SizedBox(height: 16),
             ],
+          ),
+        ));
+      },
+    );
+  }
+
+  void _showPropertyTypePicker() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        const types = [
+          'Apartments',
+          'Independent House',
+          'Builder Floor',
+          'Plot',
+          'Studio',
+          'Duplex',
+          'Penthouse',
+          'Villa'
+        ];
+        return SizedBox(
+          width: double.infinity,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Select Property Type',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF1D2939),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: types.map((type) {
+                    final isSel = _selectedPropertyType == type;
+                    return GestureDetector(
+                      onTap: () {
+                        final notifier = ref.read(
+                          commonFilterNotifierProvider.notifier,
+                        );
+                        if (_selectedPropertyType == type) {
+                          notifier.updatePropertyType('Any');
+                        } else {
+                          notifier.updatePropertyType(type);
+                        }
+                        _load();
+                        Navigator.pop(context);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSel ? const Color(0xFFF2EFFF) : Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isSel
+                                ? const Color(0xFF5C46E8)
+                                : const Color(0xFFD0D5DD),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Text(
+                          type,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: isSel
+                                ? const Color(0xFF5C46E8)
+                                : const Color(0xFF344054),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
         );
       },
@@ -974,7 +1097,9 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () {
-                            ref.read(commonFilterNotifierProvider.notifier).updatePriceRange(null);
+                            ref
+                                .read(commonFilterNotifierProvider.notifier)
+                                .updatePriceRange(null);
                             _load();
                             Navigator.pop(context);
                           },
@@ -991,7 +1116,9 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () {
-                            ref.read(commonFilterNotifierProvider.notifier).updatePriceRange(current);
+                            ref
+                                .read(commonFilterNotifierProvider.notifier)
+                                .updatePriceRange(current);
                             _load();
                             Navigator.pop(context);
                           },
@@ -1096,7 +1223,9 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () {
-                            ref.read(commonFilterNotifierProvider.notifier).updateBedrooms(null);
+                            ref
+                                .read(commonFilterNotifierProvider.notifier)
+                                .updateBedrooms(null);
                             _load();
                             Navigator.pop(context);
                           },
@@ -1113,7 +1242,13 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () {
-                            ref.read(commonFilterNotifierProvider.notifier).updateBedrooms(tempSelected.isNotEmpty ? tempSelected.first : null);
+                            ref
+                                .read(commonFilterNotifierProvider.notifier)
+                                .updateBedrooms(
+                                  tempSelected.isNotEmpty
+                                      ? tempSelected.first
+                                      : null,
+                                );
                             _load();
                             Navigator.pop(context);
                           },
@@ -1191,17 +1326,17 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
               ),
             ),
 
-            actions: [
-              IconButton(
-                onPressed: () => context.push('/search'),
-                icon: const Icon(
-                  Icons.tune_rounded,
-                  color: _kPrimary,
-                  size: 22,
-                ),
-                tooltip: 'Filters',
-              ),
-            ],
+            // actions: [
+            //   IconButton(
+            //     onPressed: () => context.push('/search'),
+            //     icon: const Icon(
+            //       Icons.tune_rounded,
+            //       color: _kPrimary,
+            //       size: 22,
+            //     ),
+            //     tooltip: 'Filters',
+            //   ),
+            // ],
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(102),
               child: Column(
@@ -1217,8 +1352,12 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                           label: _selectedCity,
                           onTap: () {
                             if (_panchkulaSelected) {
-                              ref.read(commonFilterNotifierProvider.notifier).updateCity('');
-                              ref.read(commonFilterNotifierProvider.notifier).updateState('');
+                              ref
+                                  .read(commonFilterNotifierProvider.notifier)
+                                  .updateCity('');
+                              ref
+                                  .read(commonFilterNotifierProvider.notifier)
+                                  .updateState('');
                               _load();
                             } else {
                               _showLocationPickerDialog();
@@ -1238,18 +1377,9 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                         ),
                         const SizedBox(width: 8),
                         _FilterChip(
-                          label: 'Property Type',
-                          onTap: () => context.push(
-                            '/properties',
-                            extra: SearchArgs(
-                              mode: 'rent',
-                              budget: const RangeValues(500, 5000),
-                              propertyType: 'PG',
-                              amenities: const [],
-                              locationQuery: '',
-                              fromTab: true,
-                            ),
-                          ),
+                          label: _selectedPropertyType ?? 'Property Type',
+                          onTap: _showPropertyTypePicker,
+                          isSelected: _selectedPropertyType != null,
                           icon: Icons.keyboard_arrow_down_rounded,
                         ),
                         const SizedBox(width: 8),
@@ -1297,7 +1427,9 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                               padding: const EdgeInsets.only(right: 8),
                               child: GestureDetector(
                                 onTap: () {
-                                  final notifier = ref.read(commonFilterNotifierProvider.notifier);
+                                  final notifier = ref.read(
+                                    commonFilterNotifierProvider.notifier,
+                                  );
                                   if (isSel) {
                                     notifier.updateSearchText('');
                                   } else {

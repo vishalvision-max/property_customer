@@ -11,6 +11,36 @@ class PropertyService {
     'https://propertysearch.visionvivante.in',
   );
 
+  Future<void> scheduleVisit({
+    required String token,
+    required String propertyId,
+    required String userId,
+    required String date,
+    required String time,
+  }) async {
+    final uri = _baseUri.replace(path: '/api/v1/owner/scheduled/visit/property');
+    final response = await http.post(
+      uri,
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: {
+        'property_id': propertyId,
+        'user_id': userId,
+        'scheduled_date': date,
+        'scheduled_time': time,
+      },
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return;
+    } else {
+      throw Exception('Failed to schedule visit: ${response.statusCode}');
+    }
+  }
+
   Future<List<Property>> fetchProperties() async {
     return _fetchFromApi();
   }

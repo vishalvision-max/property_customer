@@ -72,9 +72,9 @@ class _NameSearchScreenState extends ConsumerState<NameSearchScreen> {
     );
     ref.read(searchHistoryProvider.notifier).saveSearch(item);
 
-    // Push to properties screen
+    // Push to name search results screen
     context.push(
-      '/properties',
+      '/name-search-results',
       extra: PropertyNameSearchArgs(query: q, mode: _mode),
     );
   }

@@ -19,16 +19,21 @@ class EmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SvgPicture.asset(asset, width: 220),
-            const SizedBox(height: 18),
+            SvgPicture.asset(asset, width: 180, height: 140, fit: BoxFit.contain),
+            const SizedBox(height: 16),
             Text(title, style: textTheme.titleLarge, textAlign: TextAlign.center),
             const SizedBox(height: 8),
-            Text(message, style: textTheme.bodyMedium?.copyWith(color: Theme.of(context).hintColor), textAlign: TextAlign.center),
+            Text(
+              message,
+              style: textTheme.bodyMedium?.copyWith(color: Theme.of(context).hintColor),
+              textAlign: TextAlign.center,
+            ),
             if (action != null) ...[
               const SizedBox(height: 16),
               action!,
@@ -39,4 +44,3 @@ class EmptyState extends StatelessWidget {
     );
   }
 }
-

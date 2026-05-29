@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../providers/auth_provider.dart';
 import '../../../providers/property_provider.dart';
 import '../../widgets/glass_container.dart';
 import '../../widgets/primary_button.dart';
@@ -124,17 +125,56 @@ class _ScheduleVisitScreenState extends ConsumerState<ScheduleVisitScreen> {
                   ? () async {
                       final router = GoRouter.of(context);
                       final messenger = ScaffoldMessenger.of(context);
+                      final errorColor = Theme.of(context).colorScheme.error;
+                      final authState = ref.read(authProvider);
+                      final user = authState.user;
+
+                      if (user == null || user.token.isEmpty) {
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: const Text('Please login to schedule a visit'),
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor: errorColor,
+                          ),
+                        );
+                        return;
+                      }
+
                       setState(() => _submitting = true);
-                      await Future<void>.delayed(const Duration(milliseconds: 900));
-                      setState(() => _submitting = false);
-                      if (!mounted) return;
-                      messenger.showSnackBar(
-                        SnackBar(
-                          content: Text('Visit scheduled for ${fmt.format(_date!)} at $_slot (mock)'),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                      router.pop();
+                      try {
+                        final formattedDate = DateFormat('yyyy-MM-dd').format(_date!);
+                        // Convert '09:00 AM' format to 'HH:mm' for backend
+                        final timeParsed = DateFormat('hh:mm a').parse(_slot!);
+                        final formattedTime = DateFormat('HH:mm').format(timeParsed);
+
+                        await ref.read(propertyNotifierProvider.notifier).scheduleVisit(
+                          token: user.token,
+                          propertyId: widget.propertyId,
+                          userId: user.id,
+                          date: formattedDate,
+                          time: formattedTime,
+                        );
+
+                        if (!mounted) return;
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text('Visit scheduled for ${fmt.format(_date!)} at $_slot'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                        router.pop();
+                      } catch (e) {
+                        if (!mounted) return;
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text('Failed to schedule visit. Please try again.'),
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor: errorColor,
+                          ),
+                        );
+                      } finally {
+                        if (mounted) setState(() => _submitting = false);
+                      }
                     }
                   : null,
               leading: const Icon(Icons.check_circle_outline_rounded),

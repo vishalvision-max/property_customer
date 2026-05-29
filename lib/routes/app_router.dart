@@ -16,7 +16,9 @@ import '../presentation/screens/profile/edit_owner_profile_screen.dart';
 import '../presentation/screens/profile/change_password_screen.dart';
 import '../presentation/screens/property/property_details_screen.dart';
 import '../presentation/screens/property/property_list_screen.dart';
+import '../presentation/screens/property/property_name_search_args.dart';
 import '../presentation/screens/property/schedule_visit_screen.dart';
+import '../presentation/screens/search/name_search_results_screen.dart';
 import '../presentation/screens/search/name_search_screen.dart';
 import '../presentation/screens/search/search_screen.dart';
 import '../presentation/screens/shell/main_shell.dart';
@@ -103,6 +105,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/name-search',
         builder: (context, state) => const NameSearchScreen(),
+      ),
+      GoRoute(
+        path: '/name-search-results',
+        builder: (context, state) {
+          final args = state.extra as PropertyNameSearchArgs;
+          return NameSearchResultsScreen(args: args);
+        },
       ),
       GoRoute(
         path: '/properties',

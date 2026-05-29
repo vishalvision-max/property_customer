@@ -375,4 +375,21 @@ class PropertyNotifier extends _$PropertyNotifier {
     final repo = ref.read(propertyRepositoryProvider);
     return repo.fetchAllOwnerPropertiesPaged(token: token, page: page, city: city);
   }
+
+  Future<void> scheduleVisit({
+    required String token,
+    required String propertyId,
+    required String userId,
+    required String date,
+    required String time,
+  }) {
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.scheduleVisit(
+      token: token,
+      propertyId: propertyId,
+      userId: userId,
+      date: date,
+      time: time,
+    );
+  }
 }

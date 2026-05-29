@@ -153,4 +153,18 @@ class PropertyRepository {
     required String keyword,
     // String? type,
   }) => _service.searchByKeyword(keyword: keyword);
+
+  Future<void> scheduleVisit({
+    required String token,
+    required String propertyId,
+    required String userId,
+    required String date,
+    required String time,
+  }) => _service.scheduleVisit(
+    token: token,
+    propertyId: propertyId,
+    userId: userId,
+    date: date,
+    time: time,
+  );
 }
