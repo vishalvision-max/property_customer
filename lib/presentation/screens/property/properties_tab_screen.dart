@@ -178,6 +178,72 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
         fetched = result.items;
         hasMore = result.hasMore;
         currentPage = result.currentPage;
+      } else if (_selectedPropertyType != null &&
+          [
+            'Apartments',
+            'Independent House',
+            'Duplex',
+            'Villa',
+            'Studio',
+            'Plot',
+          ].contains(_selectedPropertyType)) {
+        final notif = ref.read(propertyNotifierProvider.notifier);
+        switch (_selectedPropertyType) {
+          case 'Apartments':
+            final result = await notif.fetchApartmentPropertiesPaged(
+              token,
+              page: page,
+            );
+            fetched = result.items;
+            hasMore = result.hasMore;
+            currentPage = result.currentPage;
+            break;
+          case 'Independent House':
+            final result = await notif.fetchIndependentHousePropertiesPaged(
+              token,
+              page: page,
+            );
+            fetched = result.items;
+            hasMore = result.hasMore;
+            currentPage = result.currentPage;
+            break;
+          case 'Duplex':
+            final result = await notif.fetchDuplexPropertiesPaged(
+              token,
+              page: page,
+            );
+            fetched = result.items;
+            hasMore = result.hasMore;
+            currentPage = result.currentPage;
+            break;
+          case 'Villa':
+            final result = await notif.fetchVillaPropertiesPaged(
+              token,
+              page: page,
+            );
+            fetched = result.items;
+            hasMore = result.hasMore;
+            currentPage = result.currentPage;
+            break;
+          case 'Studio':
+            final result = await notif.fetchStudioPropertiesPaged(
+              token,
+              page: page,
+            );
+            fetched = result.items;
+            hasMore = result.hasMore;
+            currentPage = result.currentPage;
+            break;
+          case 'Plot':
+            final result = await notif.fetchPlotPropertiesPaged(
+              token,
+              page: page,
+            );
+            fetched = result.items;
+            hasMore = result.hasMore;
+            currentPage = result.currentPage;
+            break;
+        }
       } else if (_selectedMode == null) {
         // Default: paginated all-properties API
         final result = await ref
@@ -319,10 +385,11 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
             )
             .toList();
       }
-      
+
       if (_selectedPropertyType != null) {
         filtered = filtered.where((p) {
-          final text = '${p.propertyKind} ${p.name} ${p.description}'.toLowerCase();
+          final text = '${p.propertyKind} ${p.name} ${p.description}'
+              .toLowerCase();
           return text.contains(_selectedPropertyType!.toLowerCase());
         }).toList();
       }
@@ -702,10 +769,11 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                               try {
                                 final enabled =
                                     await Geolocator.isLocationServiceEnabled();
-                                if (!enabled)
+                                if (!enabled) {
                                   throw Exception(
                                     'Location services are disabled',
                                   );
+                                }
 
                                 var permission =
                                     await Geolocator.checkPermission();
@@ -872,67 +940,68 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Select Mode / Category',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF1D2939),
+              children: [
+                const Text(
+                  'Select Mode / Category',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF1D2939),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: modes.map((mode) {
-                  final isSel = _selectedMode == mode;
-                  return GestureDetector(
-                    onTap: () {
-                      final notifier = ref.read(
-                        commonFilterNotifierProvider.notifier,
-                      );
-                      if (_selectedMode == mode) {
-                        notifier.updateListingType('Any');
-                      } else {
-                        notifier.updateListingType(mode);
-                      }
-                      _load();
-                      Navigator.pop(context);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isSel ? const Color(0xFFF2EFFF) : Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: isSel
-                              ? const Color(0xFF5C46E8)
-                              : const Color(0xFFD0D5DD),
-                          width: 1.5,
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: modes.map((mode) {
+                    final isSel = _selectedMode == mode;
+                    return GestureDetector(
+                      onTap: () {
+                        final notifier = ref.read(
+                          commonFilterNotifierProvider.notifier,
+                        );
+                        if (_selectedMode == mode) {
+                          notifier.updateListingType('Any');
+                        } else {
+                          notifier.updateListingType(mode);
+                        }
+                        _load();
+                        Navigator.pop(context);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSel ? const Color(0xFFF2EFFF) : Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isSel
+                                ? const Color(0xFF5C46E8)
+                                : const Color(0xFFD0D5DD),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Text(
+                          mode,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: isSel
+                                ? const Color(0xFF5C46E8)
+                                : const Color(0xFF344054),
+                          ),
                         ),
                       ),
-                      child: Text(
-                        mode,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: isSel
-                              ? const Color(0xFF5C46E8)
-                              : const Color(0xFF344054),
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
-            ],
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
-        ));
+        );
       },
     );
   }
@@ -953,8 +1022,8 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
           'Plot',
           'Studio',
           'Duplex',
-          'Penthouse',
-          'Villa'
+          // 'Penthouse',
+          'Villa',
         ];
         return SizedBox(
           width: double.infinity,

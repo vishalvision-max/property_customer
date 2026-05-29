@@ -59,16 +59,19 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
   int? get _activeFilterIndex {
     final filters = ref.watch(commonFilterNotifierProvider);
     if (filters.listingType == 'buy' && filters.propertyType == 'Any') return 0;
-    if (filters.listingType == 'rent' && filters.propertyType == 'Any')
+    if (filters.listingType == 'rent' && filters.propertyType == 'Any') {
       return 1;
+    }
     if (filters.listingType == 'rent' && filters.propertyType == 'PG') return 2;
     if (filters.listingType == 'buy' &&
         (filters.propertyType == 'Commercial' ||
-            filters.propertyType == 'Office'))
+            filters.propertyType == 'Office')) {
       return 3;
+    }
     if (filters.listingType == 'buy' &&
-        (filters.propertyType == 'Plot' || filters.propertyType == 'Land'))
+        (filters.propertyType == 'Plot' || filters.propertyType == 'Land')) {
       return 4;
+    }
     return null;
   }
 
@@ -171,6 +174,18 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
           } else if (lq.contains('studio')) {
             _title = 'Studio Apartment';
             items = await notif.fetchStudioApartmentProperties(token);
+          } else if (extra.propertyType == 'Apartments') {
+            items = (await notif.fetchApartmentPropertiesPaged(token)).items;
+          } else if (extra.propertyType == 'Independent House') {
+            items = (await notif.fetchIndependentHousePropertiesPaged(token)).items;
+          } else if (extra.propertyType == 'Duplex') {
+            items = (await notif.fetchDuplexPropertiesPaged(token)).items;
+          } else if (extra.propertyType == 'Villa') {
+            items = (await notif.fetchVillaPropertiesPaged(token)).items;
+          } else if (extra.propertyType == 'Studio') {
+            items = (await notif.fetchStudioPropertiesPaged(token)).items;
+          } else if (extra.propertyType == 'Plot') {
+            items = (await notif.fetchPlotPropertiesPaged(token)).items;
           } else {
             items = await notif.search(
               mode: extra.mode,

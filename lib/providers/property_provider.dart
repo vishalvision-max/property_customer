@@ -321,6 +321,42 @@ class PropertyNotifier extends _$PropertyNotifier {
     return repo.fetchBuyPropertiesPaged(token: token, page: page);
   }
 
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchIndependentHousePropertiesPaged(String token, {int page = 1}) {
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchIndependentHousePropertiesPaged(token: token, page: page);
+  }
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchDuplexPropertiesPaged(String token, {int page = 1}) {
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchDuplexPropertiesPaged(token: token, page: page);
+  }
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchVillaPropertiesPaged(String token, {int page = 1}) {
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchVillaPropertiesPaged(token: token, page: page);
+  }
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchApartmentPropertiesPaged(String token, {int page = 1}) {
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchApartmentPropertiesPaged(token: token, page: page);
+  }
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchStudioPropertiesPaged(String token, {int page = 1}) {
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchStudioPropertiesPaged(token: token, page: page);
+  }
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchPlotPropertiesPaged(String token, {int page = 1}) {
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchPlotPropertiesPaged(token: token, page: page);
+  }
+
   Future<List<Property>> fetchPgProperties(String token) {
     final repo = ref.read(propertyRepositoryProvider);
     return repo.fetchPgProperties(token: token);

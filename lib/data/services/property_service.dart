@@ -604,6 +604,62 @@ class PropertyService {
         page: page,
       );
 
+  // --- Specialized Property Types ---
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchIndependentHousePropertiesPaged({required String token, int page = 1}) =>
+      _fetchSpecializedPaged(
+        token: token,
+        errorLabel: 'Independent House Properties',
+        path: '/api/v1/properties/independent/house',
+        page: page,
+      );
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchDuplexPropertiesPaged({required String token, int page = 1}) =>
+      _fetchSpecializedPaged(
+        token: token,
+        errorLabel: 'Duplex Properties',
+        path: '/api/v1/properties/search/duplex',
+        page: page,
+      );
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchVillaPropertiesPaged({required String token, int page = 1}) =>
+      _fetchSpecializedPaged(
+        token: token,
+        errorLabel: 'Villa Properties',
+        path: '/api/v1/properties/search/villa',
+        page: page,
+      );
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchApartmentPropertiesPaged({required String token, int page = 1}) =>
+      _fetchSpecializedPaged(
+        token: token,
+        errorLabel: 'Apartment Properties',
+        path: '/api/v1/properties/search/apartment',
+        page: page,
+      );
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchStudioPropertiesPaged({required String token, int page = 1}) =>
+      _fetchSpecializedPaged(
+        token: token,
+        errorLabel: 'Studio Properties',
+        path: '/api/v1/properties/search/studio',
+        page: page,
+      );
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchPlotPropertiesPaged({required String token, int page = 1}) =>
+      _fetchSpecializedPaged(
+        token: token,
+        errorLabel: 'Plot Properties',
+        path: '/api/v1/properties/search/plot',
+        page: page,
+      );
+  // ---------------------------------
+
   /// PG Properties — /api/v1/owner/pg/properties
   Future<List<Property>> fetchPgProperties({required String token}) =>
       _fetchSpecialized(

@@ -17,7 +17,7 @@ class PropertyTypeSection extends StatelessWidget {
     'Plot',
     'Studio',
     'Duplex',
-    'Penthouse',
+    // 'Penthouse',
     'Villa',
   ];
 
@@ -57,7 +57,10 @@ class PropertyTypeSection extends StatelessWidget {
               onTap: () => onTypeToggled(option),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: isSelected ? const Color(0xFFF9F5FF) : Colors.white,
                   borderRadius: BorderRadius.circular(12),
@@ -81,8 +84,12 @@ class PropertyTypeSection extends StatelessWidget {
                       option,
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                        color: isSelected ? activeColor : const Color(0xFF344054),
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w600,
+                        color: isSelected
+                            ? activeColor
+                            : const Color(0xFF344054),
                       ),
                     ),
                   ],

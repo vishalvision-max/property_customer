@@ -26,8 +26,6 @@ class FilterBottomSheet extends ConsumerStatefulWidget {
 class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
   bool _isAdvancedExpanded = false;
 
-
-
   @override
   Widget build(BuildContext context) {
     final filters = ref.watch(propertyFilterProvider);
@@ -221,8 +219,8 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
                   const SizedBox(height: 24),
 
                   // Advanced Filters Accordion
-                  _buildAdvancedAccordion(filters, notifier),
-                  const SizedBox(height: 24),
+                  // _buildAdvancedAccordion(filters, notifier),
+                  // const SizedBox(height: 24),
                 ],
               ),
             ),
@@ -361,34 +359,34 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
             ),
           ),
         ),
-        AnimatedCrossFade(
-          firstChild: const SizedBox.shrink(),
-          secondChild: Padding(
-            padding: const EdgeInsets.only(top: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ListedBySection(
-                  selectedListedBy: filters.selectedListedBy,
-                  selectedConstructionStatus:
-                      filters.selectedConstructionStatus,
-                  onListedByToggled: notifier.toggleListedBy,
-                  onConstructionStatusToggled:
-                      notifier.toggleConstructionStatus,
-                ),
-                const SizedBox(height: 24),
-                DeveloperSection(
-                  selectedDevelopers: filters.selectedDevelopers,
-                  onDeveloperToggled: notifier.toggleDeveloper,
-                ),
-              ],
-            ),
-          ),
-          crossFadeState: _isAdvancedExpanded
-              ? CrossFadeState.showSecond
-              : CrossFadeState.showFirst,
-          duration: const Duration(milliseconds: 250),
-        ),
+        // AnimatedCrossFade(
+        //   firstChild: const SizedBox.shrink(),
+        //   secondChild: Padding(
+        //     padding: const EdgeInsets.only(top: 16),
+        //     child: Column(
+        //       crossAxisAlignment: CrossAxisAlignment.start,
+        //       children: [
+        //         ListedBySection(
+        //           selectedListedBy: filters.selectedListedBy,
+        //           selectedConstructionStatus:
+        //               filters.selectedConstructionStatus,
+        //           onListedByToggled: notifier.toggleListedBy,
+        //           onConstructionStatusToggled:
+        //               notifier.toggleConstructionStatus,
+        //         ),
+        //         const SizedBox(height: 24),
+        //         DeveloperSection(
+        //           selectedDevelopers: filters.selectedDevelopers,
+        //           onDeveloperToggled: notifier.toggleDeveloper,
+        //         ),
+        //       ],
+        //     ),
+        //   ),
+        //   crossFadeState: _isAdvancedExpanded
+        //       ? CrossFadeState.showSecond
+        //       : CrossFadeState.showFirst,
+        //   duration: const Duration(milliseconds: 250),
+        // ),
       ],
     );
   }
@@ -400,7 +398,8 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
       if (filter.selectedIntent.isNotEmpty) {
         if (filter.selectedIntent == 'Buy' &&
             p.type != 'buy' &&
-            p.type != 'sale') return false;
+            p.type != 'sale')
+          return false;
         if (filter.selectedIntent == 'Rent' && p.type != 'rent') return false;
         if (filter.selectedIntent == 'Commercial' &&
             !p.propertyKind.toLowerCase().contains('commercial') &&
