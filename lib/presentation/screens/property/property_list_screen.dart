@@ -138,16 +138,36 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
       List<Property> items;
       if (extra.fromTab) {
         final loc = ref.read(locationProvider);
-        items = await ref
-            .read(propertyNotifierProvider.notifier)
-            .fetchForType(
-              mode: extra.mode,
-              propertyType: extra.propertyType == 'Any'
-                  ? null
-                  : extra.propertyType,
-              lat: loc.lat,
-              lng: loc.lng,
-            );
+        if (extra.propertyType == 'Commercial') {
+          final token = ref.read(authProvider).user?.token ?? '';
+          final notif = ref.read(propertyNotifierProvider.notifier);
+          try {
+            items = (await notif.fetchCommercialPropertiesPaged(token)).items;
+          } catch (e) {
+            debugPrint('Error loading commercial properties: $e');
+            items = [];
+          }
+        } else if (extra.propertyType == 'Plot') {
+          final token = ref.read(authProvider).user?.token ?? '';
+          final notif = ref.read(propertyNotifierProvider.notifier);
+          try {
+            items = (await notif.fetchLandPlotPropertiesPaged(token)).items;
+          } catch (e) {
+            debugPrint('Error loading plot properties: $e');
+            items = [];
+          }
+        } else {
+          items = await ref
+              .read(propertyNotifierProvider.notifier)
+              .fetchForType(
+                mode: extra.mode,
+                propertyType: extra.propertyType == 'Any'
+                    ? null
+                    : extra.propertyType,
+                lat: loc.lat,
+                lng: loc.lng,
+              );
+        }
       } else {
         final lq = extra.locationQuery.toLowerCase().trim();
         final token = ref.read(authProvider).user?.token ?? '';
