@@ -1015,24 +1015,56 @@ class PropertyService {
     ]);
     final availability = DateTime.tryParse(availabilityRaw) ?? DateTime.now();
 
-    final bhk = json['bhk'] != null ? int.tryParse(json['bhk'].toString()) : null;
-    final bedrooms = json['bedrooms'] != null ? int.tryParse(json['bedrooms'].toString()) : null;
-    final bathrooms = json['bathrooms'] != null ? int.tryParse(json['bathrooms'].toString()) : null;
-    final balconies = json['balconies'] != null ? int.tryParse(json['balconies'].toString()) : null;
-    final parking = json['parking'] != null ? int.tryParse(json['parking'].toString()) : null;
+    final resDetails = json['residential_details'] is Map ? Map<String, dynamic>.from(json['residential_details']) : <String, dynamic>{};
+
+    final bhk = pickInt(['bhk']) != 0 ? pickInt(['bhk']) : (resDetails['bhk'] != null ? int.tryParse(resDetails['bhk'].toString()) : null);
+    final bedrooms = pickInt(['bedrooms']) != 0 ? pickInt(['bedrooms']) : (resDetails['bedrooms'] != null ? int.tryParse(resDetails['bedrooms'].toString()) : null);
+    final bathrooms = pickInt(['bathrooms']) != 0 ? pickInt(['bathrooms']) : (resDetails['bathrooms'] != null ? int.tryParse(resDetails['bathrooms'].toString()) : null);
+    final balconies = pickInt(['balconies']) != 0 ? pickInt(['balconies']) : (resDetails['balconies'] != null ? int.tryParse(resDetails['balconies'].toString()) : null);
+    final parking = pickInt(['parking']) != 0 ? pickInt(['parking']) : (resDetails['parking'] != null ? int.tryParse(resDetails['parking'].toString()) : null);
     
-    final superBuiltUpArea = json['super_built_up_area'] != null 
-        ? double.tryParse(json['super_built_up_area'].toString()) 
-        : null;
-    final carpetArea = json['carpet_area'] != null 
-        ? double.tryParse(json['carpet_area'].toString()) 
-        : null;
-    final builtUpArea = json['built_up_area'] != null 
-        ? double.tryParse(json['built_up_area'].toString()) 
-        : null;
-    final furnishing = json['furnishing']?.toString();
+    final superBuiltUpArea = json['super_built_up_area'] != null ? double.tryParse(json['super_built_up_area'].toString()) : (resDetails['super_built_up_area'] != null ? double.tryParse(resDetails['super_built_up_area'].toString()) : null);
+    final carpetArea = json['carpet_area'] != null ? double.tryParse(json['carpet_area'].toString()) : (resDetails['carpet_area'] != null ? double.tryParse(resDetails['carpet_area'].toString()) : null);
+    final builtUpArea = json['built_up_area'] != null ? double.tryParse(json['built_up_area'].toString()) : (resDetails['built_up_area'] != null ? double.tryParse(resDetails['built_up_area'].toString()) : null);
+    
+    String? furnishing = json['furnishing']?.toString();
+    if (furnishing == null || furnishing.isEmpty) {
+      furnishing = resDetails['furnishing']?.toString();
+    }
+    String? facing = pickString(['facing']);
+    if (facing.isEmpty) {
+      facing = resDetails['facing']?.toString() ?? '';
+    }
     final categoryName = json['category'] is Map ? (json['category']['name']?.toString()) : null;
     final ownerPhone = json['owner_phone']?.toString();
+
+    // New Fields
+    final area = json['area'] != null ? double.tryParse(json['area'].toString()) : null;
+    final areaUnit = json['area_unit']?.toString();
+    
+    final furnishingsList = <String>[];
+    if (json['furnishings'] is List) {
+      for (final item in json['furnishings']) {
+        if (item is Map) {
+          final quantity = item['pivot']?['quantity'];
+          final name = item['name'];
+          if (quantity != null && name != null) {
+            furnishingsList.add('$quantity $name');
+          } else if (name != null) {
+            furnishingsList.add(name.toString());
+          }
+        } else {
+          furnishingsList.add(item.toString());
+        }
+      }
+    }
+
+    final plotDetails = json['plot_details'] is Map ? Map<String, dynamic>.from(json['plot_details']) : null;
+    final pgDetails = json['pg_details'] is Map ? Map<String, dynamic>.from(json['pg_details']) : null;
+    final officeDetails = json['office_details'] is Map ? Map<String, dynamic>.from(json['office_details']) : null;
+    final shopDetails = json['shop_details'] is Map ? Map<String, dynamic>.from(json['shop_details']) : null;
+    final warehouseDetails = json['warehouse_details'] is Map ? Map<String, dynamic>.from(json['warehouse_details']) : null;
+    final residentialDetails = resDetails.isNotEmpty ? resDetails : null;
 
     return Property(
       id: id,
@@ -1057,6 +1089,25 @@ class PropertyService {
       furnishing: furnishing,
       categoryName: categoryName,
       ownerPhone: ownerPhone,
+      area: area,
+      areaUnit: areaUnit,
+      furnishingsList: furnishingsList.where((e) => e.isNotEmpty).toList(),
+      plotDetails: plotDetails,
+      pgDetails: pgDetails,
+      officeDetails: officeDetails,
+      shopDetails: shopDetails,
+      warehouseDetails: warehouseDetails,
+      residentialDetails: residentialDetails,
+      securityDeposit: pickInt(['security_deposit']),
+      lockInPeriod: pickString(['lock_in_period']),
+      availableFrom: pickString(['available_from']),
+      parkingCharges: pickInt(['parking_charges']),
+      paintingCharges: pickInt(['painting_charges']),
+      bookingAmount: pickInt(['booking_amount']),
+      priceNegotiable: json['price_negotiable'] == 1 || json['price_negotiable'] == true,
+      propertyHighlights: pickString(['property_highlights']),
+      promotionTags: pickString(['promotion_tags']),
+      facing: facing.isNotEmpty ? facing : null,
     );
   }
 }

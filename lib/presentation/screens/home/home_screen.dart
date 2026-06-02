@@ -17,6 +17,7 @@ import '../../../providers/favorites_provider.dart';
 import '../../../providers/lead_provider.dart';
 import '../../../providers/nav_provider.dart';
 import '../../widgets/property_card.dart';
+import '../../widgets/related_property_card.dart';
 import '../../widgets/shimmer_list.dart';
 import '../property/property_list_args.dart';
 import '../search/search_args.dart';
@@ -46,7 +47,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   String _mode = 'rent';
   ProviderSubscription<LocationState>? _locationSub;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  int _visibleCount = 3;
+  int _visibleCount = 4;
 
   @override
   void initState() {
@@ -162,7 +163,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           final token = ref.read(authProvider).user?.token;
           final loc = ref.read(locationProvider);
           setState(() {
-            _visibleCount = 3;
+            _visibleCount = 4;
           });
           return ref
               .read(propertyNotifierProvider.notifier)
@@ -464,20 +465,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             else ...[
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                sliver: SliverList.separated(
-                  itemCount: recommended.take(_visibleCount).length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 14),
-                  itemBuilder: (context, i) {
-                    final p = recommended[i];
-                    return PropertyCard(
-                          property: p,
-                          onTap: () => context.push('/property/${p.id}'),
-                        )
-                        .animate()
-                        .fadeIn(delay: (50 * i).ms, duration: 240.ms)
-                        .slideY(begin: 0.04);
-                  },
+                sliver: SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 14,
+                    crossAxisSpacing: 14,
+                    childAspectRatio: 0.72,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, i) {
+                      final p = recommended[i];
+                      return RelatedPropertyCard(
+                        property: p,
+                        onTap: () => context.push('/property/${p.id}'),
+                      )
+                          .animate()
+                          .fadeIn(delay: (50 * i).ms, duration: 240.ms)
+                          .slideY(begin: 0.04);
+                    },
+                    childCount: recommended.take(_visibleCount).length,
+                  ),
                 ),
               ),
               if (recommended.length > _visibleCount)
@@ -489,7 +496,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ElevatedButton.icon(
                           onPressed: () {
                             setState(() {
-                              _visibleCount += 3;
+                              _visibleCount += 4;
                             });
                           },
                           icon: const Icon(

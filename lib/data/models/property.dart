@@ -39,6 +39,17 @@ class Property {
   final String? propertyHighlights;
   final String? promotionTags;
 
+  // New Mapped Fields
+  final double? area;
+  final String? areaUnit;
+  final List<String> furnishingsList;
+  final Map<String, dynamic>? plotDetails;
+  final Map<String, dynamic>? pgDetails;
+  final Map<String, dynamic>? officeDetails;
+  final Map<String, dynamic>? shopDetails;
+  final Map<String, dynamic>? warehouseDetails;
+  final Map<String, dynamic>? residentialDetails;
+
   const Property({
     this.facing,
     required this.id,
@@ -76,6 +87,15 @@ class Property {
     this.priceNegotiable,
     this.propertyHighlights,
     this.promotionTags,
+    this.area,
+    this.areaUnit,
+    this.furnishingsList = const [],
+    this.plotDetails,
+    this.pgDetails,
+    this.officeDetails,
+    this.shopDetails,
+    this.warehouseDetails,
+    this.residentialDetails,
   });
 
   factory Property.fromJson(Map<String, dynamic> json) {
@@ -227,6 +247,31 @@ class Property {
       priceNegotiable: json['price_negotiable'] == 1 || json['price_negotiable'] == true,
       propertyHighlights: json['property_highlights']?.toString(),
       promotionTags: json['promotion_tags']?.toString(),
+      area: json['area'] != null ? double.tryParse(json['area'].toString()) : null,
+      areaUnit: json['area_unit']?.toString(),
+      furnishingsList: (() {
+        final f = json['furnishings'];
+        if (f is List) {
+          return f.map((e) {
+            if (e is Map<String, dynamic>) {
+              final quantity = e['pivot']?['quantity'];
+              final name = e['name'];
+              if (quantity != null && name != null) {
+                return '$quantity $name';
+              }
+              return name?.toString() ?? '';
+            }
+            return e.toString();
+          }).where((e) => e.isNotEmpty).toList();
+        }
+        return <String>[];
+      })(),
+      plotDetails: json['plot_details'] is Map ? Map<String, dynamic>.from(json['plot_details']) : null,
+      pgDetails: json['pg_details'] is Map ? Map<String, dynamic>.from(json['pg_details']) : null,
+      officeDetails: json['office_details'] is Map ? Map<String, dynamic>.from(json['office_details']) : null,
+      shopDetails: json['shop_details'] is Map ? Map<String, dynamic>.from(json['shop_details']) : null,
+      warehouseDetails: json['warehouse_details'] is Map ? Map<String, dynamic>.from(json['warehouse_details']) : null,
+      residentialDetails: json['residential_details'] is Map ? Map<String, dynamic>.from(json['residential_details']) : null,
     );
   }
 
@@ -266,5 +311,14 @@ class Property {
     'price_negotiable': priceNegotiable,
     'property_highlights': propertyHighlights,
     'promotion_tags': promotionTags,
+    'area': area,
+    'area_unit': areaUnit,
+    'furnishings': furnishingsList,
+    'plot_details': plotDetails,
+    'pg_details': pgDetails,
+    'office_details': officeDetails,
+    'shop_details': shopDetails,
+    'warehouse_details': warehouseDetails,
+    'residential_details': residentialDetails,
   };
 }

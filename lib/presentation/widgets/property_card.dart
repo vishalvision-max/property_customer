@@ -105,39 +105,15 @@ PropertySpecs getPropertySpecs(Property p) {
   }
 
   // Property Type
-  String type = 'Apartment';
-  if (p.categoryName != null && p.categoryName!.isNotEmpty) {
-    final catLower = p.categoryName!.toLowerCase();
-    if (catLower.contains('flat') || catLower.contains('apartment')) {
-      type = 'Apartment';
-    } else if (catLower.contains('villa') ||
-        catLower.contains('house') ||
-        catLower.contains('home')) {
-      type = 'Villa';
-    } else if (catLower.contains('plot') || catLower.contains('land')) {
-      type = 'Plot';
-    } else if (catLower.contains('shop') ||
-        catLower.contains('commercial') ||
-        catLower.contains('office')) {
-      type = 'Commercial';
-    } else {
-      type = p.categoryName!;
-    }
-  } else {
-    final nameLower = p.name.toLowerCase();
-    if (nameLower.contains('apartment')) {
-      type = 'Apartment';
-    } else if (nameLower.contains('villa')) {
-      type = 'Villa';
-    } else if (nameLower.contains('floor') || nameLower.contains('builder')) {
-      type = 'Builder Floor';
-    } else if (nameLower.contains('shop') || nameLower.contains('commercial')) {
-      type = 'Commercial';
-    } else if (nameLower.contains('plot') || nameLower.contains('land')) {
-      type = 'Plot';
-    } else {
-      type = 'Apartment';
-    }
+  String type = '';
+  if (p.categoryName != null && p.categoryName!.trim().isNotEmpty) {
+    type = p.categoryName!.trim();
+  } else if (p.propertyKind.trim().isNotEmpty) {
+    type = p.propertyKind.trim();
+  }
+  
+  if (p.type.toLowerCase() == 'pg') {
+    type = 'PG / Co-Living';
   }
 
   // Status
@@ -174,22 +150,6 @@ PropertySpecs getPropertySpecs(Property p) {
                 : '${e[0].toUpperCase()}${e.substring(1).toLowerCase()}',
           )
           .join(' '),
-    );
-  }
-
-  if (p.amenities.isNotEmpty) {
-    highlights.addAll(
-      p.amenities.where((e) => e.trim().isNotEmpty).map((e) {
-        final clean = e.replaceAll('_', ' ').trim();
-        return clean
-            .split(' ')
-            .map(
-              (w) => w.isEmpty
-                  ? w
-                  : '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}',
-            )
-            .join(' ');
-      }),
     );
   }
 
@@ -446,7 +406,7 @@ class PropertyCard extends ConsumerWidget {
 
               // ─── BIG IMAGE WITH GRADIENT OVERLAY ───
               SizedBox(
-                height: 240,
+                height: compact ? 180 : 240,
                 child: _PropertyMediaGallery(
                   property: property,
                   isFeatured: isFeatured,
@@ -636,132 +596,134 @@ class PropertyCard extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
+                    if (!compact) ...[
+                      const SizedBox(height: 20),
 
-                    // Divider
-                    const Divider(
-                      color: Color(0xFFEAECF0),
-                      height: 1,
-                      thickness: 1,
-                    ),
-                    const SizedBox(height: 16),
+                      // Divider
+                      const Divider(
+                        color: Color(0xFFEAECF0),
+                        height: 1,
+                        thickness: 1,
+                      ),
+                      const SizedBox(height: 16),
 
-                    // Bottom Action Row
-                    Row(
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Updated',
-                              style: TextStyle(
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFF98A2B3),
+                      // Bottom Action Row
+                      Row(
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Updated',
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF98A2B3),
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              updatedTimeAgo,
-                              style: const TextStyle(
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF667085),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const Spacer(),
-                        OutlinedButton(
-                          onPressed: () {
-                            onTap();
-                          },
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
-                            ),
-                            minimumSize: const Size(0, 42),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            side: const BorderSide(
-                              color: Color(0xFF5C46E8),
-                              width: 1.5,
-                            ),
-                          ),
-                          child: const Text(
-                            'View Details',
-                            style: TextStyle(
-                              color: Color(0xFF5C46E8),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Container(
-                          height: 42,
-                          width: 42,
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: const Color(0xFF039855),
-                              width: 1.5,
-                            ),
-                            borderRadius: BorderRadius.circular(10),
-                            color: const Color(0xFFECFDF3),
-                          ),
-                          child: IconButton(
-                            padding: EdgeInsets.zero,
-                            icon: const Icon(
-                              Icons.wechat_rounded, // fallback for whatsapp
-                              color: Color(0xFF039855),
-                              size: 24,
-                            ),
-                            tooltip: 'WhatsApp',
-                            onPressed: () async {
-                              final phone =
-                                  property.ownerPhone ?? '+919999999999';
-                              final url = Uri.parse('https://wa.me/$phone');
-                              if (await canLaunchUrl(url)) launchUrl(url);
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Container(
-                          height: 42,
-                          width: 42,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF5C46E8),
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(
-                                  0xFF5C46E8,
-                                ).withValues(alpha: 0.25),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
+                              const SizedBox(height: 2),
+                              Text(
+                                updatedTimeAgo,
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF667085),
+                                ),
                               ),
                             ],
                           ),
-                          child: IconButton(
-                            padding: EdgeInsets.zero,
-                            icon: const Icon(
-                              Icons.call_rounded,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                            tooltip: 'Call',
-                            onPressed: () async {
-                              final phone =
-                                  property.ownerPhone ?? '+919999999999';
-                              final url = Uri.parse('tel:$phone');
-                              if (await canLaunchUrl(url)) launchUrl(url);
+                          const Spacer(),
+                          OutlinedButton(
+                            onPressed: () {
+                              onTap();
                             },
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                              minimumSize: const Size(0, 42),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              side: const BorderSide(
+                                color: Color(0xFF5C46E8),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: const Text(
+                              'View Details',
+                              style: TextStyle(
+                                color: Color(0xFF5C46E8),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+                          const SizedBox(width: 10),
+                          Container(
+                            height: 42,
+                            width: 42,
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: const Color(0xFF039855),
+                                width: 1.5,
+                              ),
+                              borderRadius: BorderRadius.circular(10),
+                              color: const Color(0xFFECFDF3),
+                            ),
+                            child: IconButton(
+                              padding: EdgeInsets.zero,
+                              icon: const Icon(
+                                Icons.wechat_rounded, // fallback for whatsapp
+                                color: Color(0xFF039855),
+                                size: 24,
+                              ),
+                              tooltip: 'WhatsApp',
+                              onPressed: () async {
+                                final phone =
+                                    property.ownerPhone ?? '+919999999999';
+                                final url = Uri.parse('https://wa.me/$phone');
+                                if (await canLaunchUrl(url)) launchUrl(url);
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            height: 42,
+                            width: 42,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF5C46E8),
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(
+                                    0xFF5C46E8,
+                                  ).withValues(alpha: 0.25),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: IconButton(
+                              padding: EdgeInsets.zero,
+                              icon: const Icon(
+                                Icons.call_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                              tooltip: 'Call',
+                              onPressed: () async {
+                                final phone =
+                                    property.ownerPhone ?? '+919999999999';
+                                final url = Uri.parse('tel:$phone');
+                                if (await canLaunchUrl(url)) launchUrl(url);
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),

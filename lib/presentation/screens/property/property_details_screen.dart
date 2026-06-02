@@ -12,6 +12,7 @@ import '../../../providers/property_provider.dart';
 import '../../widgets/autoplay_video_preview.dart';
 
 import '../../widgets/property_card.dart'; // to reuse specs extraction and price formatter
+import '../../widgets/related_property_card.dart';
 import '../../widgets/responsive_item_grid.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shimmer/shimmer.dart';
@@ -114,6 +115,7 @@ class PropertyDetailsScreen extends ConsumerStatefulWidget {
 class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
   Future<Property>? _future;
   bool _isAmenitiesExpanded = false;
+  bool _isFurnishingsExpanded = false;
   bool _isHighlightsExpanded = false;
   bool _isDescriptionExpanded = false;
 
@@ -199,7 +201,7 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
   Widget _buildThumbnailStrip(BuildContext context, Property p) {
     final videos = p.videos;
     final images = p.images;
-    
+
     final mediaList = <Map<String, dynamic>>[
       for (var i = 0; i < videos.length; i++)
         {'type': 'video', 'url': videos[i], 'index': i},
@@ -387,39 +389,49 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
     final List<Widget> items = [];
 
     if (specs.sqft.isNotEmpty) {
-      items.add(specColumn(
-        icon: Icons.square_foot_outlined,
-        value: specs.sqft,
-        label: 'Super Built-up',
-      ));
+      items.add(
+        specColumn(
+          icon: Icons.square_foot_outlined,
+          value: specs.sqft,
+          label: 'Super Built-up',
+        ),
+      );
     }
     if (specs.bedrooms.isNotEmpty) {
-      items.add(specColumn(
-        icon: Icons.king_bed_outlined,
-        value: specs.bedrooms.replaceAll(RegExp(r'\s*Bed'), ''),
-        label: 'Bedrooms',
-      ));
+      items.add(
+        specColumn(
+          icon: Icons.king_bed_outlined,
+          value: specs.bedrooms.replaceAll(RegExp(r'\s*Bed'), ''),
+          label: 'Bedrooms',
+        ),
+      );
     }
     if (specs.bathrooms.isNotEmpty) {
-      items.add(specColumn(
-        icon: Icons.bathtub_outlined,
-        value: specs.bathrooms.replaceAll(RegExp(r'\s*Bath'), ''),
-        label: 'Bathrooms',
-      ));
+      items.add(
+        specColumn(
+          icon: Icons.bathtub_outlined,
+          value: specs.bathrooms.replaceAll(RegExp(r'\s*Bath'), ''),
+          label: 'Bathrooms',
+        ),
+      );
     }
     if (specs.balconies.isNotEmpty) {
-      items.add(specColumn(
-        icon: Icons.balcony_outlined,
-        value: specs.balconies,
-        label: 'Balcony',
-      ));
+      items.add(
+        specColumn(
+          icon: Icons.balcony_outlined,
+          value: specs.balconies,
+          label: 'Balcony',
+        ),
+      );
     }
     if (specs.parking.isNotEmpty) {
-      items.add(specColumn(
-        icon: Icons.local_parking_outlined,
-        value: specs.parking,
-        label: 'Parking',
-      ));
+      items.add(
+        specColumn(
+          icon: Icons.local_parking_outlined,
+          value: specs.parking,
+          label: 'Parking',
+        ),
+      );
     }
 
     if (items.isEmpty) return const SizedBox.shrink();
@@ -440,7 +452,7 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'furnishing',
+            'Facilities',
             style: TextStyle(
               fontSize: 15.5,
               fontWeight: FontWeight.w800,
@@ -577,10 +589,85 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
           .join(' ');
       rows.add(_buildTermsRow('Furnishing', f));
     }
-    
+
     if (p.categoryName != null && p.categoryName!.trim().isNotEmpty) {
       rows.add(_buildTermsRow('Property Type', p.categoryName!));
     }
+    if (p.superBuiltUpArea != null && p.superBuiltUpArea! > 0) {
+      rows.add(
+        _buildTermsRow('Super Built-up Area', '${p.superBuiltUpArea} sqft'),
+      );
+    }
+    if (p.builtUpArea != null && p.builtUpArea! > 0) {
+      rows.add(_buildTermsRow('Built-up Area', '${p.builtUpArea} sqft'));
+    }
+    if (p.carpetArea != null && p.carpetArea! > 0) {
+      rows.add(_buildTermsRow('Carpet Area', '${p.carpetArea} sqft'));
+    }
+    if (p.facing != null && p.facing!.trim().isNotEmpty) {
+      rows.add(
+        _buildTermsRow(
+          'Facing',
+          '${p.facing![0].toUpperCase()}${p.facing!.substring(1)}',
+        ),
+      );
+    }
+    if (p.promotionTags != null && p.promotionTags!.trim().isNotEmpty) {
+      rows.add(_buildTermsRow('Promotion Tags', p.promotionTags!));
+    }
+    if (p.area != null && p.area! > 0) {
+      rows.add(_buildTermsRow('Area', '${p.area} ${p.areaUnit ?? "sqft"}'));
+    }
+
+    void addMapDetails(Map<String, dynamic>? map) {
+      if (map == null) return;
+      map.forEach((k, v) {
+        if (k == 'id' ||
+            k == 'property_id' ||
+            k == 'created_at' ||
+            k == 'updated_at' ||
+            k == 'facing' ||
+            k == 'furnishing' ||
+            k == 'carpet_area' ||
+            k == 'built_up_area' ||
+            k == 'super_built_up_area' ||
+            k.endsWith('_unit'))
+          return;
+        if (v == null ||
+            v == '' ||
+            v == 0 ||
+            v == false ||
+            (v is List && v.isEmpty))
+          return;
+        if (k.endsWith('_area') && p.area != null)
+          return; // avoid duplicate area if it matches
+        final formattedKey = k
+            .replaceAll('_', ' ')
+            .split(' ')
+            .map(
+              (e) => e.isEmpty ? e : '${e[0].toUpperCase()}${e.substring(1)}',
+            )
+            .join(' ');
+
+        String valStr = v.toString();
+        if (v == true) {
+          valStr = 'Yes';
+        } else if (v is List) {
+          valStr = v.map((e) {
+            return e.toString().replaceAll('_', ' ').split(' ').map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}').join(' ');
+          }).join(', ');
+        }
+        
+        rows.add(_buildTermsRow(formattedKey, valStr));
+      });
+    }
+
+    addMapDetails(p.plotDetails);
+    addMapDetails(p.pgDetails);
+    addMapDetails(p.officeDetails);
+    addMapDetails(p.shopDetails);
+    addMapDetails(p.warehouseDetails);
+    addMapDetails(p.residentialDetails);
 
     if (rows.isEmpty) return const SizedBox.shrink();
 
@@ -612,6 +699,64 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildRelatedProperties(BuildContext context, Property currentProp) {
+    final propertyState = ref.watch(propertyNotifierProvider);
+    final allProperties = propertyState.all;
+
+    final related = allProperties
+        .where((p) => p.id != currentProp.id && p.type == currentProp.type)
+        .take(6)
+        .toList();
+
+    if (related.isEmpty) {
+      final fallbackRelated = allProperties
+          .where((p) => p.id != currentProp.id)
+          .take(6)
+          .toList();
+      if (fallbackRelated.isEmpty) return const SizedBox.shrink();
+      related.addAll(fallbackRelated);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Divider(height: 1, thickness: 1, color: Color(0xFFF2F4F7)),
+        ),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Text(
+            'Related Properties',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF1D2939),
+            ),
+          ),
+        ),
+        SizedBox(
+          height: 240,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            scrollDirection: Axis.horizontal,
+            itemCount: related.length,
+            separatorBuilder: (context, index) => const SizedBox(width: 16),
+            itemBuilder: (context, index) {
+              final prop = related[index];
+              return RelatedPropertyCard(
+                property: prop,
+                onTap: () {
+                  context.push('/property/${prop.id}', extra: prop);
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -787,6 +932,8 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                       isFavorited: isFav,
                       isLoading:
                           snapshot.connectionState == ConnectionState.waiting,
+                      property: p,
+                      specs: specs,
                     ),
 
                     // Thumbnail Strip
@@ -880,6 +1027,88 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                     const SizedBox(height: 20),
 
                     // Amenities Section
+                    if (p.furnishingsList.isNotEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Furnishings',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF1D2939),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            ResponsiveItemGrid<String>(
+                              items: p.furnishingsList,
+                              fixedColumns: 3,
+                              spacing: 8,
+                              runSpacing: 8,
+                              isCollapsible: true,
+                              isExpanded: _isFurnishingsExpanded,
+                              onToggle: () {
+                                setState(() {
+                                  _isFurnishingsExpanded =
+                                      !_isFurnishingsExpanded;
+                                });
+                              },
+                              itemBuilder: (context, a) {
+                                final formatted = a
+                                    .split(' ')
+                                    .map(
+                                      (w) => w.isEmpty
+                                          ? w
+                                          : '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}',
+                                    )
+                                    .join(' ');
+
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF9FAFB),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: const Color(0xFFEAECF0),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.check_circle_outline,
+                                        color: Color(0xFF5C46E8),
+                                        size: 13,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          formatted,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: Color(0xFF344054),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+
                     if (p.amenities.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -962,10 +1191,9 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                       ),
 
                     if (p.amenities.isNotEmpty) const SizedBox(height: 20),
-                    
+
                     // Extra Details (Financials, Terms)
                     _buildExtraDetails(p),
-
                     const SizedBox(height: 8),
 
                     // // Furnishing Section
@@ -1135,6 +1363,8 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                       ),
                     ),
 
+                    _buildRelatedProperties(context, p),
+
                     const SizedBox(height: 120),
                   ],
                 ),
@@ -1239,10 +1469,8 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                                 color: _kPrimary,
                               ),
                               child: Center(
-                                child: Text(
-                                  p.ownerPhone != null && p.ownerPhone!.trim().isNotEmpty
-                                    ? 'Call ${p.ownerPhone}'
-                                    : 'Call Agent',
+                                child: const Text(
+                                  'Call Agent',
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w800,
@@ -1275,6 +1503,8 @@ class _HeroMediaLight extends StatefulWidget {
   final VoidCallback onToggleFavorite;
   final bool isFavorited;
   final bool isLoading;
+  final Property property;
+  final PropertySpecs specs;
 
   const _HeroMediaLight({
     required this.videos,
@@ -1285,6 +1515,8 @@ class _HeroMediaLight extends StatefulWidget {
     required this.onToggleFavorite,
     required this.isFavorited,
     required this.isLoading,
+    required this.property,
+    required this.specs,
   });
 
   @override
@@ -1481,6 +1713,158 @@ class _HeroMediaLightState extends State<_HeroMediaLight> {
                 ),
               ),
             ),
+
+          Positioned(
+            bottom: 12,
+            left: 12,
+            right: 80, // Leave space for the "1/X" counter on the right
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                if (widget.property.type.toLowerCase() == 'sale')
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8FDF0),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      'For Sale',
+                      style: TextStyle(
+                        color: Color(0xFF039855),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  )
+                else if (widget.property.type.toLowerCase() == 'rent')
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEBF3FF),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      'For Rent',
+                      style: TextStyle(
+                        color: Color(0xFF0055FF),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  )
+                else if (widget.property.type.toLowerCase() == 'pg')
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF9F5FF),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      'PG / Co-Living',
+                      style: TextStyle(
+                        color: Color(0xFF6941C6),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+
+                if (widget.property.categoryName != null &&
+                    widget.property.categoryName!.trim().isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      widget.property.categoryName!.trim(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+
+                if (widget.specs.sqft.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.square_foot_outlined,
+                          color: Colors.white,
+                          size: 12,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          widget.specs.sqft,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                if (widget.specs.parking.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.local_parking_outlined,
+                          color: Colors.white,
+                          size: 12,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          widget.specs.parking,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -1522,7 +1906,11 @@ class _ZoomGalleryState extends State<_ZoomGallery> {
 
   @override
   Widget build(BuildContext context) {
-    final media = widget.mediaList.isEmpty ? const [{'type': 'image', 'url': ''}] : widget.mediaList;
+    final media = widget.mediaList.isEmpty
+        ? const [
+            {'type': 'image', 'url': ''},
+          ]
+        : widget.mediaList;
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
