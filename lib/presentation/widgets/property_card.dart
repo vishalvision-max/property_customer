@@ -235,21 +235,21 @@ class PropertyCard extends ConsumerWidget {
           type.toLowerCase().contains('shop')) {
         return 'Commercial Space';
       }
-      int bhkCount = 3;
+      String bhkPrefix = '';
       if (property.bhk != null && property.bhk! > 0) {
-        bhkCount = property.bhk!;
+        bhkPrefix = '${property.bhk} BHK ';
       } else if (property.bedrooms != null && property.bedrooms! > 0) {
-        bhkCount = property.bedrooms!;
+        bhkPrefix = '${property.bedrooms} BHK ';
       } else {
         final bhkMatch = RegExp(
           r'(\d+)\s*(BHK|Bed|Bedroom|BH|B)',
           caseSensitive: false,
         ).firstMatch(property.name + property.description);
         if (bhkMatch != null) {
-          bhkCount = int.tryParse(bhkMatch.group(1) ?? '3') ?? 3;
+          bhkPrefix = '${int.tryParse(bhkMatch.group(1) ?? '') ?? ''} BHK ';
         }
       }
-      return '$bhkCount BHK $type';
+      return '$bhkPrefix$type';
     })();
 
     final locationParts = (() {

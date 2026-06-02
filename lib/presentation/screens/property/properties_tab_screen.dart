@@ -37,27 +37,27 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
   bool _loaded = false;
   String? _error;
 
-  // ── Centralized Filter Mappings (watching commonFilterNotifierProvider) ────
+  // ── Centralized Filter Mappings (reading commonFilterNotifierProvider) ────
   String get _selectedCity {
-    final city = ref.watch(commonFilterNotifierProvider).city;
+    final city = ref.read(commonFilterNotifierProvider).city;
     return city.isEmpty ? 'Panchkula' : city;
   }
 
   String get _selectedState {
-    final state = ref.watch(commonFilterNotifierProvider).state;
+    final state = ref.read(commonFilterNotifierProvider).state;
     return state.isEmpty ? 'Haryana' : state;
   }
 
   bool get _panchkulaSelected =>
-      ref.watch(commonFilterNotifierProvider).city.isNotEmpty;
+      ref.read(commonFilterNotifierProvider).city.isNotEmpty;
 
   String? get _selectedMode {
-    final mode = ref.watch(commonFilterNotifierProvider).listingType;
+    final mode = ref.read(commonFilterNotifierProvider).listingType;
     return mode == 'Any' ? null : mode;
   }
 
   String? get _specialApiSelected {
-    final search = ref.watch(commonFilterNotifierProvider).searchText;
+    final search = ref.read(commonFilterNotifierProvider).searchText;
     const specials = [
       '2 BHK',
       'Under 50 Lakhs',
@@ -70,15 +70,15 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
   }
 
   String? get _selectedPropertyType {
-    final pt = ref.watch(commonFilterNotifierProvider).propertyType;
+    final pt = ref.read(commonFilterNotifierProvider).propertyType;
     return pt.isEmpty || pt == 'Any' ? null : pt;
   }
 
   RangeValues? get _selectedPriceRange =>
-      ref.watch(commonFilterNotifierProvider).priceRange;
+      ref.read(commonFilterNotifierProvider).priceRange;
 
   Set<int> get _selectedBHKs {
-    final beds = ref.watch(commonFilterNotifierProvider).bedrooms;
+    final beds = ref.read(commonFilterNotifierProvider).bedrooms;
     return beds != null ? {beds} : {};
   }
 
@@ -333,35 +333,7 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
             )
             .toList();
       }
-      if (_selectedMode != null) {
-        final m = _selectedMode!.toLowerCase();
-        if (m == 'pg/living') {
-          filtered = filtered.where((p) {
-            final text = '${p.name} ${p.description}'.toLowerCase();
-            return text.contains('pg') ||
-                text.contains('living') ||
-                text.contains('co-living') ||
-                text.contains('hostel');
-          }).toList();
-        } else if (m == 'commercial') {
-          filtered = filtered.where((p) {
-            final text = '${p.name} ${p.description}'.toLowerCase();
-            return text.contains('commercial') ||
-                text.contains('office') ||
-                text.contains('shop') ||
-                text.contains('retail') ||
-                text.contains('showroom') ||
-                text.contains('warehouse');
-          }).toList();
-        } else if (m == 'land/plot') {
-          filtered = filtered.where((p) {
-            final text = '${p.name} ${p.description}'.toLowerCase();
-            return text.contains('plot') ||
-                text.contains('land') ||
-                text.contains('site');
-          }).toList();
-        }
-      }
+
       if (_selectedBHKs.isNotEmpty) {
         filtered = filtered.where((p) {
           final specs = getPropertySpecs(p);
@@ -1364,6 +1336,9 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch for changes so the UI reactively updates when filters change
+    ref.watch(commonFilterNotifierProvider);
+
     return Scaffold(
       backgroundColor: _kBg,
       body: CustomScrollView(

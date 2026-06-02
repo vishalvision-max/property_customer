@@ -517,35 +517,84 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
     );
   }
 
-  Widget _buildTermsRow(String title, String value) {
+  IconData _getDetailIcon(String title) {
+    final t = title.toLowerCase();
+    if (t.contains('security') || t.contains('deposit'))
+      return Icons.security_outlined;
+    if (t.contains('booking')) return Icons.payment_outlined;
+    if (t.contains('parking')) return Icons.local_parking_outlined;
+    if (t.contains('painting')) return Icons.format_paint_outlined;
+    if (t.contains('lock')) return Icons.lock_outline;
+    if (t.contains('available') || t.contains('from'))
+      return Icons.event_available_outlined;
+    if (t.contains('negotiable')) return Icons.handshake_outlined;
+    if (t.contains('furnishing')) return Icons.chair_outlined;
+    if (t.contains('type')) return Icons.home_work_outlined;
+    if (t.contains('area')) return Icons.aspect_ratio_outlined;
+    if (t.contains('facing')) return Icons.explore_outlined;
+    if (t.contains('tag')) return Icons.local_offer_outlined;
+    if (t.contains('bhk') || t.contains('bed')) return Icons.king_bed_outlined;
+    if (t.contains('bath')) return Icons.bathtub_outlined;
+    if (t.contains('balcon')) return Icons.balcony_outlined;
+    if (t.contains('floor')) return Icons.layers_outlined;
+    if (t.contains('age')) return Icons.history_outlined;
+    if (t.contains('maintenance')) return Icons.build_circle_outlined;
+    if (t.contains('ownership')) return Icons.real_estate_agent_outlined;
+    if (t.contains('corner')) return Icons.turn_right_outlined;
+    if (t.contains('room')) return Icons.door_front_door_outlined;
+    return Icons.info_outline;
+  }
+
+  Widget _buildTermsRow(String title, String value, BuildContext context) {
     if (value.trim().isEmpty || value.trim() == 'null' || value.trim() == '0') {
       return const SizedBox.shrink();
     }
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
+
+    // Third width minus spacing
+    final cardWidth = (MediaQuery.of(context).size.width - 32 - 24) / 3;
+
+    return Container(
+      width: cardWidth,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFEAECF0), width: 1),
+      ),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            flex: 2,
-            child: Text(
-              title,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF667085),
+          Row(
+            children: [
+              Icon(
+                _getDetailIcon(title),
+                size: 14,
+                color: const Color(0xFF98A2B3),
               ),
-            ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF667085),
+                  ),
+                ),
+              ),
+            ],
           ),
-          Expanded(
-            flex: 3,
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF1D2939),
-              ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF101828),
             ),
           ),
         ],
@@ -553,28 +602,23 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
     );
   }
 
-  Widget _buildExtraDetails(Property p) {
+  Widget _buildExtraDetails(BuildContext context, Property p) {
     final List<Widget> rows = [];
     if (p.securityDeposit != null && p.securityDeposit! > 0) {
-      rows.add(_buildTermsRow('Security Deposit', '₹${p.securityDeposit}'));
-    }
-    if (p.bookingAmount != null && p.bookingAmount! > 0) {
-      rows.add(_buildTermsRow('Booking Amount', '₹${p.bookingAmount}'));
-    }
-    if (p.parkingCharges != null && p.parkingCharges! > 0) {
-      rows.add(_buildTermsRow('Parking Charges', '₹${p.parkingCharges}'));
+      rows.add(
+        _buildTermsRow('Security Deposit', '₹${p.securityDeposit}', context),
+      );
     }
     if (p.paintingCharges != null && p.paintingCharges! > 0) {
-      rows.add(_buildTermsRow('Painting Charges', '₹${p.paintingCharges}'));
+      rows.add(
+        _buildTermsRow('Painting Charges', '₹${p.paintingCharges}', context),
+      );
     }
     if (p.lockInPeriod != null && p.lockInPeriod!.isNotEmpty) {
-      rows.add(_buildTermsRow('Lock-in Period', p.lockInPeriod!));
+      rows.add(_buildTermsRow('Lock-in Period', p.lockInPeriod!, context));
     }
     if (p.availableFrom != null && p.availableFrom!.isNotEmpty) {
-      rows.add(_buildTermsRow('Available From', p.availableFrom!));
-    }
-    if (p.priceNegotiable == true) {
-      rows.add(_buildTermsRow('Price Negotiable', 'Yes'));
+      rows.add(_buildTermsRow('Available From', p.availableFrom!, context));
     }
 
     if (p.furnishing != null && p.furnishing!.trim().isNotEmpty) {
@@ -587,36 +631,23 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                 : '${e[0].toUpperCase()}${e.substring(1).toLowerCase()}',
           )
           .join(' ');
-      rows.add(_buildTermsRow('Furnishing', f));
+      rows.add(_buildTermsRow('Furnishing', f, context));
     }
 
     if (p.categoryName != null && p.categoryName!.trim().isNotEmpty) {
-      rows.add(_buildTermsRow('Property Type', p.categoryName!));
-    }
-    if (p.superBuiltUpArea != null && p.superBuiltUpArea! > 0) {
-      rows.add(
-        _buildTermsRow('Super Built-up Area', '${p.superBuiltUpArea} sqft'),
-      );
-    }
-    if (p.builtUpArea != null && p.builtUpArea! > 0) {
-      rows.add(_buildTermsRow('Built-up Area', '${p.builtUpArea} sqft'));
-    }
-    if (p.carpetArea != null && p.carpetArea! > 0) {
-      rows.add(_buildTermsRow('Carpet Area', '${p.carpetArea} sqft'));
+      rows.add(_buildTermsRow('Property Type', p.categoryName!, context));
     }
     if (p.facing != null && p.facing!.trim().isNotEmpty) {
       rows.add(
         _buildTermsRow(
           'Facing',
           '${p.facing![0].toUpperCase()}${p.facing!.substring(1)}',
+          context,
         ),
       );
     }
     if (p.promotionTags != null && p.promotionTags!.trim().isNotEmpty) {
-      rows.add(_buildTermsRow('Promotion Tags', p.promotionTags!));
-    }
-    if (p.area != null && p.area! > 0) {
-      rows.add(_buildTermsRow('Area', '${p.area} ${p.areaUnit ?? "sqft"}'));
+      rows.add(_buildTermsRow('Promotion Tags', p.promotionTags!, context));
     }
 
     void addMapDetails(Map<String, dynamic>? map) {
@@ -631,6 +662,23 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
             k == 'carpet_area' ||
             k == 'built_up_area' ||
             k == 'super_built_up_area' ||
+            k == 'additional_rooms' ||
+            k == 'bhk' ||
+            k == 'bedrooms' ||
+            k == 'bathrooms' ||
+            k == 'balconies' ||
+            k == 'floor' ||
+            k == 'total_floors' ||
+            k == 'property_age' ||
+            k == 'property_age_range' ||
+            k == 'age' ||
+            k == 'age_range' ||
+            k == 'maintenance_charges' ||
+            k == 'maintenance_charge' ||
+            k == 'is_price_negotiable' ||
+            k == 'price_negotiable' ||
+            k == 'parking' ||
+            k == 'parking_charges' ||
             k.endsWith('_unit'))
           return;
         if (v == null ||
@@ -653,12 +701,23 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
         if (v == true) {
           valStr = 'Yes';
         } else if (v is List) {
-          valStr = v.map((e) {
-            return e.toString().replaceAll('_', ' ').split(' ').map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}').join(' ');
-          }).join(', ');
+          valStr = v
+              .map((e) {
+                return e
+                    .toString()
+                    .replaceAll('_', ' ')
+                    .split(' ')
+                    .map(
+                      (w) => w.isEmpty
+                          ? w
+                          : '${w[0].toUpperCase()}${w.substring(1)}',
+                    )
+                    .join(' ');
+              })
+              .join(', ');
         }
-        
-        rows.add(_buildTermsRow(formattedKey, valStr));
+
+        rows.add(_buildTermsRow(formattedKey, valStr, context));
       });
     }
 
@@ -685,18 +744,245 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF9FAFB),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFEAECF0)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: rows,
+          Wrap(spacing: 12, runSpacing: 12, children: rows),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdditionalRooms(Property p) {
+    List<String> rooms = [];
+    if (p.residentialDetails != null &&
+        p.residentialDetails!['additional_rooms'] is List) {
+      rooms = List<String>.from(p.residentialDetails!['additional_rooms']);
+    }
+    if (rooms.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Additional Rooms',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF1D2939),
             ),
           ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: rooms.map((r) {
+              final formatted = r
+                  .replaceAll('_', ' ')
+                  .split(' ')
+                  .map(
+                    (w) => w.isEmpty
+                        ? w
+                        : '${w[0].toUpperCase()}${w.substring(1)}',
+                  )
+                  .join(' ');
+              return Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF8FF),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFB2DDFF)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.door_front_door_outlined,
+                      size: 14,
+                      color: Color(0xFF175CD3),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      formatted,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF175CD3),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAreaDetails(BuildContext context, Property p) {
+    final List<Widget> rows = [];
+
+    if (p.superBuiltUpArea != null && p.superBuiltUpArea! > 0) {
+      rows.add(
+        _buildTermsRow(
+          'Super Built-up Area',
+          '${p.superBuiltUpArea} sqft',
+          context,
+        ),
+      );
+    }
+    if (p.builtUpArea != null && p.builtUpArea! > 0) {
+      rows.add(
+        _buildTermsRow('Built-up Area', '${p.builtUpArea} sqft', context),
+      );
+    }
+    if (p.carpetArea != null && p.carpetArea! > 0) {
+      rows.add(_buildTermsRow('Carpet Area', '${p.carpetArea} sqft', context));
+    }
+    if (p.area != null && p.area! > 0) {
+      rows.add(
+        _buildTermsRow(
+          'Plot Area',
+          '${p.area} ${p.areaUnit ?? "sqft"}',
+          context,
+        ),
+      );
+    }
+
+    if (rows.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Area Details',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF1D2939),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(spacing: 12, runSpacing: 12, children: rows),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPropertyDetails(BuildContext context, Property p) {
+    final List<Widget> rows = [];
+    final res = p.residentialDetails ?? {};
+
+    String getVal(dynamic val) {
+      if (val == null) return '';
+      final str = val.toString().trim();
+      return (str == 'null' || str == '0' || str == '') ? '' : str;
+    }
+
+    final bhk = getVal(p.bhk ?? res['bhk']);
+    if (bhk.isNotEmpty) rows.add(_buildTermsRow('BHK', bhk, context));
+
+    final bed = getVal(p.bedrooms ?? res['bedrooms']);
+    if (bed.isNotEmpty) rows.add(_buildTermsRow('Bedrooms', bed, context));
+
+    final bath = getVal(p.bathrooms ?? res['bathrooms']);
+    if (bath.isNotEmpty) rows.add(_buildTermsRow('Bathrooms', bath, context));
+
+    final balc = getVal(p.balconies ?? res['balconies']);
+    if (balc.isNotEmpty) rows.add(_buildTermsRow('Balconies', balc, context));
+
+    final park = getVal(res['parking']);
+    if (park.isNotEmpty) rows.add(_buildTermsRow('Parking', park, context));
+
+    final floor = getVal(res['floor']);
+    if (floor.isNotEmpty) rows.add(_buildTermsRow('Floor No.', floor, context));
+
+    final tFloor = getVal(res['total_floors']);
+    if (tFloor.isNotEmpty)
+      rows.add(_buildTermsRow('Total Floors', tFloor, context));
+
+    final age = getVal(res['property_age']);
+    if (age.isNotEmpty) {
+      final formattedAge = age
+          .replaceAll('_', ' ')
+          .split(' ')
+          .map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}')
+          .join(' ');
+      rows.add(_buildTermsRow('Property Age', formattedAge, context));
+    }
+
+    if (rows.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Property Details',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF1D2939),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(spacing: 12, runSpacing: 12, children: rows),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPricingDetails(
+    BuildContext context,
+    Property p,
+    String displayPrice,
+  ) {
+    final List<Widget> rows = [];
+
+    rows.add(_buildTermsRow('Property Price', displayPrice, context));
+
+    if (p.priceNegotiable == true) {
+      rows.add(_buildTermsRow('Negotiable', 'Yes', context));
+    }
+
+    if (p.bookingAmount != null && p.bookingAmount! > 0) {
+      rows.add(
+        _buildTermsRow('Booking Amount', '₹${p.bookingAmount}', context),
+      );
+    }
+
+    final res = p.residentialDetails ?? {};
+    final mCharges =
+        res['maintenance_charges']?.toString() ??
+        res['maintenance_charge']?.toString();
+    if (mCharges != null &&
+        mCharges.trim().isNotEmpty &&
+        mCharges != '0' &&
+        mCharges != 'null') {
+      rows.add(_buildTermsRow('Maintenance', '₹$mCharges / month', context));
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Pricing Details',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF1D2939),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(spacing: 12, runSpacing: 12, children: rows),
         ],
       ),
     );
@@ -877,18 +1163,18 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
               if (type.toLowerCase().contains('commercial') || type.toLowerCase().contains('shop')) {
                 return 'Commercial Space in $cleanLocality';
               }
-              int bhkCount = 3;
+              String bhkPrefix = '';
               if (p.bhk != null && p.bhk! > 0) {
-                bhkCount = p.bhk!;
+                bhkPrefix = '${p.bhk} BHK ';
               } else if (p.bedrooms != null && p.bedrooms! > 0) {
-                bhkCount = p.bedrooms!;
+                bhkPrefix = '${p.bedrooms} BHK ';
               } else {
                 final bhkMatch = RegExp(r'(\d+)\s*(BHK|Bed|Bedroom|BH|B)', caseSensitive: false).firstMatch(p.name + p.description);
                 if (bhkMatch != null) {
-                  bhkCount = int.tryParse(bhkMatch.group(1) ?? '3') ?? 3;
+                  bhkPrefix = '${int.tryParse(bhkMatch.group(1) ?? '') ?? ''} BHK ';
                 }
               }
-              return '$bhkCount BHK $type in $cleanLocality';
+              return '$bhkPrefix$type in $cleanLocality';
             })()}" (${p.location}).',
           );
 
@@ -954,22 +1240,22 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                               type.toLowerCase().contains('shop')) {
                             return 'Commercial Space in $cleanLocality';
                           }
-                          int bhkCount = 3;
+                          String bhkPrefix = '';
                           if (p.bhk != null && p.bhk! > 0) {
-                            bhkCount = p.bhk!;
+                            bhkPrefix = '${p.bhk} BHK ';
                           } else if (p.bedrooms != null && p.bedrooms! > 0) {
-                            bhkCount = p.bedrooms!;
+                            bhkPrefix = '${p.bedrooms} BHK ';
                           } else {
                             final bhkMatch = RegExp(
                               r'(\d+)\s*(BHK|Bed|Bedroom|BH|B)',
                               caseSensitive: false,
                             ).firstMatch(p.name + p.description);
                             if (bhkMatch != null) {
-                              bhkCount =
-                                  int.tryParse(bhkMatch.group(1) ?? '3') ?? 3;
+                              bhkPrefix =
+                                  '${int.tryParse(bhkMatch.group(1) ?? '') ?? ''} BHK ';
                             }
                           }
-                          return '$bhkCount BHK $type in $cleanLocality';
+                          return '$bhkPrefix$type in $cleanLocality';
                         })(),
                         style: const TextStyle(
                           fontSize: 20,
@@ -1193,7 +1479,11 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                     if (p.amenities.isNotEmpty) const SizedBox(height: 20),
 
                     // Extra Details (Financials, Terms)
-                    _buildExtraDetails(p),
+                    _buildPricingDetails(context, p, displayPrice),
+                    _buildExtraDetails(context, p),
+                    _buildAreaDetails(context, p),
+                    _buildAdditionalRooms(p),
+                    _buildPropertyDetails(context, p),
                     const SizedBox(height: 8),
 
                     // // Furnishing Section
@@ -1798,68 +2088,6 @@ class _HeroMediaLightState extends State<_HeroMediaLight> {
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
                       ),
-                    ),
-                  ),
-
-                if (widget.specs.sqft.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.square_foot_outlined,
-                          color: Colors.white,
-                          size: 12,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          widget.specs.sqft,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                if (widget.specs.parking.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.local_parking_outlined,
-                          color: Colors.white,
-                          size: 12,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          widget.specs.parking,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
                     ),
                   ),
               ],

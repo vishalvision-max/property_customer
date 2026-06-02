@@ -63,6 +63,23 @@ class RelatedPropertyCard extends ConsumerWidget {
     } else if (property.name.toLowerCase().contains('villa')) {
       typeStr = 'Villa';
     }
+    
+    String bhkPrefix = '';
+    if (property.bhk != null && property.bhk! > 0) {
+      bhkPrefix = '${property.bhk} BHK ';
+    } else if (property.bedrooms != null && property.bedrooms! > 0) {
+      bhkPrefix = '${property.bedrooms} BHK ';
+    } else {
+      final bhkMatch = RegExp(
+        r'(\d+)\s*(BHK|Bed|Bedroom|BH|B)',
+        caseSensitive: false,
+      ).firstMatch(property.name + property.description);
+      if (bhkMatch != null) {
+        bhkPrefix = '${int.tryParse(bhkMatch.group(1) ?? '') ?? ''} BHK ';
+      }
+    }
+    
+    typeStr = '$bhkPrefix$typeStr';
 
     String _getSectorAndState(String fullLocation) {
       final loc = fullLocation.trim();
