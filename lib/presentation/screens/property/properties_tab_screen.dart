@@ -324,15 +324,7 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
 
       // Client-side filters
       var filtered = fetched;
-      if (_panchkulaSelected) {
-        filtered = filtered
-            .where(
-              (p) => p.location.toLowerCase().contains(
-                _selectedCity.toLowerCase(),
-              ),
-            )
-            .toList();
-      }
+
 
       if (_selectedBHKs.isNotEmpty) {
         filtered = filtered.where((p) {
@@ -358,13 +350,7 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
             .toList();
       }
 
-      if (_selectedPropertyType != null) {
-        filtered = filtered.where((p) {
-          final text = '${p.propertyKind} ${p.name} ${p.description}'
-              .toLowerCase();
-          return text.contains(_selectedPropertyType!.toLowerCase());
-        }).toList();
-      }
+
 
       if (mounted) {
         setState(() {

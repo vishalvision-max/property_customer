@@ -102,39 +102,44 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
     var items = base;
     final filters = ref.read(commonFilterNotifierProvider);
 
-    if (filters.listingType != 'Any') {
-      final lt = filters.listingType.toLowerCase();
-      items = items.where((p) {
-        final pt = p.type.toLowerCase();
-        if (lt == 'buy' && pt == 'sale') return true;
-        return pt == lt;
-      }).toList();
-    }
+    final extra = GoRouterState.of(context).extra;
+    final isGenericList = extra == null;
 
-    if (filters.propertyType != 'Any') {
-      final query = filters.propertyType.toLowerCase();
-      items = items.where((p) {
-        final pKind = p.propertyKind.toLowerCase();
-        final pName = p.name.toLowerCase();
-        final pType = p.type.toLowerCase();
+    if (isGenericList) {
+      if (filters.listingType != 'Any') {
+        final lt = filters.listingType.toLowerCase();
+        items = items.where((p) {
+          final pt = p.type.toLowerCase();
+          if (lt == 'buy' && pt == 'sale') return true;
+          return pt == lt;
+        }).toList();
+      }
 
-        if (query == 'plot' || query == 'land') {
-          if (pKind.contains('plot') || pKind.contains('land')) return true;
-          if (pName.contains('plot') || pName.contains('land')) return true;
-        }
+      if (filters.propertyType != 'Any') {
+        final query = filters.propertyType.toLowerCase();
+        items = items.where((p) {
+          final pKind = p.propertyKind.toLowerCase();
+          final pName = p.name.toLowerCase();
+          final pType = p.type.toLowerCase();
 
-        return pKind.contains(query) ||
-            pName.contains(query) ||
-            pType.contains(query);
-      }).toList();
-    }
+          if (query == 'plot' || query == 'land') {
+            if (pKind.contains('plot') || pKind.contains('land')) return true;
+            if (pName.contains('plot') || pName.contains('land')) return true;
+          }
 
-    if (filters.searchText.trim().isNotEmpty) {
-      final q = filters.searchText.trim().toLowerCase();
-      items = items.where((p) {
-        return p.location.toLowerCase().contains(q) ||
-            p.name.toLowerCase().contains(q);
-      }).toList();
+          return pKind.contains(query) ||
+              pName.contains(query) ||
+              pType.contains(query);
+        }).toList();
+      }
+
+      if (filters.searchText.trim().isNotEmpty) {
+        final q = filters.searchText.trim().toLowerCase();
+        items = items.where((p) {
+          return p.location.toLowerCase().contains(q) ||
+              p.name.toLowerCase().contains(q);
+        }).toList();
+      }
     }
 
     var filtered = items.toList();
