@@ -88,10 +88,22 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
     if (index == null) {
       notifier.updateListingType('Any');
       notifier.updatePropertyType('Any');
+      context.pushReplacement('/properties');
     } else {
       final chip = _kFilters[index];
       notifier.updateListingType(chip.mode);
       notifier.updatePropertyType(chip.subType ?? 'Any');
+      context.pushReplacement(
+        '/properties',
+        extra: SearchArgs(
+          mode: chip.mode,
+          budget: const RangeValues(0, 3000000),
+          propertyType: chip.subType ?? 'Any',
+          amenities: const [],
+          locationQuery: '',
+          fromTab: true,
+        ),
+      );
     }
   }
 
@@ -227,6 +239,35 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
             items = (await notif.fetchLandPlotPropertiesPaged(token)).items;
           } catch (e) {
             debugPrint('Error loading plot properties: $e');
+            items = [];
+          }
+        } else if (extra.propertyType == 'PG') {
+          final token = ref.read(authProvider).user?.token ?? '';
+          final notif = ref.read(propertyNotifierProvider.notifier);
+          try {
+            final pgItems = (await notif.fetchPgPropertiesPaged(token)).items;
+            final coItems = (await notif.fetchCoLivingPropertiesPaged(token)).items;
+            items = [...pgItems, ...coItems];
+          } catch (e) {
+            debugPrint('Error loading PG properties: $e');
+            items = [];
+          }
+        } else if (extra.propertyType == 'Any' && extra.mode == 'buy') {
+          final token = ref.read(authProvider).user?.token ?? '';
+          final notif = ref.read(propertyNotifierProvider.notifier);
+          try {
+            items = (await notif.fetchBuyPropertiesPaged(token)).items;
+          } catch (e) {
+            debugPrint('Error loading buy properties: $e');
+            items = [];
+          }
+        } else if (extra.propertyType == 'Any' && extra.mode == 'rent') {
+          final token = ref.read(authProvider).user?.token ?? '';
+          final notif = ref.read(propertyNotifierProvider.notifier);
+          try {
+            items = (await notif.fetchRentPropertiesPaged(token)).items;
+          } catch (e) {
+            debugPrint('Error loading rent properties: $e');
             items = [];
           }
         } else {
@@ -634,14 +675,29 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
 
   Widget _buildResultList(List<Property> items) {
     if (items.isEmpty) {
-      return const EmptyState(
-        title: 'No results',
-        message: 'Try adjusting filters or selecting a different location.',
-        asset: 'assets/illustrations/empty_search.svg',
+      return RefreshIndicator(
+        onRefresh: () async => _loadBaseItems(),
+        color: _kPrimary,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Container(
+            height: MediaQuery.sizeOf(context).height * 0.6,
+            alignment: Alignment.center,
+            child: const EmptyState(
+              title: 'No results',
+              message: 'Try adjusting filters or selecting a different location.',
+              asset: 'assets/illustrations/empty_search.svg',
+            ),
+          ),
+        ),
       );
     }
 
-    return ListView.separated(
+    return RefreshIndicator(
+      onRefresh: () async => _loadBaseItems(),
+      color: _kPrimary,
+      child: ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
       controller: _scrollController,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       itemCount: items.length + 1 + (_isLoadingMore ? 1 : 0),
@@ -721,7 +777,7 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
           onTap: () => context.push('/property/${p.id}'),
         );
       },
-    );
+    ));
   }
 }
 
