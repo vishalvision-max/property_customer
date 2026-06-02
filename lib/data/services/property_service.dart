@@ -42,8 +42,17 @@ class PropertyService {
   }
 
   Future<List<Property>> fetchProperties() async {
-    return _fetchFromApi();
+    return _fetchFromApi(query: const {'per_page': '250'});
   }
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchAllPaged({int page = 1}) =>
+      _fetchSpecializedPaged(
+        token: '',
+        errorLabel: 'All Properties',
+        path: '/api/v1/properties',
+        page: page,
+      );
 
   Future<List<Property>> fetchFiltered({
     int? categoryId,
@@ -56,6 +65,7 @@ class PropertyService {
     final apiType = type == 'buy' ? 'sale' : type;
     return _fetchFromApi(
       query: <String, String>{
+        'per_page': '250',
         if (categoryId != null) 'category_id': categoryId.toString(),
         if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
         if (minPrice != null) 'min_price': minPrice.toString(),
@@ -260,6 +270,7 @@ class PropertyService {
     return _fetchFromApi(
       path: '/api/v1/properties/nearby',
       query: <String, String>{
+        'per_page': '250',
         'lat': lat.toString(),
         'lng': lng.toString(),
         'radius': radius.toString(),
@@ -587,12 +598,13 @@ class PropertyService {
         page: page,
       );
 
-  /// Buy Properties — /api/v1/owner/buy/properties
+  /// Buy Properties — /api/v1/properties?type=sale
   Future<List<Property>> fetchBuyProperties({required String token}) =>
       _fetchSpecialized(
         token: token,
         errorLabel: 'Buy Properties',
-        path: '/api/v1/owner/buy/properties',
+        path: '/api/v1/properties',
+        queryParams: {'type': 'sale'},
       );
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
@@ -600,7 +612,8 @@ class PropertyService {
       _fetchSpecializedPaged(
         token: token,
         errorLabel: 'Buy Properties',
-        path: '/api/v1/owner/buy/properties',
+        path: '/api/v1/properties',
+        queryParams: {'type': 'sale'},
         page: page,
       );
 
@@ -762,8 +775,8 @@ class PropertyService {
     final q = keyword.trim();
     return _fetchFromApi(
       query: <String, String>{
+        'per_page': '250',
         if (q.isNotEmpty) 'keyword': q,
-        // if (type != null && type.trim().isNotEmpty) 'type': type.trim(),
       },
     );
   }
@@ -906,7 +919,9 @@ class PropertyService {
     ].where((e) => e.trim().isNotEmpty).join(', ');
 
     final type = pickString(['type', 'mode', 'purpose']).toLowerCase();
-    final normalizedType = type == 'buy' || type == 'sale' ? 'buy' : 'rent';
+    final normalizedType = (type.contains('buy') || type.contains('sale') || type.contains('sell'))
+        ? 'buy'
+        : (type.contains('rent') || type.contains('lease') ? 'rent' : 'buy');
 
     final price = pickInt(['price', 'rent', 'amount', 'budget']);
     List<String> parseAmenities() {

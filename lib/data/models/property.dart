@@ -23,6 +23,21 @@ class Property {
   final String? furnishing;
   final String? categoryName;
   final String? ownerPhone;
+  final String? ownerName;
+  final String? listingType;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  // Additional Rich API Fields
+  final int? securityDeposit;
+  final String? lockInPeriod;
+  final String? availableFrom;
+  final int? parkingCharges;
+  final int? paintingCharges;
+  final int? bookingAmount;
+  final bool? priceNegotiable;
+  final String? propertyHighlights;
+  final String? promotionTags;
 
   const Property({
     this.facing,
@@ -48,6 +63,19 @@ class Property {
     this.furnishing,
     this.categoryName,
     this.ownerPhone,
+    this.ownerName,
+    this.listingType,
+    this.createdAt,
+    this.updatedAt,
+    this.securityDeposit,
+    this.lockInPeriod,
+    this.availableFrom,
+    this.parkingCharges,
+    this.paintingCharges,
+    this.bookingAmount,
+    this.priceNegotiable,
+    this.propertyHighlights,
+    this.promotionTags,
   });
 
   factory Property.fromJson(Map<String, dynamic> json) {
@@ -61,9 +89,10 @@ class Property {
           .toString(),
       amenities: (() {
         final rawAmenities = json['amenities'];
+        final result = <String>[];
 
         if (rawAmenities is List) {
-          return rawAmenities
+          result.addAll(rawAmenities
               .map((e) {
                 // Amenity object
                 if (e is Map<String, dynamic>) {
@@ -74,11 +103,23 @@ class Property {
                 // Plain string
                 return e.toString();
               })
-              .where((e) => e.trim().isNotEmpty)
-              .toList();
+              .where((e) => e.trim().isNotEmpty));
         }
 
-        return <String>[];
+        if (json['electricity_included'] == 1 || json['electricity_included'] == true) {
+          result.add('Electricity Included');
+        }
+        if (json['water_included'] == 1 || json['water_included'] == true) {
+          result.add('Water Included');
+        }
+        if (json['gas_included'] == 1 || json['gas_included'] == true) {
+          result.add('Gas Included');
+        }
+        if (json['wifi_included'] == 1 || json['wifi_included'] == true) {
+          result.add('WiFi Included');
+        }
+
+        return result;
       })(),
       images: (() {
         final rawImages = json['images'];
@@ -161,6 +202,31 @@ class Property {
           ? (json['category']['name']?.toString())
           : null,
       ownerPhone: json['owner_phone']?.toString(),
+      ownerName: json['owner_name']?.toString(),
+      listingType: json['listing_type']?.toString(),
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'].toString())
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'].toString())
+          : null,
+      securityDeposit: json['security_deposit'] != null
+          ? int.tryParse(json['security_deposit'].toString())
+          : null,
+      lockInPeriod: json['lock_in_period']?.toString(),
+      availableFrom: json['available_from']?.toString(),
+      parkingCharges: json['parking_charges'] != null
+          ? int.tryParse(json['parking_charges'].toString())
+          : null,
+      paintingCharges: json['painting_charges'] != null
+          ? int.tryParse(json['painting_charges'].toString())
+          : null,
+      bookingAmount: json['booking_amount'] != null
+          ? int.tryParse(json['booking_amount'].toString())
+          : null,
+      priceNegotiable: json['price_negotiable'] == 1 || json['price_negotiable'] == true,
+      propertyHighlights: json['property_highlights']?.toString(),
+      promotionTags: json['promotion_tags']?.toString(),
     );
   }
 
@@ -187,5 +253,18 @@ class Property {
     'furnishing': furnishing,
     'category_name': categoryName,
     'owner_phone': ownerPhone,
+    'owner_name': ownerName,
+    'listing_type': listingType,
+    'created_at': createdAt?.toIso8601String(),
+    'updated_at': updatedAt?.toIso8601String(),
+    'security_deposit': securityDeposit,
+    'lock_in_period': lockInPeriod,
+    'available_from': availableFrom,
+    'parking_charges': parkingCharges,
+    'painting_charges': paintingCharges,
+    'booking_amount': bookingAmount,
+    'price_negotiable': priceNegotiable,
+    'property_highlights': propertyHighlights,
+    'promotion_tags': promotionTags,
   };
 }

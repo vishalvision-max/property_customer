@@ -2,7 +2,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import 'autoplay_video_preview.dart';
 import '../../core/utils/app_snackbar.dart';
 import '../../data/models/property.dart';
 import '../../providers/app_providers.dart';
@@ -33,7 +35,7 @@ class PropertySpecs {
 
 PropertySpecs getPropertySpecs(Property p) {
   // Extract square feet from API or description
-  String sqft = '1360 sqft';
+  String sqft = '';
   if (p.superBuiltUpArea != null && p.superBuiltUpArea! > 0) {
     sqft = '${p.superBuiltUpArea!.toInt()} sqft';
   } else if (p.carpetArea != null && p.carpetArea! > 0) {
@@ -47,14 +49,11 @@ PropertySpecs getPropertySpecs(Property p) {
     ).firstMatch(p.description);
     if (sqftMatch != null) {
       sqft = '${sqftMatch.group(1)} ${sqftMatch.group(2)}';
-    } else {
-      final idHash = p.id.hashCode.abs();
-      sqft = '${1000 + (idHash % 15) * 100} sqft';
     }
   }
 
   // Extract BHK/bedrooms from API or name or description
-  String bedrooms = '3 Bed';
+  String bedrooms = '';
   if (p.bhk != null && p.bhk! > 0) {
     bedrooms = '${p.bhk} Bed';
   } else if (p.bedrooms != null && p.bedrooms! > 0) {
@@ -66,14 +65,11 @@ PropertySpecs getPropertySpecs(Property p) {
     ).firstMatch(p.name + p.description);
     if (bhkMatch != null) {
       bedrooms = '${bhkMatch.group(1)} Bed';
-    } else {
-      final idHash = p.id.hashCode.abs();
-      bedrooms = '${2 + (idHash % 3)} Bed';
     }
   }
 
   // Extract bathrooms
-  String bathrooms = '2 Bath';
+  String bathrooms = '';
   if (p.bathrooms != null && p.bathrooms! > 0) {
     bathrooms = '${p.bathrooms} Bath';
   } else {
@@ -83,15 +79,12 @@ PropertySpecs getPropertySpecs(Property p) {
     ).firstMatch(p.description);
     if (bathMatch != null) {
       bathrooms = '${bathMatch.group(1)} Bath';
-    } else {
-      final idHash = p.id.hashCode.abs();
-      bathrooms = '${2 + (idHash % 2)} Bath';
     }
   }
 
   // Balconies
-  String balconies = '1';
-  if (p.balconies != null) {
+  String balconies = '';
+  if (p.balconies != null && p.balconies! > 0) {
     balconies = '${p.balconies}';
   } else {
     final balconyMatch = RegExp(
@@ -100,21 +93,15 @@ PropertySpecs getPropertySpecs(Property p) {
     ).firstMatch(p.description);
     if (balconyMatch != null) {
       balconies = balconyMatch.group(1)!;
-    } else {
-      final idHash = p.id.hashCode.abs();
-      balconies = '${1 + (idHash % 2)}';
     }
   }
 
   // Parking
-  String parking = '1';
-  if (p.parking != null) {
+  String parking = '';
+  if (p.parking != null && p.parking! > 0) {
     parking = '${p.parking}';
-  } else if (p.amenities.contains('Parking')) {
-    parking = '1';
-  } else {
-    final idHash = p.id.hashCode.abs();
-    parking = '${(idHash % 2)}';
+  } else if (p.amenities.contains('Parking') || p.amenities.contains('Visitor Parking')) {
+    parking = 'Yes';
   }
 
   // Property Type
@@ -162,29 +149,22 @@ PropertySpecs getPropertySpecs(Property p) {
     status = 'Under Construction';
   }
 
-  // Highlights matching the mockup
   // Highlights
   List<String> highlights = [];
-
   highlights.add(type);
   highlights.add(status);
 
-  // Facing
   if (p.facing != null) {
     final facing = p.facing!.trim();
-
     if (facing.isNotEmpty) {
       final formattedFacing =
           facing[0].toUpperCase() + facing.substring(1).toLowerCase();
-
       highlights.add('$formattedFacing Facing');
     }
   }
 
-  // Furnishing
   if (p.furnishing != null && p.furnishing!.trim().isNotEmpty) {
     final furnishing = p.furnishing!.replaceAll('_', ' ').trim();
-
     highlights.add(
       furnishing
           .split(' ')
@@ -197,12 +177,10 @@ PropertySpecs getPropertySpecs(Property p) {
     );
   }
 
-  // Amenities
   if (p.amenities.isNotEmpty) {
     highlights.addAll(
       p.amenities.where((e) => e.trim().isNotEmpty).map((e) {
         final clean = e.replaceAll('_', ' ').trim();
-
         return clean
             .split(' ')
             .map(
@@ -215,7 +193,6 @@ PropertySpecs getPropertySpecs(Property p) {
     );
   }
 
-  // Remove duplicates
   highlights = highlights.toSet().toList();
 
   return PropertySpecs(
@@ -288,140 +265,273 @@ class PropertyCard extends ConsumerWidget {
     final displayPrice = _formatIndianPrice(property.price, property.type);
     final isFeatured = featured || (property.id.hashCode.abs() % 3 == 0);
 
+    final typeStr = (() {
+      final type = specs.type;
+      if (type.toLowerCase().contains('plot') ||
+          type.toLowerCase().contains('land')) {
+        return 'Residential Plot';
+      }
+      if (type.toLowerCase().contains('commercial') ||
+          type.toLowerCase().contains('shop')) {
+        return 'Commercial Space';
+      }
+      int bhkCount = 3;
+      if (property.bhk != null && property.bhk! > 0) {
+        bhkCount = property.bhk!;
+      } else if (property.bedrooms != null && property.bedrooms! > 0) {
+        bhkCount = property.bedrooms!;
+      } else {
+        final bhkMatch = RegExp(
+          r'(\d+)\s*(BHK|Bed|Bedroom|BH|B)',
+          caseSensitive: false,
+        ).firstMatch(property.name + property.description);
+        if (bhkMatch != null) {
+          bhkCount = int.tryParse(bhkMatch.group(1) ?? '3') ?? 3;
+        }
+      }
+      return '$bhkCount BHK $type';
+    })();
+
+    final locationParts = (() {
+      final loc = property.location.trim();
+      if (loc.isEmpty) return ['Panchkula'];
+      final parts = loc
+          .split(',')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+      if (parts.isNotEmpty && parts.last.toLowerCase() == 'india') {
+        parts.removeLast();
+      }
+      if (parts.isNotEmpty) {
+        final cleanState = parts.last.replaceAll(RegExp(r'\d+'), '').trim();
+        if (cleanState.isNotEmpty) {
+          parts[parts.length - 1] = cleanState;
+        } else {
+          parts.removeLast();
+        }
+      }
+      return parts;
+    })();
+
+    final subAddress = locationParts.isNotEmpty
+        ? locationParts.join(', ')
+        : 'Panchkula';
+
+    // Calculate Price per sqft for display
+    String pricePerSqft = '';
+    if (specs.sqft.isNotEmpty) {
+      final numMatch = RegExp(
+        r'(\d+)',
+      ).firstMatch(specs.sqft.replaceAll(',', ''));
+      if (numMatch != null) {
+        final sqftVal = int.tryParse(numMatch.group(1) ?? '');
+        if (sqftVal != null && sqftVal > 0) {
+          final pps = property.price / sqftVal;
+          if (pps >= 1000) {
+            pricePerSqft = '₹${(pps / 1000).toStringAsFixed(1)}k/ sq.ft.';
+          } else {
+            pricePerSqft = '₹${pps.toInt()}/ sq.ft.';
+          }
+        }
+      }
+    }
+
+    final String updatedTimeAgo = (() {
+      final date = property.updatedAt ?? property.createdAt;
+      if (date == null) return 'Just now';
+      final diff = DateTime.now().difference(date);
+      if (diff.inDays > 365) return '${(diff.inDays / 365).floor()}y ago';
+      if (diff.inDays > 30) return '${(diff.inDays / 30).floor()}mo ago';
+      if (diff.inDays > 0) return '${diff.inDays}d ago';
+      if (diff.inHours > 0) return '${diff.inHours}h ago';
+      if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
+      return 'Just now';
+    })();
+
+    final String sellerName = (property.ownerName?.trim().isNotEmpty == true)
+        ? property.ownerName!.trim().toUpperCase()
+        : 'VERIFIED ${(property.listingType?.trim().toUpperCase()) ?? "OWNER"}';
+
+    final String avatarName = (property.ownerName?.trim().isNotEmpty == true)
+        ? property.ownerName!.trim()
+        : (property.listingType ?? 'Owner');
+
+    bool showTransactionType = false;
+    String transactionText = '';
+    Color transactionBg = Colors.transparent;
+    Color transactionColor = Colors.transparent;
+
+    final pType = property.type.toLowerCase();
+    if (pType == 'sale' || pType == 'buy') {
+      showTransactionType = true;
+      transactionText = 'For Sale';
+      transactionBg = const Color(0xFFECFDF3); // Green background
+      transactionColor = const Color(0xFF027A48); // Dark green text
+    } else if (pType == 'rent') {
+      showTransactionType = true;
+      transactionText = 'For Rent';
+      transactionBg = const Color(0xFFEFF8FF); // Blue background
+      transactionColor = const Color(0xFF175CD3); // Dark blue text
+    }
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: InkWell(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: GestureDetector(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFEAECF0), width: 1.5),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                blurRadius: 15,
+                offset: const Offset(0, 6),
               ),
             ],
-            border: Border.all(color: const Color(0xFFF2F4F7), width: 1),
           ),
-          padding: const EdgeInsets.all(10),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Inset image
-              Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: SizedBox(
-                      width: 105,
-                      height: 105,
-                      child: property.images.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: property.images.first.trim(),
-                              fit: BoxFit.cover,
-                              placeholder: (context, url) =>
-                                  Container(color: const Color(0xFFF9FAFB)),
-                              errorWidget: (context, url, error) => Container(
-                                color: const Color(0xFFF9FAFB),
-                                child: const Icon(
-                                  Icons.photo,
-                                  color: Colors.grey,
-                                  size: 24,
-                                ),
-                              ),
-                            )
-                          : _LazyPropertyImage(
-                              propertyId: property.id,
-                              fallback: _fallbackPropertyImage,
-                            ),
-                    ),
-                  ),
-                  if (isFeatured)
-                    Positioned(
-                      top: 6,
-                      left: 6,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF5C46E8),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text(
-                          'Featured',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 8,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.2,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(width: 12),
+              // ─── PREMIUM HEADER (Owner / Agent info) ───
+              // Container(
+              //   color: const Color(0xFF344054),
+              //   padding: const EdgeInsets.symmetric(
+              //     horizontal: 14,
+              //     vertical: 10,
+              //   ),
+              //   child: Row(
+              //     children: [
+              //       CircleAvatar(
+              //         radius: 14,
+              //         backgroundColor: Colors.white24,
+              //         backgroundImage: NetworkImage(
+              //           'https://ui-avatars.com/api/?name=${Uri.encodeComponent(avatarName)}&background=random&color=fff&size=64',
+              //         ),
+              //       ),
+              //       const SizedBox(width: 8),
+              //       Expanded(
+              //         child: Text(
+              //           sellerName,
+              //           maxLines: 1,
+              //           overflow: TextOverflow.ellipsis,
+              //           style: const TextStyle(
+              //             color: Colors.white,
+              //             fontSize: 10.5,
+              //             fontWeight: FontWeight.w800,
+              //             letterSpacing: 0.8,
+              //           ),
+              //         ),
+              //       ),
+              //       const Icon(
+              //         Icons.verified_rounded,
+              //         color: Color(0xFFF79009),
+              //         size: 16,
+              //       ),
+              //       const SizedBox(width: 4),
+              //       const Text(
+              //         'Verified',
+              //         style: TextStyle(
+              //           color: Colors.white,
+              //           fontSize: 10.5,
+              //           fontWeight: FontWeight.w600,
+              //         ),
+              //       ),
+              //     ],
+              //   ),
+              // ),
 
-              // Right Column
-              Expanded(
+              // ─── BIG IMAGE WITH GRADIENT OVERLAY ───
+              SizedBox(
+                height: 240,
+                child: _PropertyMediaGallery(
+                  property: property,
+                  isFeatured: isFeatured,
+                  fallbackImage: _fallbackPropertyImage,
+                  enableVideoPreview: enableVideoPreview,
+                ),
+              ),
+
+              // ─── CONTENT SECTION ───
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Title and Heart Toggle in same Row
+                    // Status & Price per sqft & Heart
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Expanded(
-                          child: Text(
-                            (() {
-                              final type = specs.type;
-                              if (type.toLowerCase().contains('plot') ||
-                                  type.toLowerCase().contains('land')) {
-                                return 'Residential Plot';
-                              }
-                              if (type.toLowerCase().contains('commercial') ||
-                                  type.toLowerCase().contains('shop')) {
-                                return 'Commercial Space';
-                              }
-                              int bhkCount = 3;
-                              if (property.bhk != null && property.bhk! > 0) {
-                                bhkCount = property.bhk!;
-                              } else if (property.bedrooms != null &&
-                                  property.bedrooms! > 0) {
-                                bhkCount = property.bedrooms!;
-                              } else {
-                                final bhkMatch =
-                                    RegExp(
-                                      r'(\d+)\s*(BHK|Bed|Bedroom|BH|B)',
-                                      caseSensitive: false,
-                                    ).firstMatch(
-                                      property.name + property.description,
-                                    );
-                                if (bhkMatch != null) {
-                                  bhkCount =
-                                      int.tryParse(bhkMatch.group(1) ?? '3') ??
-                                      3;
-                                }
-                              }
-                              return '$bhkCount BHK $type';
-                            })(),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF1D2939),
-                              letterSpacing: -0.2,
-                            ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF2F4F7),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  specs.type,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF344054),
+                                  ),
+                                ),
+                              ),
+                              if (showTransactionType) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: transactionBg,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    transactionText,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: transactionColor,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              if (pricePerSqft.isNotEmpty) ...[
+                                const SizedBox(width: 8),
+                                const Text(
+                                  '•',
+                                  style: TextStyle(color: Color(0xFF98A2B3)),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Price/sq.ft. $pricePerSqft',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF667085),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 12),
                         GestureDetector(
                           onTap: () {
                             if (!isAuthed) {
@@ -445,114 +555,212 @@ class PropertyCard extends ConsumerWidget {
                                   );
                                 });
                           },
-                          child: Icon(
-                            isFav ? Icons.favorite : Icons.favorite_border,
-                            color: isFav
-                                ? Colors.pinkAccent
-                                : const Color(0xFF98A2B3),
-                            size: 20,
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: isFav
+                                  ? const Color(0xFFFDF2FA)
+                                  : const Color(0xFFF2F4F7),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              isFav
+                                  ? Icons.favorite_rounded
+                                  : Icons.favorite_border_rounded,
+                              color: isFav
+                                  ? const Color(0xFFD92D20)
+                                  : const Color(0xFF475467),
+                              size: 20,
+                            ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 12),
+
+                    // Title
                     Text(
-                      (() {
-                        final loc = property.location.trim();
-                        if (loc.isEmpty) return 'Panchkula';
-                        final parts = loc
-                            .split(',')
-                            .map((e) => e.trim())
-                            .where((e) => e.isNotEmpty)
-                            .toList();
-
-                        if (parts.isNotEmpty &&
-                            parts.last.toLowerCase() == 'india') {
-                          parts.removeLast();
-                        }
-
-                        if (parts.isNotEmpty) {
-                          final cleanState = parts.last
-                              .replaceAll(RegExp(r'\d+'), '')
-                              .trim();
-                          if (cleanState.isNotEmpty) {
-                            parts[parts.length - 1] = cleanState;
-                          } else {
-                            parts.removeLast();
-                          }
-                        }
-
-                        if (parts.isNotEmpty) {
-                          final first = parts.first;
-                          final isFlatNo = RegExp(
-                            r'^(\d+|\w-\d+|\d+\w|\bflat\b|\broom\b|\bshop\b|\bfloor\b|\bplot\b)',
-                            caseSensitive: false,
-                          ).hasMatch(first);
-                          if (isFlatNo || first.length <= 5) {
-                            parts.removeAt(0);
-                          }
-                        }
-
-                        if (parts.isEmpty) return 'Panchkula';
-                        if (parts.length >= 2) {
-                          return '${parts[0]}, ${parts[1]}';
-                        }
-                        return parts.first;
-                      })(),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      typeStr,
                       style: const TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF667085),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF344054),
+                        letterSpacing: -0.2,
                       ),
                     ),
                     const SizedBox(height: 4),
+
+                    // Price
                     Text(
                       displayPrice,
                       style: const TextStyle(
-                        fontSize: 15,
+                        fontSize: 24,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF1D2939),
+                        color: Color(0xFF101828),
+                        letterSpacing: -0.5,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${specs.sqft}  •  ${specs.bedrooms}  •  ${specs.bathrooms}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF667085),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
 
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: specs.highlights.take(6).map((h) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF2F4F7),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
+                    // Address
+                    // Text(
+                    //   property.name.toUpperCase(),
+                    //   maxLines: 1,
+                    //   overflow: TextOverflow.ellipsis,
+                    //   style: const TextStyle(
+                    //     fontSize: 13,
+                    //     fontWeight: FontWeight.w800,
+                    //     color: Color(0xFF344054),
+                    //   ),
+                    // ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on_outlined,
+                          size: 14,
+                          color: Color(0xFF98A2B3),
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
                           child: Text(
-                            h,
+                            subAddress,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF475467),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF667085),
                             ),
                           ),
-                        );
-                      }).toList(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Divider
+                    const Divider(
+                      color: Color(0xFFEAECF0),
+                      height: 1,
+                      thickness: 1,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Bottom Action Row
+                    Row(
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Updated',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF98A2B3),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              updatedTimeAgo,
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF667085),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Spacer(),
+                        OutlinedButton(
+                          onPressed: () {
+                            onTap();
+                          },
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            minimumSize: const Size(0, 42),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            side: const BorderSide(
+                              color: Color(0xFF5C46E8),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: const Text(
+                            'View Details',
+                            style: TextStyle(
+                              color: Color(0xFF5C46E8),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Container(
+                          height: 42,
+                          width: 42,
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: const Color(0xFF039855),
+                              width: 1.5,
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                            color: const Color(0xFFECFDF3),
+                          ),
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            icon: const Icon(
+                              Icons.wechat_rounded, // fallback for whatsapp
+                              color: Color(0xFF039855),
+                              size: 24,
+                            ),
+                            tooltip: 'WhatsApp',
+                            onPressed: () async {
+                              final phone =
+                                  property.ownerPhone ?? '+919999999999';
+                              final url = Uri.parse('https://wa.me/$phone');
+                              if (await canLaunchUrl(url)) launchUrl(url);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Container(
+                          height: 42,
+                          width: 42,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF5C46E8),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(
+                                  0xFF5C46E8,
+                                ).withValues(alpha: 0.25),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            icon: const Icon(
+                              Icons.call_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                            tooltip: 'Call',
+                            onPressed: () async {
+                              final phone =
+                                  property.ownerPhone ?? '+919999999999';
+                              final url = Uri.parse('tel:$phone');
+                              if (await canLaunchUrl(url)) launchUrl(url);
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -581,10 +789,10 @@ class _LazyPropertyImage extends ConsumerWidget {
         color: cs.surfaceContainerHighest,
         child: Center(
           child: SizedBox(
-            width: 20,
-            height: 20,
+            width: 24,
+            height: 24,
             child: CircularProgressIndicator(
-              strokeWidth: 2,
+              strokeWidth: 2.5,
               color: cs.primary.withValues(alpha: 0.5),
             ),
           ),
@@ -597,7 +805,7 @@ class _LazyPropertyImage extends ConsumerWidget {
             Container(color: cs.surfaceContainerHighest),
         errorWidget: (context, url, error) => Container(
           color: cs.surfaceContainerHighest,
-          child: const Icon(Icons.photo, size: 30),
+          child: const Icon(Icons.photo_outlined, size: 32, color: Colors.grey),
         ),
       ),
       data: (images) => CachedNetworkImage(
@@ -608,6 +816,199 @@ class _LazyPropertyImage extends ConsumerWidget {
         errorWidget: (context, url, error) =>
             CachedNetworkImage(imageUrl: fallback, fit: BoxFit.cover),
       ),
+    );
+  }
+}
+
+class _PropertyMediaGallery extends StatefulWidget {
+  final Property property;
+  final bool isFeatured;
+  final String fallbackImage;
+  final bool enableVideoPreview;
+
+  const _PropertyMediaGallery({
+    required this.property,
+    required this.isFeatured,
+    required this.fallbackImage,
+    required this.enableVideoPreview,
+  });
+
+  @override
+  State<_PropertyMediaGallery> createState() => _PropertyMediaGalleryState();
+}
+
+class _PropertyMediaGalleryState extends State<_PropertyMediaGallery> {
+  int _currentIndex = 0;
+  late final List<Map<String, dynamic>> _mediaList;
+  late final PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+    _mediaList = [];
+    if (widget.enableVideoPreview) {
+      for (final v in widget.property.videos) {
+        if (v.trim().isNotEmpty) {
+          _mediaList.add({'type': 'video', 'url': v.trim()});
+        }
+      }
+    }
+    for (final i in widget.property.images) {
+      if (i.trim().isNotEmpty) {
+        _mediaList.add({'type': 'image', 'url': i.trim()});
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (_mediaList.isEmpty)
+          _LazyPropertyImage(
+            propertyId: widget.property.id,
+            fallback: widget.fallbackImage,
+          )
+        else
+          PageView.builder(
+            controller: _pageController,
+            onPageChanged: (i) => setState(() => _currentIndex = i),
+            itemCount: _mediaList.length,
+            itemBuilder: (context, index) {
+              final item = _mediaList[index];
+              if (item['type'] == 'video') {
+                return AutoplayVideoPreview(
+                  key: ValueKey(item['url']),
+                  url: item['url'],
+                  muted: true,
+                  loop: true,
+                  autoplay: true,
+                  gateByVisibility: false,
+                  visibleFractionToPlay: 0.5,
+                  fit: BoxFit.cover,
+                  loading: const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  error: Container(
+                    color: const Color(0xFFF9FAFB),
+                    child: const Icon(
+                      Icons.video_file,
+                      color: Colors.grey,
+                      size: 32,
+                    ),
+                  ),
+                );
+              }
+              return CachedNetworkImage(
+                imageUrl: item['url'],
+                fit: BoxFit.cover,
+                placeholder: (context, url) =>
+                    Container(color: const Color(0xFFF9FAFB)),
+                errorWidget: (context, url, error) => Container(
+                  color: const Color(0xFFF9FAFB),
+                  child: const Icon(
+                    Icons.photo_outlined,
+                    color: Colors.grey,
+                    size: 32,
+                  ),
+                ),
+              );
+            },
+          ),
+
+        // Gradient overlay for bottom elements
+        Positioned.fill(
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.4),
+                  ],
+                  stops: const [0.0, 0.6, 1.0],
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        // Featured Badge
+        if (widget.isFeatured)
+          Positioned(
+            top: 12,
+            left: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFF5C46E8),
+                borderRadius: BorderRadius.circular(6),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF5C46E8).withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Text(
+                'FEATURED',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ),
+          ),
+
+        // Counter Badge
+        if (_mediaList.length > 1)
+          Positioned(
+            bottom: 12,
+            right: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _mediaList[_currentIndex]['type'] == 'video'
+                        ? Icons.play_circle_fill_rounded
+                        : Icons.photo_library_rounded,
+                    color: Colors.white,
+                    size: 12,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${_currentIndex + 1} / ${_mediaList.length}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

@@ -9,6 +9,7 @@ import '../../../data/services/property_service.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/location_provider.dart';
 import '../../../providers/property_provider.dart';
+import '../../../providers/app_providers.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/property_card.dart';
 import '../../widgets/shimmer_list.dart';
@@ -51,6 +52,13 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
   // ─── base data loaded from navigation args (null = loading) ───
   List<Property>? _baseItems;
   String _title = 'Properties';
+  String _currentSort = 'Relevance';
+
+  // ─── Pagination ───
+  int _currentPage = 1;
+  bool _hasMore = false;
+  bool _isLoadingMore = false;
+  final ScrollController _scrollController = ScrollController();
 
   // ─── manual area/locality search ───
   final TextEditingController _areaController = TextEditingController();
@@ -95,15 +103,29 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
     final filters = ref.read(commonFilterNotifierProvider);
 
     if (filters.listingType != 'Any') {
-      items = items.where((p) => p.type == filters.listingType).toList();
+      final lt = filters.listingType.toLowerCase();
+      items = items.where((p) {
+        final pt = p.type.toLowerCase();
+        if (lt == 'buy' && pt == 'sale') return true;
+        return pt == lt;
+      }).toList();
     }
 
     if (filters.propertyType != 'Any') {
       final query = filters.propertyType.toLowerCase();
       items = items.where((p) {
-        return p.propertyKind.toLowerCase().contains(query) ||
-            p.name.toLowerCase().contains(query) ||
-            p.type.toLowerCase().contains(query);
+        final pKind = p.propertyKind.toLowerCase();
+        final pName = p.name.toLowerCase();
+        final pType = p.type.toLowerCase();
+
+        if (query == 'plot' || query == 'land') {
+          if (pKind.contains('plot') || pKind.contains('land')) return true;
+          if (pName.contains('plot') || pName.contains('land')) return true;
+        }
+
+        return pKind.contains(query) ||
+            pName.contains(query) ||
+            pType.contains(query);
       }).toList();
     }
 
@@ -115,11 +137,57 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
       }).toList();
     }
 
-    return items;
+    var filtered = items.toList();
+    if (_currentSort == 'Price: Low to High') {
+      filtered.sort((a, b) => a.price.compareTo(b.price));
+    } else if (_currentSort == 'Price: High to Low') {
+      filtered.sort((a, b) => b.price.compareTo(a.price));
+    }
+
+    return filtered;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      if (!_isLoadingMore && _hasMore) {
+        _loadNextPage();
+      }
+    }
+  }
+
+  Future<void> _loadNextPage() async {
+    final extra = GoRouterState.of(context).extra;
+    // Currently only supporting infinite scroll on the default 'All' properties list
+    if (extra != null) return;
+
+    setState(() => _isLoadingMore = true);
+    try {
+      final result = await ref
+          .read(propertyRepositoryProvider)
+          .fetchAllPaged(page: _currentPage + 1);
+      _currentPage = result.currentPage;
+      _hasMore = result.hasMore;
+      if (mounted) {
+        setState(() {
+          _baseItems = [...?_baseItems, ...result.items];
+          _isLoadingMore = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingMore = false);
+    }
   }
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _areaController.dispose();
     super.dispose();
   }
@@ -197,7 +265,9 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
           } else if (extra.propertyType == 'Apartments') {
             items = (await notif.fetchApartmentPropertiesPaged(token)).items;
           } else if (extra.propertyType == 'Independent House') {
-            items = (await notif.fetchIndependentHousePropertiesPaged(token)).items;
+            items = (await notif.fetchIndependentHousePropertiesPaged(
+              token,
+            )).items;
           } else if (extra.propertyType == 'Duplex') {
             items = (await notif.fetchDuplexPropertiesPaged(token)).items;
           } else if (extra.propertyType == 'Villa') {
@@ -241,7 +311,16 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
       _title = extra.title;
       setState(() => _baseItems = extra.items);
     } else {
-      setState(() => _baseItems = ref.read(propertyNotifierProvider).all);
+      try {
+        final result = await ref.read(propertyRepositoryProvider).fetchAllPaged(page: 1);
+        _currentPage = result.currentPage;
+        _hasMore = result.hasMore;
+        if (mounted) setState(() => _baseItems = result.items);
+      } catch (_) {
+        if (mounted) {
+          setState(() => _baseItems = ref.read(propertyNotifierProvider).all);
+        }
+      }
     }
   }
 
@@ -285,24 +364,28 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
     return Scaffold(
       backgroundColor: _kBg,
       appBar: AppBar(
+        centerTitle: true,
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         elevation: 0,
         title: Text(
+          textAlign: TextAlign.center,
           _title,
+
           style: const TextStyle(
             fontWeight: FontWeight.w800,
             fontSize: 17,
             color: _kTextDark,
           ),
         ),
-        actions: [
-          IconButton(
-            onPressed: () => context.push('/search'),
-            icon: const Icon(Icons.tune_rounded),
-            tooltip: 'Filters',
-          ),
-        ],
+        // actions: [
+        //   if (GoRouterState.of(context).extra == null)
+        //     IconButton(
+        //       onPressed: () => context.push('/search'),
+        //       icon: const Icon(Icons.tune_rounded),
+        //       tooltip: 'Filters',
+        //     ),
+        // ],
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -315,126 +398,125 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Location + Manual Area Search
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: _openLocationSheet,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _kPrimary.withValues(alpha: 0.06),
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: _kPrimary.withValues(alpha: 0.22),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.location_on_rounded,
-                                color: _kPrimary,
-                                size: 15,
-                              ),
-                              const SizedBox(width: 6),
-                              ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  maxWidth:
-                                      MediaQuery.sizeOf(context).width * 0.32,
-                                ),
-                                child: Text(
-                                  location.currentLabel,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: _kPrimary,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              const Icon(
-                                Icons.keyboard_arrow_down_rounded,
-                                color: _kPrimary,
-                                size: 16,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Container(
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF2F4F7),
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(color: _kBorder),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.search_rounded,
-                                size: 16,
-                                color: _kTextMid,
-                              ),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: TextField(
-                                  controller: _areaController,
-                                  onChanged: (val) {
-                                    ref
-                                        .read(
-                                          commonFilterNotifierProvider.notifier,
-                                        )
-                                        .updateSearchText(val);
-                                  },
-                                  style: const TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w600,
-                                    color: _kTextDark,
-                                  ),
-                                  decoration: const InputDecoration(
-                                    hintText: 'Search sector/area...',
-                                    hintStyle: TextStyle(
-                                      fontSize: 12.5,
-                                      color: _kTextMid,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    border: InputBorder.none,
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.zero,
-                                  ),
-                                ),
-                              ),
-                              if (filters.searchText.isNotEmpty)
-                                GestureDetector(
-                                  onTap: () {
-                                    ref
-                                        .read(
-                                          commonFilterNotifierProvider.notifier,
-                                        )
-                                        .updateSearchText('');
-                                  },
-                                  child: const Icon(
-                                    Icons.close_rounded,
-                                    size: 16,
-                                    color: _kTextMid,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
+                  // // Location + Manual Area Search
+                  // Row(
+                  //   children: [
+                  //     GestureDetector(
+                  //       onTap: _openLocationSheet,
+                  //       child: Container(
+                  //         padding: const EdgeInsets.symmetric(
+                  //           horizontal: 12,
+                  //           vertical: 8,
+                  //         ),
+                  //         decoration: BoxDecoration(
+                  //           color: _kPrimary.withValues(alpha: 0.06),
+                  //           borderRadius: BorderRadius.circular(999),
+                  //           border: Border.all(
+                  //             color: _kPrimary.withValues(alpha: 0.22),
+                  //           ),
+                  //         ),
+                  //         child: Row(
+                  //           mainAxisSize: MainAxisSize.min,
+                  //           children: [
+                  //             const Icon(
+                  //               Icons.location_on_rounded,
+                  //               color: _kPrimary,
+                  //               size: 15,
+                  //             ),
+                  //             const SizedBox(width: 6),
+                  //             ConstrainedBox(
+                  //               constraints: BoxConstraints(
+                  //                 maxWidth:
+                  //                     MediaQuery.sizeOf(context).width * 0.32,
+                  //               ),
+                  //               child: Text(
+                  //                 location.currentLabel,
+                  //                 maxLines: 1,
+                  //                 overflow: TextOverflow.ellipsis,
+                  //                 style: const TextStyle(
+                  //                   fontSize: 13,
+                  //                   fontWeight: FontWeight.w700,
+                  //                   color: _kPrimary,
+                  //                 ),
+                  //               ),
+                  //             ),
+                  //             const SizedBox(width: 4),
+                  //             const Icon(
+                  //               Icons.keyboard_arrow_down_rounded,
+                  //               color: _kPrimary,
+                  //               size: 16,
+                  //             ),
+                  //           ],
+                  //         ),
+                  //       ),
+                  //     ),
+                  //     const SizedBox(width: 8),
+                  //     Expanded(
+                  //       child: Container(
+                  //         height: 36,
+                  //         decoration: BoxDecoration(
+                  //           color: const Color(0xFFF2F4F7),
+                  //           borderRadius: BorderRadius.circular(999),
+                  //           border: Border.all(color: _kBorder),
+                  //         ),
+                  //         padding: const EdgeInsets.symmetric(horizontal: 12),
+                  //         child: Row(
+                  //           children: [
+                  //             const Icon(
+                  //               Icons.search_rounded,
+                  //               size: 16,
+                  //               color: _kTextMid,
+                  //             ),
+                  //             const SizedBox(width: 6),
+                  //             Expanded(
+                  //               child: TextField(
+                  //                 controller: _areaController,
+                  //                 onChanged: (val) {
+                  //                   ref
+                  //                       .read(
+                  //                         commonFilterNotifierProvider.notifier,
+                  //                       )
+                  //                       .updateSearchText(val);
+                  //                 },
+                  //                 style: const TextStyle(
+                  //                   fontSize: 12.5,
+                  //                   fontWeight: FontWeight.w600,
+                  //                   color: _kTextDark,
+                  //                 ),
+                  //                 // decoration: const InputDecoration(
+                  //                 //   hintText: 'Search sector/area...',
+                  //                 //   hintStyle: TextStyle(
+                  //                 //     fontSize: 12.5,
+                  //                 //     color: _kTextMid,
+                  //                 //     fontWeight: FontWeight.w500,
+                  //                 //   ),
+                  //                 //   border: InputBorder.none,
+                  //                 //   isDense: true,
+                  //                 //   contentPadding: EdgeInsets.zero,
+                  //                 // ),
+                  //               ),
+                  //             ),
+                  //             if (filters.searchText.isNotEmpty)
+                  //               GestureDetector(
+                  //                 onTap: () {
+                  //                   ref
+                  //                       .read(
+                  //                         commonFilterNotifierProvider.notifier,
+                  //                       )
+                  //                       .updateSearchText('');
+                  //                 },
+                  //                 child: const Icon(
+                  //                   Icons.close_rounded,
+                  //                   size: 16,
+                  //                   color: _kTextMid,
+                  //                 ),
+                  //               ),
+                  //           ],
+                  //         ),
+                  //       ),
+                  //     ),
+                  //   ],
+                  // ),
                   const SizedBox(height: 12),
 
                   // Type filter chips (horizontally scrollable)
@@ -555,8 +637,9 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
     }
 
     return ListView.separated(
+      controller: _scrollController,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      itemCount: items.length + 1,
+      itemCount: items.length + 1 + (_isLoadingMore ? 1 : 0),
       separatorBuilder: (context, index) =>
           SizedBox(height: index == 0 ? 0 : 8),
       itemBuilder: (context, i) {
@@ -574,28 +657,59 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
                     color: Color(0xFF1D2939),
                   ),
                 ),
-                const Row(
-                  children: [
-                    Text(
-                      'Sort: Relevance',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF667085),
-                      ),
+                PopupMenuButton<String>(
+                  initialValue: _currentSort,
+                  onSelected: (val) => setState(() => _currentSort = val),
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'Relevance',
+                      child: Text('Relevance'),
                     ),
-                    SizedBox(width: 4),
-                    Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      color: Color(0xFF667085),
-                      size: 16,
+                    const PopupMenuItem(
+                      value: 'Price: Low to High',
+                      child: Text('Price: Low to High'),
+                    ),
+                    const PopupMenuItem(
+                      value: 'Price: High to Low',
+                      child: Text('Price: High to Low'),
                     ),
                   ],
+                  child: Row(
+                    children: [
+                      Text(
+                        'Sort: $_currentSort',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF667085),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: Color(0xFF667085),
+                        size: 16,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           );
         }
+        if (i == items.length + 1) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          );
+        }
+
         final p = items[i - 1];
         return PropertyCard(
           property: p,

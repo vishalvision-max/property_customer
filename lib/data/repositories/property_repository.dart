@@ -8,6 +8,9 @@ class PropertyRepository {
 
   Future<List<Property>> fetchAll() => _service.fetchProperties();
 
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchAllPaged({int page = 1}) => _service.fetchAllPaged(page: page);
+
   Future<List<Property>> fetchFiltered({
     int? categoryId,
     String? city,

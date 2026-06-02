@@ -10,7 +10,7 @@ import '../../../providers/auth_provider.dart';
 import '../../../providers/favorites_provider.dart';
 import '../../../providers/property_provider.dart';
 import '../../widgets/autoplay_video_preview.dart';
-import '../../widgets/zoomable_video_page.dart';
+
 import '../../widgets/property_card.dart'; // to reuse specs extraction and price formatter
 import '../../widgets/responsive_item_grid.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -121,7 +121,9 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
   void initState() {
     super.initState();
     _future = Future<Property>.microtask(
-      () => ref.read(propertyNotifierProvider.notifier).fetchDetails(widget.propertyId),
+      () => ref
+          .read(propertyNotifierProvider.notifier)
+          .fetchDetails(widget.propertyId),
     );
   }
 
@@ -195,12 +197,26 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
   }
 
   Widget _buildThumbnailStrip(BuildContext context, Property p) {
+    final videos = p.videos;
     final images = p.images;
-    if (images.length <= 1) return const SizedBox.shrink();
+    
+    final mediaList = <Map<String, dynamic>>[
+      for (var i = 0; i < videos.length; i++)
+        {'type': 'video', 'url': videos[i], 'index': i},
+      for (var i = 0; i < images.length; i++)
+        {'type': 'image', 'url': images[i], 'index': i},
+    ];
+
+    if (mediaList.length <= 1) return const SizedBox.shrink();
 
     final maxThumbnails = 4;
-    final displayImages = images.skip(1).take(maxThumbnails).toList();
-    final remainingCount = images.length - 1 - displayImages.length;
+    final displayMedia = mediaList.skip(1).take(maxThumbnails).toList();
+    final remainingCount = mediaList.length - 1 - displayMedia.length;
+
+    String fallbackImage() {
+      final first = images.isNotEmpty ? images.first.trim() : '';
+      return first.isEmpty ? _fallbackImage : first;
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -209,33 +225,48 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
         physics: const BouncingScrollPhysics(),
         child: Row(
           children: [
-            for (int i = 0; i < displayImages.length; i++)
+            for (int i = 0; i < displayMedia.length; i++)
               SizedBox(
                 width: 80,
                 child: Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: GestureDetector(
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => _ZoomGallery(
-                          images: images,
-                          initialIndex: i + 1,
-                          title: p.name,
+                    onTap: () {
+                      final item = displayMedia[i];
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => _ZoomGallery(
+                            mediaList: mediaList,
+                            initialIndex: mediaList.indexOf(item),
+                            title: p.name,
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: AspectRatio(
                         aspectRatio: 1.2,
-                        child: CachedNetworkImage(
-                          imageUrl: displayImages[i].trim(),
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) =>
-                              Container(color: Colors.black12),
-                          errorWidget: (context, url, error) =>
-                              Container(color: Colors.black12),
-                        ),
+                        child: displayMedia[i]['type'] == 'video'
+                            ? AutoplayVideoPreview(
+                                url: displayMedia[i]['url'],
+                                loop: false,
+                                fit: BoxFit.cover,
+                                visibleFractionToPlay: 0.20,
+                                loading: Container(color: Colors.black12),
+                                error: CachedNetworkImage(
+                                  imageUrl: fallbackImage(),
+                                  fit: BoxFit.cover,
+                                ),
+                              )
+                            : CachedNetworkImage(
+                                imageUrl: displayMedia[i]['url'].trim(),
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) =>
+                                    Container(color: Colors.black12),
+                                errorWidget: (context, url, error) =>
+                                    Container(color: Colors.black12),
+                              ),
                       ),
                     ),
                   ),
@@ -245,15 +276,18 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
               SizedBox(
                 width: 80,
                 child: GestureDetector(
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => _ZoomGallery(
-                        images: images,
-                        initialIndex: displayImages.length + 1,
-                        title: p.name,
+                  onTap: () {
+                    final item = mediaList[1 + displayMedia.length];
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => _ZoomGallery(
+                          mediaList: mediaList,
+                          initialIndex: mediaList.indexOf(item),
+                          title: p.name,
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: AspectRatio(
@@ -261,19 +295,36 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          CachedNetworkImage(
-                            imageUrl: images[displayImages.length + 1].trim(),
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) =>
-                                Container(color: Colors.black12),
-                            errorWidget: (context, url, error) =>
-                                Container(color: Colors.black12),
-                          ),
+                          (() {
+                            final item = mediaList[1 + displayMedia.length];
+                            if (item['type'] == 'video') {
+                              return AutoplayVideoPreview(
+                                url: item['url'],
+                                loop: false,
+                                fit: BoxFit.cover,
+                                visibleFractionToPlay: 0.20,
+                                loading: Container(color: Colors.black12),
+                                error: CachedNetworkImage(
+                                  imageUrl: fallbackImage(),
+                                  fit: BoxFit.cover,
+                                ),
+                              );
+                            } else {
+                              return CachedNetworkImage(
+                                imageUrl: item['url'].trim(),
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) =>
+                                    Container(color: Colors.black12),
+                                errorWidget: (context, url, error) =>
+                                    Container(color: Colors.black12),
+                              );
+                            }
+                          })(),
                           Container(
                             color: Colors.black.withValues(alpha: 0.5),
                             child: Center(
                               child: Text(
-                                '+$remainingCount\nPhotos',
+                                '+$remainingCount\nMedia',
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   color: Colors.white,
@@ -309,6 +360,8 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
             const SizedBox(height: 6),
             Text(
               value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w800,
@@ -318,6 +371,8 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
             const SizedBox(height: 2),
             Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 9.5,
                 fontWeight: FontWeight.w600,
@@ -329,37 +384,51 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
       );
     }
 
+    final List<Widget> items = [];
+
+    if (specs.sqft.isNotEmpty) {
+      items.add(specColumn(
+        icon: Icons.square_foot_outlined,
+        value: specs.sqft,
+        label: 'Super Built-up',
+      ));
+    }
+    if (specs.bedrooms.isNotEmpty) {
+      items.add(specColumn(
+        icon: Icons.king_bed_outlined,
+        value: specs.bedrooms.replaceAll(RegExp(r'\s*Bed'), ''),
+        label: 'Bedrooms',
+      ));
+    }
+    if (specs.bathrooms.isNotEmpty) {
+      items.add(specColumn(
+        icon: Icons.bathtub_outlined,
+        value: specs.bathrooms.replaceAll(RegExp(r'\s*Bath'), ''),
+        label: 'Bathrooms',
+      ));
+    }
+    if (specs.balconies.isNotEmpty) {
+      items.add(specColumn(
+        icon: Icons.balcony_outlined,
+        value: specs.balconies,
+        label: 'Balcony',
+      ));
+    }
+    if (specs.parking.isNotEmpty) {
+      items.add(specColumn(
+        icon: Icons.local_parking_outlined,
+        value: specs.parking,
+        label: 'Parking',
+      ));
+    }
+
+    if (items.isEmpty) return const SizedBox.shrink();
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          specColumn(
-            icon: Icons.square_foot_outlined,
-            value: specs.sqft,
-            label: 'Super Built-up',
-          ),
-          specColumn(
-            icon: Icons.king_bed_outlined,
-            value: specs.bedrooms.replaceAll(RegExp(r'\s*Bed'), ''),
-            label: 'Bedrooms',
-          ),
-          specColumn(
-            icon: Icons.bathtub_outlined,
-            value: specs.bathrooms.replaceAll(RegExp(r'\s*Bath'), ''),
-            label: 'Bathrooms',
-          ),
-          specColumn(
-            icon: Icons.balcony_outlined,
-            value: specs.balconies,
-            label: 'Balcony',
-          ),
-          specColumn(
-            icon: Icons.local_parking_outlined,
-            value: specs.parking,
-            label: 'Parking',
-          ),
-        ],
+        children: items,
       ),
     );
   }
@@ -381,7 +450,7 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
           const SizedBox(height: 12),
           ResponsiveItemGrid<String>(
             items: specs.highlights,
-            fixedColumns: 4,
+            fixedColumns: 3,
             spacing: 8,
             runSpacing: 8,
             isCollapsible: true,
@@ -430,6 +499,116 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                 ),
               );
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTermsRow(String title, String value) {
+    if (value.trim().isEmpty || value.trim() == 'null' || value.trim() == '0') {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 2,
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF667085),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF1D2939),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExtraDetails(Property p) {
+    final List<Widget> rows = [];
+    if (p.securityDeposit != null && p.securityDeposit! > 0) {
+      rows.add(_buildTermsRow('Security Deposit', '₹${p.securityDeposit}'));
+    }
+    if (p.bookingAmount != null && p.bookingAmount! > 0) {
+      rows.add(_buildTermsRow('Booking Amount', '₹${p.bookingAmount}'));
+    }
+    if (p.parkingCharges != null && p.parkingCharges! > 0) {
+      rows.add(_buildTermsRow('Parking Charges', '₹${p.parkingCharges}'));
+    }
+    if (p.paintingCharges != null && p.paintingCharges! > 0) {
+      rows.add(_buildTermsRow('Painting Charges', '₹${p.paintingCharges}'));
+    }
+    if (p.lockInPeriod != null && p.lockInPeriod!.isNotEmpty) {
+      rows.add(_buildTermsRow('Lock-in Period', p.lockInPeriod!));
+    }
+    if (p.availableFrom != null && p.availableFrom!.isNotEmpty) {
+      rows.add(_buildTermsRow('Available From', p.availableFrom!));
+    }
+    if (p.priceNegotiable == true) {
+      rows.add(_buildTermsRow('Price Negotiable', 'Yes'));
+    }
+
+    if (p.furnishing != null && p.furnishing!.trim().isNotEmpty) {
+      final f = p.furnishing!
+          .replaceAll('_', ' ')
+          .split(' ')
+          .map(
+            (e) => e.isEmpty
+                ? e
+                : '${e[0].toUpperCase()}${e.substring(1).toLowerCase()}',
+          )
+          .join(' ');
+      rows.add(_buildTermsRow('Furnishing', f));
+    }
+    
+    if (p.categoryName != null && p.categoryName!.trim().isNotEmpty) {
+      rows.add(_buildTermsRow('Property Type', p.categoryName!));
+    }
+
+    if (rows.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Financials & Details',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF1D2939),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF9FAFB),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFEAECF0)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: rows,
+            ),
           ),
         ],
       ),
@@ -718,7 +897,7 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                             const SizedBox(height: 12),
                             ResponsiveItemGrid<String>(
                               items: p.amenities,
-                              fixedColumns: 4,
+                              fixedColumns: 3,
                               spacing: 8,
                               runSpacing: 8,
                               isCollapsible: true,
@@ -782,7 +961,12 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                         ),
                       ),
 
-                    const SizedBox(height: 20),
+                    if (p.amenities.isNotEmpty) const SizedBox(height: 20),
+                    
+                    // Extra Details (Financials, Terms)
+                    _buildExtraDetails(p),
+
+                    const SizedBox(height: 8),
 
                     // // Furnishing Section
                     // if (p.furnishing != null && p.furnishing!.trim().isNotEmpty)
@@ -978,14 +1162,14 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                       children: [
                         Expanded(
                           child: InkWell(
-                            borderRadius: BorderRadius.circular(10),
-                            onTap: handleCall,
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: handleChat,
                             child: Container(
                               height: 48,
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                  color: const Color(0xFFD0D5DD),
+                                  color: const Color(0xFF5C46E8),
                                   width: 1,
                                 ),
                                 color: Colors.white,
@@ -995,17 +1179,17 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Icon(
-                                      Icons.phone_outlined,
-                                      color: Color(0xFF344054),
-                                      size: 18,
+                                      Icons.chat_bubble_outline_rounded,
+                                      color: Color(0xFF5C46E8),
+                                      size: 16,
                                     ),
-                                    SizedBox(width: 5),
+                                    SizedBox(width: 4),
                                     Text(
-                                      'Call',
+                                      'Chat',
                                       style: TextStyle(
-                                        color: Color(0xFF344054),
+                                        color: Color(0xFF5C46E8),
                                         fontWeight: FontWeight.w700,
-                                        fontSize: 13.5,
+                                        fontSize: 13,
                                       ),
                                     ),
                                   ],
@@ -1017,73 +1201,53 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: InkWell(
-                            borderRadius: BorderRadius.circular(10),
-                            onTap: handleChat,
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: scheduleVisit,
                             child: Container(
                               height: 48,
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                  color: const Color(0xFFD0D5DD),
+                                  color: const Color(0xFF5C46E8),
                                   width: 1,
                                 ),
                                 color: Colors.white,
                               ),
                               child: const Center(
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.chat_bubble_outline_rounded,
-                                      color: Color(0xFF344054),
-                                      size: 18,
-                                    ),
-                                    SizedBox(width: 5),
-                                    Text(
-                                      'Chat',
-                                      style: TextStyle(
-                                        color: Color(0xFF344054),
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 13.5,
-                                      ),
-                                    ),
-                                  ],
+                                child: Text(
+                                  'Schedule',
+                                  style: TextStyle(
+                                    color: Color(0xFF5C46E8),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 8),
                         Expanded(
                           flex: 2,
                           child: InkWell(
-                            borderRadius: BorderRadius.circular(10),
-                            onTap: scheduleVisit,
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: handleCall,
                             child: Container(
                               height: 48,
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(8),
                                 color: _kPrimary,
                               ),
-                              child: const Center(
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.calendar_month_outlined,
-                                      color: Colors.white,
-                                      size: 18,
-                                    ),
-                                    SizedBox(width: 6),
-                                    Text(
-                                      'Schedule Visit',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 13.5,
-                                      ),
-                                    ),
-                                  ],
+                              child: Center(
+                                child: Text(
+                                  p.ownerPhone != null && p.ownerPhone!.trim().isNotEmpty
+                                    ? 'Call ${p.ownerPhone}'
+                                    : 'Call Agent',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 14,
+                                  ),
                                 ),
                               ),
                             ),
@@ -1136,6 +1300,13 @@ class _HeroMediaLightState extends State<_HeroMediaLight> {
     final images = widget.images.isEmpty ? const <String>[''] : widget.images;
     final total = videos.length + images.length;
 
+    final mediaList = <Map<String, dynamic>>[
+      for (var i = 0; i < videos.length; i++)
+        {'type': 'video', 'url': videos[i]},
+      for (var i = 0; i < images.length; i++)
+        {'type': 'image', 'url': images[i]},
+    ];
+
     String fallbackImage() {
       final first = images.isNotEmpty ? images.first.trim() : '';
       return first.isEmpty ? _fallbackImage : first;
@@ -1167,11 +1338,18 @@ class _HeroMediaLightState extends State<_HeroMediaLight> {
               items: [
                 for (final v in videos)
                   GestureDetector(
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => ZoomableVideoPage(url: v),
-                      ),
-                    ),
+                    onTap: () {
+                      final idx = videos.indexOf(v);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => _ZoomGallery(
+                            mediaList: mediaList,
+                            initialIndex: idx,
+                            title: widget.title,
+                          ),
+                        ),
+                      );
+                    },
                     child: AutoplayVideoPreview(
                       url: v,
                       loop: false,
@@ -1190,8 +1368,8 @@ class _HeroMediaLightState extends State<_HeroMediaLight> {
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => _ZoomGallery(
-                          images: images,
-                          initialIndex: i,
+                          mediaList: mediaList,
+                          initialIndex: videos.length + i,
                           title: widget.title,
                         ),
                       ),
@@ -1310,12 +1488,12 @@ class _HeroMediaLightState extends State<_HeroMediaLight> {
 }
 
 class _ZoomGallery extends StatefulWidget {
-  final List<String> images;
+  final List<Map<String, dynamic>> mediaList;
   final int initialIndex;
   final String title;
 
   const _ZoomGallery({
-    required this.images,
+    required this.mediaList,
     required this.initialIndex,
     required this.title,
   });
@@ -1331,7 +1509,7 @@ class _ZoomGalleryState extends State<_ZoomGallery> {
   @override
   void initState() {
     super.initState();
-    final maxIdx = (widget.images.length - 1).clamp(0, 999999);
+    final maxIdx = (widget.mediaList.length - 1).clamp(0, 999999);
     _index = widget.initialIndex.clamp(0, maxIdx);
     _controller = PageController(initialPage: _index);
   }
@@ -1344,28 +1522,51 @@ class _ZoomGalleryState extends State<_ZoomGallery> {
 
   @override
   Widget build(BuildContext context) {
-    final images = widget.images.isEmpty ? const <String>[''] : widget.images;
+    final media = widget.mediaList.isEmpty ? const [{'type': 'image', 'url': ''}] : widget.mediaList;
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
-        title: Text('${_index + 1} / ${images.length}'),
+        title: Text('${_index + 1} / ${media.length}'),
       ),
       body: PageView.builder(
         controller: _controller,
-        itemCount: images.length,
+        itemCount: media.length,
         onPageChanged: (i) => setState(() => _index = i),
         itemBuilder: (context, i) {
-          final url = images[i].trim().isEmpty
-              ? _fallbackImage
-              : images[i].trim();
+          final item = media[i];
+          final type = item['type'];
+          final url = (item['url'] as String?)?.trim() ?? '';
+          final finalUrl = url.isEmpty ? _fallbackImage : url;
+
+          if (type == 'video') {
+            return Center(
+              child: AutoplayVideoPreview(
+                url: finalUrl,
+                muted: false,
+                loop: true,
+                autoplay: true,
+                gateByVisibility: true,
+                visibleFractionToPlay: 0.5,
+                fit: BoxFit.contain,
+                loading: const Center(
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                error: CachedNetworkImage(
+                  imageUrl: _fallbackImage,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            );
+          }
+
           return InteractiveViewer(
             minScale: 1,
             maxScale: 4,
             child: Center(
               child: CachedNetworkImage(
-                imageUrl: url,
+                imageUrl: finalUrl,
                 fit: BoxFit.contain,
                 placeholder: (context, url) => const Center(
                   child: CircularProgressIndicator(strokeWidth: 2),
