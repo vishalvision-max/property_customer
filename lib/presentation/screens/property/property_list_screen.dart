@@ -246,7 +246,9 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
           final notif = ref.read(propertyNotifierProvider.notifier);
           try {
             final pgItems = (await notif.fetchPgPropertiesPaged(token)).items;
-            final coItems = (await notif.fetchCoLivingPropertiesPaged(token)).items;
+            final coItems = (await notif.fetchCoLivingPropertiesPaged(
+              token,
+            )).items;
             items = [...pgItems, ...coItems];
           } catch (e) {
             debugPrint('Error loading PG properties: $e');
@@ -358,7 +360,9 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
       setState(() => _baseItems = extra.items);
     } else {
       try {
-        final result = await ref.read(propertyRepositoryProvider).fetchAllPaged(page: 1);
+        final result = await ref
+            .read(propertyRepositoryProvider)
+            .fetchAllPaged(page: 1);
         _currentPage = result.currentPage;
         _hasMore = result.hasMore;
         if (mounted) setState(() => _baseItems = result.items);
@@ -685,7 +689,8 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
             alignment: Alignment.center,
             child: const EmptyState(
               title: 'No results',
-              message: 'Try adjusting filters or selecting a different location.',
+              message:
+                  'Try adjusting filters or selecting a different location.',
               asset: 'assets/illustrations/empty_search.svg',
             ),
           ),
@@ -697,87 +702,88 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
       onRefresh: () async => _loadBaseItems(),
       color: _kPrimary,
       child: ListView.separated(
-      physics: const AlwaysScrollableScrollPhysics(),
-      controller: _scrollController,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      itemCount: items.length + 1 + (_isLoadingMore ? 1 : 0),
-      separatorBuilder: (context, index) =>
-          SizedBox(height: index == 0 ? 0 : 8),
-      itemBuilder: (context, i) {
-        if (i == 0) {
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(0, 4, 0, 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '${items.length} Properties Found',
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF1D2939),
-                  ),
-                ),
-                PopupMenuButton<String>(
-                  initialValue: _currentSort,
-                  onSelected: (val) => setState(() => _currentSort = val),
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'Relevance',
-                      child: Text('Relevance'),
-                    ),
-                    const PopupMenuItem(
-                      value: 'Price: Low to High',
-                      child: Text('Price: Low to High'),
-                    ),
-                    const PopupMenuItem(
-                      value: 'Price: High to Low',
-                      child: Text('Price: High to Low'),
-                    ),
-                  ],
-                  child: Row(
-                    children: [
-                      Text(
-                        'Sort: $_currentSort',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF667085),
-                        ),
+        physics: const AlwaysScrollableScrollPhysics(),
+        controller: _scrollController,
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        itemCount: items.length + 1 + (_isLoadingMore ? 1 : 0),
+        separatorBuilder: (context, index) =>
+            SizedBox(height: index == 0 ? 0 : 8),
+        itemBuilder: (context, i) {
+          if (i == 0) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(0, 4, 0, 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Text(
+                  //   '${items.length} Properties Found',
+                  //   style: const TextStyle(
+                  //     fontSize: 12.5,
+                  //     fontWeight: FontWeight.w800,
+                  //     color: Color(0xFF1D2939),
+                  //   ),
+                  // ),
+                  PopupMenuButton<String>(
+                    initialValue: _currentSort,
+                    onSelected: (val) => setState(() => _currentSort = val),
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'Relevance',
+                        child: Text('Relevance'),
                       ),
-                      const SizedBox(width: 4),
-                      const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: Color(0xFF667085),
-                        size: 16,
+                      const PopupMenuItem(
+                        value: 'Price: Low to High',
+                        child: Text('Price: Low to High'),
+                      ),
+                      const PopupMenuItem(
+                        value: 'Price: High to Low',
+                        child: Text('Price: High to Low'),
                       ),
                     ],
+                    child: Row(
+                      children: [
+                        Text(
+                          'Sort: $_currentSort',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF667085),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: Color(0xFF667085),
+                          size: 16,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          );
-        }
-        if (i == items.length + 1) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
-            child: Center(
-              child: SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                ],
               ),
-            ),
-          );
-        }
+            );
+          }
+          if (i == items.length + 1) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            );
+          }
 
-        final p = items[i - 1];
-        return PropertyCard(
-          property: p,
-          onTap: () => context.push('/property/${p.id}'),
-        );
-      },
-    ));
+          final p = items[i - 1];
+          return PropertyCard(
+            property: p,
+            onTap: () => context.push('/property/${p.id}'),
+          );
+        },
+      ),
+    );
   }
 }
 

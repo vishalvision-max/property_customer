@@ -101,12 +101,24 @@ class Property {
   factory Property.fromJson(Map<String, dynamic> json) {
     return Property(
       id: (json['id'] ?? '').toString(),
-      name: (json['name'] ?? '').toString(),
-      location: (json['location'] ?? '').toString(),
+      // API sends 'title', not 'name'
+      name: (json['title'] ?? json['name'] ?? '').toString(),
+      // API sends 'address', not 'location'
+      location: (json['address'] ?? json['location'] ?? '').toString(),
       price: (json['price'] as num?)?.toInt() ?? 0,
       type: (json['type'] ?? 'rent').toString(),
-      propertyKind: (json['property_kind'] ?? json['propertyKind'] ?? '')
-          .toString(),
+      // API returns property_kind as null; fall back to category.name for type matching
+      propertyKind: (() {
+        final raw = json['property_kind'] ?? json['propertyKind'];
+        if (raw != null && raw.toString().isNotEmpty) return raw.toString();
+        // Use category name as the property kind (e.g. 'Builder Floor', 'Flat / Apartment')
+        final cat = json['category'];
+        if (cat is Map) {
+          final catName = cat['name']?.toString() ?? '';
+          if (catName.isNotEmpty) return catName;
+        }
+        return '';
+      })(),
       amenities: (() {
         final rawAmenities = json['amenities'];
         final result = <String>[];
@@ -187,7 +199,19 @@ class Property {
           DateTime.tryParse((json['availability'] ?? '').toString()) ??
           DateTime.now(),
       facing: json['facing']?.toString(),
-      bhk: json['bhk'] != null ? int.tryParse(json['bhk'].toString()) : null,
+      bhk: (() {
+        // Try top-level bhk first, then residential_details.bhk_type (e.g. '2 BHK')
+        if (json['bhk'] != null) return int.tryParse(json['bhk'].toString());
+        final rd = json['residential_details'];
+        if (rd is Map) {
+          final bhkType = rd['bhk_type']?.toString() ?? '';
+          // '2 BHK' → extract the digit
+          final match = RegExp(r'(\d+)').firstMatch(bhkType);
+          if (match != null) return int.tryParse(match.group(1)!);
+          if (rd['bhk'] != null) return int.tryParse(rd['bhk'].toString());
+        }
+        return null;
+      })(),
       bedrooms: json['bedrooms'] != null
           ? int.tryParse(json['bedrooms'].toString())
           : null,

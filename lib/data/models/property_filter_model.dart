@@ -11,6 +11,18 @@ class PropertyFilterState {
   final List<String> selectedConstructionStatus;
   final double minBudget; // in Lakhs/Cr representation
   final double maxBudget; // in Lakhs/Cr representation
+  final List<String> selectedFurnishing;
+  final bool verifiedOnly;
+  final bool imagesOnly;
+  final double minArea;
+  final double maxArea;
+  final List<String> selectedLeaseTypes;
+  final List<String> selectedBathrooms;
+  final List<String> selectedAge;
+  final List<String> selectedAdded;
+  final List<String> selectedAvailable;
+  final List<String> selectedPowerBackup;
+  final List<String> selectedAmenities;
 
   const PropertyFilterState({
     required this.selectedCity,
@@ -23,6 +35,18 @@ class PropertyFilterState {
     required this.selectedConstructionStatus,
     required this.minBudget,
     required this.maxBudget,
+    required this.selectedFurnishing,
+    required this.verifiedOnly,
+    required this.imagesOnly,
+    required this.minArea,
+    required this.maxArea,
+    required this.selectedLeaseTypes,
+    required this.selectedBathrooms,
+    required this.selectedAge,
+    required this.selectedAdded,
+    required this.selectedAvailable,
+    required this.selectedPowerBackup,
+    required this.selectedAmenities,
   });
 
   factory PropertyFilterState.initial() {
@@ -37,6 +61,18 @@ class PropertyFilterState {
       selectedConstructionStatus: [],
       minBudget: 0.0,
       maxBudget: 20.0, // Capped at 20.0 Cr+
+      selectedFurnishing: [],
+      verifiedOnly: false,
+      imagesOnly: false,
+      minArea: 0.0,
+      maxArea: 5000.0,
+      selectedLeaseTypes: [],
+      selectedBathrooms: [],
+      selectedAge: [],
+      selectedAdded: [],
+      selectedAvailable: [],
+      selectedPowerBackup: [],
+      selectedAmenities: [],
     );
   }
 
@@ -51,6 +87,18 @@ class PropertyFilterState {
     List<String>? selectedConstructionStatus,
     double? minBudget,
     double? maxBudget,
+    List<String>? selectedFurnishing,
+    bool? verifiedOnly,
+    bool? imagesOnly,
+    double? minArea,
+    double? maxArea,
+    List<String>? selectedLeaseTypes,
+    List<String>? selectedBathrooms,
+    List<String>? selectedAge,
+    List<String>? selectedAdded,
+    List<String>? selectedAvailable,
+    List<String>? selectedPowerBackup,
+    List<String>? selectedAmenities,
   }) {
     return PropertyFilterState(
       selectedCity: selectedCity ?? this.selectedCity,
@@ -63,6 +111,18 @@ class PropertyFilterState {
       selectedConstructionStatus: selectedConstructionStatus ?? this.selectedConstructionStatus,
       minBudget: minBudget ?? this.minBudget,
       maxBudget: maxBudget ?? this.maxBudget,
+      selectedFurnishing: selectedFurnishing ?? this.selectedFurnishing,
+      verifiedOnly: verifiedOnly ?? this.verifiedOnly,
+      imagesOnly: imagesOnly ?? this.imagesOnly,
+      minArea: minArea ?? this.minArea,
+      maxArea: maxArea ?? this.maxArea,
+      selectedLeaseTypes: selectedLeaseTypes ?? this.selectedLeaseTypes,
+      selectedBathrooms: selectedBathrooms ?? this.selectedBathrooms,
+      selectedAge: selectedAge ?? this.selectedAge,
+      selectedAdded: selectedAdded ?? this.selectedAdded,
+      selectedAvailable: selectedAvailable ?? this.selectedAvailable,
+      selectedPowerBackup: selectedPowerBackup ?? this.selectedPowerBackup,
+      selectedAmenities: selectedAmenities ?? this.selectedAmenities,
     );
   }
 
@@ -78,6 +138,18 @@ class PropertyFilterState {
       'selectedConstructionStatus': selectedConstructionStatus,
       'minBudget': minBudget,
       'maxBudget': maxBudget,
+      'selectedFurnishing': selectedFurnishing,
+      'verifiedOnly': verifiedOnly,
+      'imagesOnly': imagesOnly,
+      'minArea': minArea,
+      'maxArea': maxArea,
+      'selectedLeaseTypes': selectedLeaseTypes,
+      'selectedBathrooms': selectedBathrooms,
+      'selectedAge': selectedAge,
+      'selectedAdded': selectedAdded,
+      'selectedAvailable': selectedAvailable,
+      'selectedPowerBackup': selectedPowerBackup,
+      'selectedAmenities': selectedAmenities,
     };
   }
 
@@ -93,6 +165,18 @@ class PropertyFilterState {
       selectedConstructionStatus: List<String>.from(map['selectedConstructionStatus'] ?? const []),
       minBudget: (map['minBudget'] as num?)?.toDouble() ?? 0.0,
       maxBudget: (map['maxBudget'] as num?)?.toDouble() ?? 20.0,
+      selectedFurnishing: List<String>.from(map['selectedFurnishing'] ?? const []),
+      verifiedOnly: map['verifiedOnly'] as bool? ?? false,
+      imagesOnly: map['imagesOnly'] as bool? ?? false,
+      minArea: (map['minArea'] as num?)?.toDouble() ?? 0.0,
+      maxArea: (map['maxArea'] as num?)?.toDouble() ?? 5000.0,
+      selectedLeaseTypes: List<String>.from(map['selectedLeaseTypes'] ?? const []),
+      selectedBathrooms: List<String>.from(map['selectedBathrooms'] ?? const []),
+      selectedAge: List<String>.from(map['selectedAge'] ?? const []),
+      selectedAdded: List<String>.from(map['selectedAdded'] ?? const []),
+      selectedAvailable: List<String>.from(map['selectedAvailable'] ?? const []),
+      selectedPowerBackup: List<String>.from(map['selectedPowerBackup'] ?? const []),
+      selectedAmenities: List<String>.from(map['selectedAmenities'] ?? const []),
     );
   }
 

@@ -472,19 +472,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     crossAxisSpacing: 14,
                     childAspectRatio: 0.72,
                   ),
-                  delegate: SliverChildBuilderDelegate(
-                    (context, i) {
-                      final p = recommended[i];
-                      return RelatedPropertyCard(
-                        property: p,
-                        onTap: () => context.push('/property/${p.id}'),
-                      )
-                          .animate()
-                          .fadeIn(delay: (50 * i).ms, duration: 240.ms)
-                          .slideY(begin: 0.04);
-                    },
-                    childCount: recommended.take(_visibleCount).length,
-                  ),
+                  delegate: SliverChildBuilderDelegate((context, i) {
+                    final p = recommended[i];
+                    return RelatedPropertyCard(
+                          property: p,
+                          onTap: () => context.push('/property/${p.id}'),
+                        )
+                        .animate()
+                        .fadeIn(delay: (50 * i).ms, duration: 240.ms)
+                        .slideY(begin: 0.04);
+                  }, childCount: recommended.take(_visibleCount).length),
                 ),
               ),
               if (recommended.length > _visibleCount)

@@ -4,6 +4,10 @@ import '../providers/property_filter_provider.dart';
 import '../widgets/bhk_section.dart';
 import '../widgets/budget_section.dart';
 import '../widgets/property_type_section.dart';
+import '../widgets/furnishing_type_section.dart';
+import '../widgets/filter_chip_section.dart';
+import '../widgets/amenities_section.dart';
+import '../widgets/area_section.dart';
 import '../widgets/listed_by_section.dart';
 import '../widgets/developer_section.dart';
 import '../widgets/apply_button.dart';
@@ -145,46 +149,92 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    children: ['Buy', 'Rent', 'Commercial'].map((intent) {
-                      final isSelected = filters.selectedIntent == intent;
-                      return Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: GestureDetector(
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 10,
+                    children:
+                        [
+                          ('Buy', '🏠'),
+                          ('Rent', '🔑'),
+                          ('Commercial', '🏢'),
+                          ('Land/Plots', '🌿'),
+                          ('Commercial Lands', '🏗️'),
+                          ('Pg/Co-living', '🛋️'),
+                          ('Villas', '🏡'),
+                          ('Bungalows', '🏘️'),
+                          ('Lease', '📋'),
+                        ].map((record) {
+                          final intent = record.$1;
+                          final icon = record.$2;
+                          final isSelected = filters.selectedIntent == intent;
+                          return GestureDetector(
                             onTap: () => notifier.updateIntent(intent),
                             child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 150),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? const Color(0xFFF9F5FF)
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: isSelected ? activeColor : borderColor,
-                                  width: isSelected ? 1.5 : 1,
-                                ),
+                              duration: const Duration(milliseconds: 180),
+                              curve: Curves.easeInOut,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 9,
                               ),
-                              child: Center(
-                                child: Text(
-                                  intent,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: isSelected
-                                        ? FontWeight.w700
-                                        : FontWeight.w600,
-                                    color: isSelected
-                                        ? activeColor
-                                        : const Color(0xFF344054),
-                                  ),
+                              decoration: BoxDecoration(
+                                gradient: isSelected
+                                    ? const LinearGradient(
+                                        colors: [
+                                          Color(0xFF7C3AED),
+                                          Color(0xFF9F67FA),
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      )
+                                    : null,
+                                color: isSelected
+                                    ? null
+                                    : const Color(0xFFF8F8FF),
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? Colors.transparent
+                                      : const Color(0xFFD0D5DD),
+                                  width: 1,
                                 ),
+                                boxShadow: isSelected
+                                    ? [
+                                        BoxShadow(
+                                          color: const Color(
+                                            0xFF7C3AED,
+                                          ).withOpacity(0.30),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ]
+                                    : [],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    icon,
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    intent,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : const Color(0xFF344054),
+                                      letterSpacing: 0.1,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                          );
+                        }).toList(),
                   ),
                   const SizedBox(height: 24),
 
@@ -211,16 +261,16 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Property Type Section
-                  PropertyTypeSection(
-                    selectedTypes: filters.selectedPropertyTypes,
-                    onTypeToggled: notifier.togglePropertyType,
+                  // Furnishing Type Section
+                  FurnishingTypeSection(
+                    selectedFurnishing: filters.selectedFurnishing,
+                    onFurnishingToggled: notifier.toggleFurnishing,
                   ),
                   const SizedBox(height: 24),
 
                   // Advanced Filters Accordion
-                  // _buildAdvancedAccordion(filters, notifier),
-                  // const SizedBox(height: 24),
+                  _buildAdvancedAccordion(filters, notifier),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
@@ -260,6 +310,46 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
     for (final pt in filters.selectedPropertyTypes) {
       chips.add(_appliedChip(pt, () => notifier.togglePropertyType(pt)));
     }
+    for (final pt in filters.selectedFurnishing) {
+      chips.add(_appliedChip(pt, () => notifier.toggleFurnishing(pt)));
+    }
+    if (filters.verifiedOnly) {
+      chips.add(
+        _appliedChip('Verified Only', () => notifier.toggleVerifiedOnly(false)),
+      );
+    }
+    if (filters.imagesOnly) {
+      chips.add(
+        _appliedChip('Images Only', () => notifier.toggleImagesOnly(false)),
+      );
+    }
+    if (filters.minArea > 0.0 || filters.maxArea < 5000.0) {
+      final label =
+          '${filters.minArea.toInt()} - ${filters.maxArea.toInt()} Sqft';
+      chips.add(_appliedChip(label, () => notifier.updateArea(0.0, 5000.0)));
+    }
+    for (final pt in filters.selectedLeaseTypes) {
+      chips.add(_appliedChip(pt, () => notifier.toggleLeaseType(pt)));
+    }
+    for (final pt in filters.selectedBathrooms) {
+      chips.add(_appliedChip(pt, () => notifier.toggleBathroom(pt)));
+    }
+    for (final pt in filters.selectedAge) {
+      chips.add(_appliedChip(pt, () => notifier.toggleAge(pt)));
+    }
+    for (final pt in filters.selectedAdded) {
+      chips.add(_appliedChip(pt, () => notifier.toggleAdded(pt)));
+    }
+    for (final pt in filters.selectedAvailable) {
+      chips.add(_appliedChip(pt, () => notifier.toggleAvailable(pt)));
+    }
+    for (final pt in filters.selectedPowerBackup) {
+      chips.add(_appliedChip(pt, () => notifier.togglePowerBackup(pt)));
+    }
+    for (final pt in filters.selectedAmenities) {
+      chips.add(_appliedChip(pt, () => notifier.toggleAmenity(pt)));
+    }
+
     if (filters.minBudget > 0.0 || filters.maxBudget < 20.0) {
       final label =
           '₹${filters.minBudget.toStringAsFixed(1)}Cr - ₹${filters.maxBudget.toStringAsFixed(1)}Cr';
@@ -342,7 +432,7 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Show advanced filters',
+                  'Advanced Filters',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -359,34 +449,166 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
             ),
           ),
         ),
-        // AnimatedCrossFade(
-        //   firstChild: const SizedBox.shrink(),
-        //   secondChild: Padding(
-        //     padding: const EdgeInsets.only(top: 16),
-        //     child: Column(
-        //       crossAxisAlignment: CrossAxisAlignment.start,
-        //       children: [
-        //         ListedBySection(
-        //           selectedListedBy: filters.selectedListedBy,
-        //           selectedConstructionStatus:
-        //               filters.selectedConstructionStatus,
-        //           onListedByToggled: notifier.toggleListedBy,
-        //           onConstructionStatusToggled:
-        //               notifier.toggleConstructionStatus,
-        //         ),
-        //         const SizedBox(height: 24),
-        //         DeveloperSection(
-        //           selectedDevelopers: filters.selectedDevelopers,
-        //           onDeveloperToggled: notifier.toggleDeveloper,
-        //         ),
-        //       ],
-        //     ),
-        //   ),
-        //   crossFadeState: _isAdvancedExpanded
-        //       ? CrossFadeState.showSecond
-        //       : CrossFadeState.showFirst,
-        //   duration: const Duration(milliseconds: 250),
-        // ),
+        AnimatedCrossFade(
+          firstChild: const SizedBox.shrink(),
+          secondChild: Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // View Verified properties only
+                // Row(
+                //   children: [
+                //     const Expanded(
+                //       child: Text(
+                //         'View Verified properties only',
+                //         style: TextStyle(
+                //           fontSize: 14,
+                //           fontWeight: FontWeight.w600,
+                //           color: Color(0xFF344054),
+                //         ),
+                //       ),
+                //     ),
+                //     Checkbox(
+                //       value: filters.verifiedOnly,
+                //       onChanged: (v) => notifier.toggleVerifiedOnly(v ?? false),
+                //       activeColor: const Color(0xFF7B2FF7),
+                //       shape: RoundedRectangleBorder(
+                //         borderRadius: BorderRadius.circular(4),
+                //       ),
+                //     ),
+                //   ],
+                // ),
+                // const SizedBox(height: 12),
+
+                // View Properties with images only
+                // Row(
+                //   children: [
+                //     const Expanded(
+                //       child: Text(
+                //         'View Properties with images only',
+                //         style: TextStyle(
+                //           fontSize: 14,
+                //           fontWeight: FontWeight.w600,
+                //           color: Color(0xFF344054),
+                //         ),
+                //       ),
+                //     ),
+                //     Checkbox(
+                //       value: filters.imagesOnly,
+                //       onChanged: (v) => notifier.toggleImagesOnly(v ?? false),
+                //       activeColor: const Color(0xFF7B2FF7),
+                //       shape: RoundedRectangleBorder(
+                //         borderRadius: BorderRadius.circular(4),
+                //       ),
+                //     ),
+                //   ],
+                // ),
+                const SizedBox(height: 24),
+
+                PropertyTypeSection(
+                  selectedTypes: filters.selectedPropertyTypes,
+                  onTypeToggled: notifier.togglePropertyType,
+                ),
+                const SizedBox(height: 24),
+
+                AreaSection(
+                  minArea: filters.minArea,
+                  maxArea: filters.maxArea,
+                  onAreaChanged: notifier.updateArea,
+                ),
+                const SizedBox(height: 24),
+
+                FilterChipSection(
+                  title: 'Lease Type',
+                  options: const ['Family', 'Company', 'Bachelor'],
+                  selectedOptions: filters.selectedLeaseTypes,
+                  onOptionToggled: notifier.toggleLeaseType,
+                ),
+                const SizedBox(height: 24),
+
+                FilterChipSection(
+                  title: 'Bathrooms',
+                  options: const ['1+', '2+', '3+', '4+'],
+                  selectedOptions: filters.selectedBathrooms,
+                  onOptionToggled: notifier.toggleBathroom,
+                ),
+                const SizedBox(height: 24),
+
+                FilterChipSection(
+                  title: 'Age of Property',
+                  options: const [
+                    'Less than 1 year',
+                    'Less than 3 years',
+                    'Less than 5 years',
+                    'Less than 10 years',
+                  ],
+                  selectedOptions: filters.selectedAge,
+                  onOptionToggled: notifier.toggleAge,
+                ),
+                const SizedBox(height: 24),
+
+                FilterChipSection(
+                  title: 'Added',
+                  options: const [
+                    'Yesterday',
+                    'Last 3 days',
+                    'Last week',
+                    'Last month',
+                  ],
+                  selectedOptions: filters.selectedAdded,
+                  onOptionToggled: notifier.toggleAdded,
+                ),
+                const SizedBox(height: 24),
+
+                FilterChipSection(
+                  title: 'Available',
+                  options: const [
+                    'Within a week',
+                    'Within 15 days',
+                    'Within a month',
+                    'After a month',
+                  ],
+                  selectedOptions: filters.selectedAvailable,
+                  onOptionToggled: notifier.toggleAvailable,
+                ),
+                const SizedBox(height: 24),
+
+                // FilterChipSection(
+                //   title: 'Power Backup',
+                //   options: const ['Partial', 'Full'],
+                //   selectedOptions: filters.selectedPowerBackup,
+                //   onOptionToggled: notifier.togglePowerBackup,
+                // ),
+                // const SizedBox(height: 24),
+                AmenitiesSection(
+                  selectedAmenities: filters.selectedAmenities,
+                  onAmenityToggled: notifier.toggleAmenity,
+                ),
+                const SizedBox(height: 24),
+
+                // ListedBySection(
+                //   selectedListedBy: filters.selectedListedBy,
+                //   selectedConstructionStatus:
+                //       filters.selectedConstructionStatus,
+                //   onListedByToggled: notifier.toggleListedBy,
+                //   onConstructionStatusToggled:
+                //       notifier.toggleConstructionStatus,
+                // ),
+                // const SizedBox(height: 24),
+
+                // DeveloperSection(
+                //   selectedDevelopers: filters.selectedDevelopers,
+                //   onDeveloperToggled: notifier.toggleDeveloper,
+                // ),
+              ],
+            ),
+          ),
+          crossFadeState: _isAdvancedExpanded
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 250),
+        ),
       ],
     );
   }
@@ -396,23 +618,18 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
     return all.where((p) {
       // Empty intent = show all types (consistent with search results screen)
       if (filter.selectedIntent.isNotEmpty) {
-        if (filter.selectedIntent == 'Buy' &&
-            p.type != 'buy' &&
-            p.type != 'sale')
+        final pt = p.type.toLowerCase();
+        if (filter.selectedIntent == 'Buy' && pt != 'buy' && pt != 'sale') {
           return false;
-        if (filter.selectedIntent == 'Rent' && p.type != 'rent') return false;
+        }
+        if (filter.selectedIntent == 'Rent' && pt != 'rent') return false;
         if (filter.selectedIntent == 'Commercial' &&
             !p.propertyKind.toLowerCase().contains('commercial') &&
             !p.name.toLowerCase().contains('office')) {
           return false;
         }
       }
-      if (filter.selectedCity.isNotEmpty &&
-          !p.location.toLowerCase().contains(
-            filter.selectedCity.toLowerCase(),
-          )) {
-        return false;
-      }
+
       if (filter.selectedLocalities.isNotEmpty) {
         bool localityMatch = false;
         for (final loc in filter.selectedLocalities) {
@@ -425,10 +642,10 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
       }
       if (filter.selectedBhk.isNotEmpty) {
         bool bhkMatch = false;
+        final nameClean = p.name.toLowerCase().replaceAll(' ', '');
+        final kindClean = p.propertyKind.toLowerCase().replaceAll(' ', '');
         for (final bhk in filter.selectedBhk) {
           final bhkClean = bhk.toLowerCase().replaceAll(' ', '');
-          final nameClean = p.name.toLowerCase().replaceAll(' ', '');
-          final kindClean = p.propertyKind.toLowerCase().replaceAll(' ', '');
           if (nameClean.contains(bhkClean) || kindClean.contains(bhkClean)) {
             bhkMatch = true;
             break;
@@ -436,7 +653,9 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
         }
         if (!bhkMatch) return false;
       }
-      if (filter.selectedPropertyTypes.isNotEmpty) {
+      if (filter.selectedPropertyTypes.isNotEmpty &&
+          p.propertyKind.isNotEmpty &&
+          p.propertyKind != 'null') {
         bool typeMatch = false;
         for (final type in filter.selectedPropertyTypes) {
           if (p.propertyKind.toLowerCase().contains(type.toLowerCase()) ||
@@ -451,6 +670,78 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
       if (priceCr < filter.minBudget ||
           (filter.maxBudget < 20.0 && priceCr > filter.maxBudget)) {
         return false;
+      }
+
+      if (filter.verifiedOnly &&
+          !p.description.toLowerCase().contains('verified'))
+        return false;
+
+      if (filter.imagesOnly && p.images.isEmpty) return false;
+
+      if (filter.minArea > 0.0 || filter.maxArea < 5000.0) {
+        final area = p.area ?? 0.0;
+        if (area < filter.minArea ||
+            (filter.maxArea < 5000.0 && area > filter.maxArea)) {
+          return false;
+        }
+      }
+
+      if (filter.selectedFurnishing.isNotEmpty && p.description.isNotEmpty) {
+        bool furnMatch = false;
+        for (final f in filter.selectedFurnishing) {
+          if (p.description.toLowerCase().contains(f.toLowerCase()))
+            furnMatch = true;
+        }
+        if (!furnMatch) return false;
+      }
+
+      if (filter.selectedAmenities.isNotEmpty && p.amenities.isNotEmpty) {
+        bool amenMatch = false;
+        for (final a in filter.selectedAmenities) {
+          for (final pa in p.amenities) {
+            if (pa.toLowerCase().contains(a.toLowerCase())) {
+              amenMatch = true;
+              break;
+            }
+          }
+        }
+        if (!amenMatch) return false;
+      }
+
+      if (filter.selectedBathrooms.isNotEmpty &&
+          p.bathrooms != null &&
+          p.bathrooms! > 0) {
+        bool bathMatch = false;
+        final baths = p.bathrooms!;
+        for (final b in filter.selectedBathrooms) {
+          if (b == '1+' && baths >= 1) bathMatch = true;
+          if (b == '2+' && baths >= 2) bathMatch = true;
+          if (b == '3+' && baths >= 3) bathMatch = true;
+          if (b == '4+' && baths >= 4) bathMatch = true;
+        }
+        if (!bathMatch) return false;
+      }
+
+      if (filter.selectedAdded.isNotEmpty && p.createdAt != null) {
+        bool addedMatch = false;
+        final now = DateTime.now();
+        final diff = now.difference(p.createdAt!);
+        for (final a in filter.selectedAdded) {
+          if (a == 'Yesterday' && diff.inDays <= 1) addedMatch = true;
+          if (a == 'Last 3 days' && diff.inDays <= 3) addedMatch = true;
+          if (a == 'Last week' && diff.inDays <= 7) addedMatch = true;
+          if (a == 'Last month' && diff.inDays <= 30) addedMatch = true;
+        }
+        if (!addedMatch) return false;
+      }
+
+      if (filter.selectedLeaseTypes.isNotEmpty && p.description.isNotEmpty) {
+        bool leaseMatch = false;
+        for (final l in filter.selectedLeaseTypes) {
+          if (p.description.toLowerCase().contains(l.toLowerCase()))
+            leaseMatch = true;
+        }
+        if (!leaseMatch) return false;
       }
       return true;
     }).length;

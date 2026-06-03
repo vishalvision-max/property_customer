@@ -4,11 +4,7 @@ class ApplyButton extends StatelessWidget {
   final int count;
   final VoidCallback onPressed;
 
-  const ApplyButton({
-    super.key,
-    required this.count,
-    required this.onPressed,
-  });
+  const ApplyButton({super.key, required this.count, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -18,10 +14,7 @@ class ApplyButton extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
         gradient: const LinearGradient(
-          colors: [
-            Color(0xFF7B2FF7),
-            Color(0xFF5B21E6),
-          ],
+          colors: [Color(0xFF7B2FF7), Color(0xFF5B21E6)],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
@@ -37,11 +30,13 @@ class ApplyButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
         onPressed: onPressed,
         child: Text(
-          'View $count Properties',
+          'View Properties',
           style: const TextStyle(
             color: Colors.white,
             fontSize: 15,

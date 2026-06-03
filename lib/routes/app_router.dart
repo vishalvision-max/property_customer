@@ -109,7 +109,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/name-search-results',
         builder: (context, state) {
-          final args = state.extra as PropertyNameSearchArgs;
+          final args = state.extra as PropertyNameSearchArgs?;
+          if (args == null) {
+            // Guard against hot-restart / state loss where extra is null
+            return const Scaffold(
+              body: Center(child: Text('Navigation error. Please go back.')),
+            );
+          }
           return NameSearchResultsScreen(args: args);
         },
       ),

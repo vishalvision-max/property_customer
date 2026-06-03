@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../data/models/property.dart';
+import '../../../data/services/property_service.dart';
 import '../../../providers/property_provider.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/property_card.dart';
@@ -80,8 +81,12 @@ class _NameSearchResultsScreenState
     final matchedTypes = <String>[];
     final locationWords = <String>[];
 
-    // Clear previous filters to start fresh
-    ref.read(propertyFilterProvider.notifier).clearFilters();
+    // Only clear intent/locality-related filters derived from the query text.
+    // Do NOT clear BHK, property types, or budget — those are user-set filters
+    // that must survive a re-search (e.g. after opening the filter bottom sheet).
+    final notifier = ref.read(propertyFilterProvider.notifier);
+    notifier.updateIntent('');
+    notifier.removeLocality(ref.read(propertyFilterProvider).selectedCity);
 
     int i = 0;
     while (i < words.length) {
@@ -205,17 +210,22 @@ class _NameSearchResultsScreenState
     final searchKeyword = _parseQueryAndGetKeyword(_currentQuery);
     _searchController.text = searchKeyword;
 
-    // Fetch matched properties from API using the resolved city keyword.
-    // An empty keyword means fetch all properties (no keyword filter).
     try {
-      final items = await ref
-          .read(propertyNotifierProvider.notifier)
-          .searchByName(mode: widget.args.mode, query: searchKeyword);
+      final filters = ref.read(propertyFilterProvider);
+      final intentMode = filters.selectedIntent.isNotEmpty
+          ? filters.selectedIntent.toLowerCase()
+          : (widget.args.mode.isNotEmpty ? widget.args.mode : 'rent');
+
+      final items = await ref.read(propertyNotifierProvider.notifier).search(
+            mode: intentMode,
+            budgetRange: BudgetRange(filters.minBudget * 10000000, filters.maxBudget * 10000000),
+            locationQuery: searchKeyword,
+          );
       if (mounted) {
         setState(() => _baseItems = items);
       }
     } catch (e, st) {
-      debugPrint('[NameSearchResults] searchByName error: $e\n$st');
+      debugPrint('[NameSearchResults] search error: $e\n$st');
       if (mounted) {
         setState(() => _baseItems = []);
       }
@@ -234,7 +244,7 @@ class _NameSearchResultsScreenState
       builder: (_) => FilterBottomSheet(properties: _baseItems),
     );
     if (applied == true && mounted) {
-      setState(() {});
+      _applyFiltersAndReload();
     }
   }
 
@@ -250,7 +260,7 @@ class _NameSearchResultsScreenState
       builder: (_) => const BudgetBottomSheet(),
     );
     if (applied == true && mounted) {
-      setState(() {});
+      _applyFiltersAndReload();
     }
   }
 
@@ -266,7 +276,60 @@ class _NameSearchResultsScreenState
       builder: (_) => const PropertyTypeBottomSheet(),
     );
     if (applied == true && mounted) {
-      setState(() {});
+      _applyFiltersAndReload();
+    }
+  }
+
+  /// Fetches fresh results from the API using the current [propertyFilterProvider]
+  /// state (intent → mode, budget), then lets [_getFilteredItems] handle
+  /// BHK / property-type / locality filtering locally.
+  /// This intentionally does NOT call [_parseQueryAndGetKeyword] so that
+  /// user-selected filters (BHK, type, budget) are never wiped.
+  Future<void> _applyFiltersAndReload() async {
+    final filters = ref.read(propertyFilterProvider);
+
+    setState(() {
+      _baseItems = null;     // show shimmer while loading
+      _visibleCount = _pageSize;
+    });
+
+    try {
+      // Map the intent filter to an API mode string
+      String intentMode = widget.args.mode.isNotEmpty ? widget.args.mode : 'rent';
+      final intentStr = filters.selectedIntent.toLowerCase();
+      
+      if (intentStr == 'rent' || intentStr == 'lease' || intentStr == 'pg/co-living') {
+        intentMode = 'rent';
+      } else if (intentStr.isNotEmpty) {
+        // Buy, Commercial, Land/Plots, Villas, Bungalows, etc all map to 'buy' for the API
+        intentMode = 'buy';
+      }
+
+      // Convert Cr-based budget to raw rupees for the API
+      final double minRupees = filters.minBudget * 10000000;
+      final double maxRupees =
+          filters.maxBudget >= 20.0 ? 200000000 : filters.maxBudget * 10000000;
+
+      final items = await ref
+          .read(propertyNotifierProvider.notifier)
+          .search(
+            mode: intentMode,
+            budgetRange: BudgetRange(minRupees, maxRupees),
+            // Pass city/locality as the location query if one was set
+            // Only pass selectedCity (real location words extracted by the parser).
+            // Do NOT fall back to _currentQuery — it may contain BHK/type keywords
+            // like '2bhk' which the backend would wrongly interpret as city=2bhk.
+            locationQuery: filters.selectedCity.isNotEmpty
+                ? filters.selectedCity
+                : null,
+          );
+
+      if (mounted) {
+        setState(() => _baseItems = items);
+      }
+    } catch (e) {
+      debugPrint('[NameSearchResults] _applyFiltersAndReload error: $e');
+      if (mounted) setState(() => _baseItems = []);
     }
   }
 
@@ -329,16 +392,23 @@ class _NameSearchResultsScreenState
     final filtered = base.where((p) {
       // 1. Intent Match — empty intent means 'show all' (no filter applied)
       if (filters.selectedIntent.isNotEmpty) {
-        if (filters.selectedIntent == 'Buy' &&
-            p.type != 'buy' &&
-            p.type != 'sale')
-          return false;
-        if (filters.selectedIntent == 'Rent' && p.type != 'rent') return false;
-        if (filters.selectedIntent == 'Commercial' &&
-            !p.propertyKind.toLowerCase().contains('commercial') &&
-            !p.name.toLowerCase().contains('office')) {
-          return false;
-        }
+        final pt = p.type.toLowerCase();
+        final intentStr = filters.selectedIntent.toLowerCase();
+        
+        // Base API type check
+        if ((intentStr == 'rent' || intentStr == 'lease' || intentStr == 'pg/co-living') && pt != 'rent') return false;
+        if ((intentStr == 'buy' || intentStr == 'villas' || intentStr == 'bungalows' || intentStr == 'land/plots' || intentStr == 'commercial lands') && pt != 'buy' && pt != 'sale') return false;
+
+        // Specific property kind checks for the new intent modes
+        final kindClean = p.propertyKind.toLowerCase();
+        final nameClean = p.name.toLowerCase();
+        
+        if (intentStr == 'commercial' && !kindClean.contains('commercial') && !nameClean.contains('office')) return false;
+        if (intentStr == 'commercial lands' && !kindClean.contains('commercial') && !kindClean.contains('land') && !kindClean.contains('plot')) return false;
+        if ((intentStr == 'land/plots' || intentStr == 'lands/plots') && !kindClean.contains('land') && !kindClean.contains('plot')) return false;
+        if (intentStr == 'pg/co-living' && !kindClean.contains('pg') && !kindClean.contains('living')) return false;
+        if (intentStr == 'villas' && !kindClean.contains('villa') && !nameClean.contains('villa')) return false;
+        if (intentStr == 'bungalows' && !kindClean.contains('bungalow') && !nameClean.contains('bungalow')) return false;
       }
 
       // 2. Localities Match
@@ -353,8 +423,11 @@ class _NameSearchResultsScreenState
         if (!localityMatch) return false;
       }
 
-      // 3. BHK Type Match (digit comparison fallback for null/empty titles)
-      if (filters.selectedBhk.isNotEmpty) {
+      // 3. BHK Type Match
+      // Only filter out a property if it HAS a known BHK value that doesn't match.
+      // Properties with no BHK data (null residential_details) pass through — we
+      // cannot exclude what we cannot verify, and all test-data lacks this field.
+      if (filters.selectedBhk.isNotEmpty && p.bhk != null) {
         bool bhkMatch = false;
         for (final bhk in filters.selectedBhk) {
           final bhkClean = bhk.toLowerCase().replaceAll(' ', '');
@@ -377,7 +450,7 @@ class _NameSearchResultsScreenState
       }
 
       // 4. Property Type Match
-      if (filters.selectedPropertyTypes.isNotEmpty) {
+      if (filters.selectedPropertyTypes.isNotEmpty && p.propertyKind.isNotEmpty && p.propertyKind != 'null') {
         bool typeMatch = false;
         for (final type in filters.selectedPropertyTypes) {
           if (p.propertyKind.toLowerCase().contains(type.toLowerCase()) ||
@@ -408,6 +481,72 @@ class _NameSearchResultsScreenState
       if (priceCr < filters.minBudget ||
           (filters.maxBudget < 20.0 && priceCr > filters.maxBudget)) {
         return false;
+      }
+
+      // 7. Advanced Filters Match
+      if (filters.verifiedOnly && !p.description.toLowerCase().contains('verified')) return false;
+
+      if (filters.imagesOnly && p.images.isEmpty) return false;
+      
+      if (filters.minArea > 0.0 || filters.maxArea < 5000.0) {
+        final area = p.area ?? 0.0;
+        if (area < filters.minArea || (filters.maxArea < 5000.0 && area > filters.maxArea)) {
+          return false;
+        }
+      }
+
+      if (filters.selectedFurnishing.isNotEmpty && p.description.isNotEmpty) {
+        bool furnMatch = false;
+        for (final f in filters.selectedFurnishing) {
+          if (p.description.toLowerCase().contains(f.toLowerCase())) furnMatch = true;
+        }
+        if (!furnMatch) return false;
+      }
+
+      if (filters.selectedAmenities.isNotEmpty && p.amenities.isNotEmpty) {
+        bool amenMatch = false;
+        for (final a in filters.selectedAmenities) {
+          for (final pa in p.amenities) {
+            if (pa.toLowerCase().contains(a.toLowerCase())) {
+              amenMatch = true;
+              break;
+            }
+          }
+        }
+        if (!amenMatch) return false;
+      }
+
+      if (filters.selectedBathrooms.isNotEmpty && p.bathrooms != null && p.bathrooms! > 0) {
+        bool bathMatch = false;
+        final baths = p.bathrooms!;
+        for (final b in filters.selectedBathrooms) {
+          if (b == '1+' && baths >= 1) bathMatch = true;
+          if (b == '2+' && baths >= 2) bathMatch = true;
+          if (b == '3+' && baths >= 3) bathMatch = true;
+          if (b == '4+' && baths >= 4) bathMatch = true;
+        }
+        if (!bathMatch) return false;
+      }
+
+      if (filters.selectedAdded.isNotEmpty && p.createdAt != null) {
+        bool addedMatch = false;
+        final now = DateTime.now();
+        final diff = now.difference(p.createdAt!);
+        for (final a in filters.selectedAdded) {
+          if (a == 'Yesterday' && diff.inDays <= 1) addedMatch = true;
+          if (a == 'Last 3 days' && diff.inDays <= 3) addedMatch = true;
+          if (a == 'Last week' && diff.inDays <= 7) addedMatch = true;
+          if (a == 'Last month' && diff.inDays <= 30) addedMatch = true;
+        }
+        if (!addedMatch) return false;
+      }
+
+      if (filters.selectedLeaseTypes.isNotEmpty && p.description.isNotEmpty) {
+        bool leaseMatch = false;
+        for (final l in filters.selectedLeaseTypes) {
+          if (p.description.toLowerCase().contains(l.toLowerCase())) leaseMatch = true;
+        }
+        if (!leaseMatch) return false;
       }
 
       return true;

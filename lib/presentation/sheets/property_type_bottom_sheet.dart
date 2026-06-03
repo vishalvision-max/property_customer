@@ -72,13 +72,21 @@ class PropertyTypeBottomSheet extends ConsumerWidget {
   }
 
   int _calculateCount(PropertyFilterState filter, List<Property> all) {
-    if (all.isEmpty) return 36;
+    if (all.isEmpty) return 0;
     return all.where((p) {
-      if (filter.selectedIntent == 'Buy' && p.type != 'buy') return false;
-      if (filter.selectedIntent == 'Rent' && p.type != 'rent') return false;
-      if (filter.selectedCity.isNotEmpty && !p.location.toLowerCase().contains(filter.selectedCity.toLowerCase())) {
-        return false;
+      if (filter.selectedIntent.isNotEmpty) {
+        final pt = p.type.toLowerCase();
+        if (filter.selectedIntent == 'Buy' && pt != 'buy' && pt != 'sale') {
+          return false;
+        }
+        if (filter.selectedIntent == 'Rent' && pt != 'rent') return false;
+        if (filter.selectedIntent == 'Commercial' &&
+            !p.propertyKind.toLowerCase().contains('commercial') &&
+            !p.name.toLowerCase().contains('office')) {
+          return false;
+        }
       }
+      
       if (filter.selectedPropertyTypes.isNotEmpty) {
         bool typeMatch = false;
         for (final type in filter.selectedPropertyTypes) {

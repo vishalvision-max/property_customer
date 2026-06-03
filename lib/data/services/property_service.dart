@@ -805,7 +805,8 @@ class PropertyService {
           : amenities.every((a) => p.amenities.contains(a));
       final propTypeOk = (propertyType == null || propertyType == 'Any')
           ? true
-          : p.name.toLowerCase().contains(propertyType.toLowerCase());
+          : p.propertyKind.toLowerCase().contains(propertyType.toLowerCase()) ||
+            p.name.toLowerCase().contains(propertyType.toLowerCase());
       return amenOk && propTypeOk;
     }).toList();
   }
@@ -822,7 +823,10 @@ class PropertyService {
       path: path,
       queryParameters: query.isEmpty ? null : query,
     );
-    final client = HttpClient();
+    debugPrint('[PropertyService] GET $uri');
+    // autoUncompress = true tells dart:io's HttpClient to automatically
+    // decompress gzip/deflate responses, fixing silent parse failures.
+    final client = HttpClient()..autoUncompress = true;
     try {
       final req = await client.getUrl(uri);
       req.headers.set('Accept', 'application/json');
@@ -830,8 +834,10 @@ class PropertyService {
       final res = await req.close();
       final body = await res.transform(utf8.decoder).join();
       final status = res.statusCode;
+      debugPrint('[PropertyService] fetchFiltered → $status (${body.length} bytes)');
 
       if (status < 200 || status >= 300) {
+        debugPrint('[PropertyService] fetchFiltered error body: ${body.substring(0, body.length.clamp(0, 300))}');
         throw Exception('Failed to load properties ($status)');
       }
       final decoded = body.trim().isEmpty ? null : jsonDecode(body);
@@ -859,17 +865,23 @@ class PropertyService {
         items = const [];
       }
 
+      debugPrint('[PropertyService] fetchFiltered parsed ${items.length} raw items');
       return items
           .whereType<Map>()
           .map((e) => _propertyFromApiJson(e.cast<String, dynamic>()))
           .where((p) => p.id.isNotEmpty)
           .toList(growable: false);
-    } on SocketException {
+    } on SocketException catch (e) {
+      debugPrint('[PropertyService] fetchFiltered SocketException: $e');
       throw Exception('Network error. Please check your internet connection.');
+    } catch (e) {
+      debugPrint('[PropertyService] fetchFiltered unexpected error: $e');
+      rethrow;
     } finally {
       client.close(force: true);
     }
   }
+
 
   Property propertyFromApiJson(Map<String, dynamic> json) => _propertyFromApiJson(json);
 
@@ -1017,7 +1029,17 @@ class PropertyService {
 
     final resDetails = json['residential_details'] is Map ? Map<String, dynamic>.from(json['residential_details']) : <String, dynamic>{};
 
-    final bhk = pickInt(['bhk']) != 0 ? pickInt(['bhk']) : (resDetails['bhk'] != null ? int.tryParse(resDetails['bhk'].toString()) : null);
+    final bhk = (() {
+      if (pickInt(['bhk']) != 0) return pickInt(['bhk']);
+      // residential_details may have numeric 'bhk' or string 'bhk_type' like '2 BHK'
+      if (resDetails['bhk'] != null) return int.tryParse(resDetails['bhk'].toString());
+      final bhkType = resDetails['bhk_type']?.toString() ?? '';
+      if (bhkType.isNotEmpty) {
+        final m = RegExp(r'(\d+)').firstMatch(bhkType);
+        if (m != null) return int.tryParse(m.group(1)!);
+      }
+      return null;
+    })();
     final bedrooms = pickInt(['bedrooms']) != 0 ? pickInt(['bedrooms']) : (resDetails['bedrooms'] != null ? int.tryParse(resDetails['bedrooms'].toString()) : null);
     final bathrooms = pickInt(['bathrooms']) != 0 ? pickInt(['bathrooms']) : (resDetails['bathrooms'] != null ? int.tryParse(resDetails['bathrooms'].toString()) : null);
     final balconies = pickInt(['balconies']) != 0 ? pickInt(['balconies']) : (resDetails['balconies'] != null ? int.tryParse(resDetails['balconies'].toString()) : null);
@@ -1072,7 +1094,7 @@ class PropertyService {
       location: location,
       price: price,
       type: normalizedType,
-      propertyKind: pickString(['property_kind', 'propertyKind', 'category']),
+      propertyKind: categoryName ?? pickString(['property_kind', 'propertyKind']),
       amenities: parseAmenities(),
       images: images,
       videos: videos,
