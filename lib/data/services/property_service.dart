@@ -398,6 +398,15 @@ class PropertyService {
     );
   }
 
+  Future<List<Property>> fetchRelatedProperties(String propertyId) async {
+    return _fetchFromApi(
+      path: '/api/v1/related/properties',
+      query: <String, String>{
+        'property_id': propertyId,
+      },
+    );
+  }
+
   Future<List<Property>> fetchRecommendations({required String token}) async {
     if (kIsWeb) {
       throw Exception('Properties API is not supported on web in this build');
@@ -588,6 +597,40 @@ class PropertyService {
       throw Exception('Network error. Please check your internet connection.');
     }
   }
+
+  /// Industrial Shed — /api/v1/owner/industrial/shed/properties
+  Future<List<Property>> fetchIndustrialShedProperties({required String token}) =>
+      _fetchSpecialized(
+        token: token,
+        errorLabel: 'Industrial Shed properties',
+        path: '/api/v1/owner/industrial/shed/properties',
+      );
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchIndustrialShedPropertiesPaged({required String token, int page = 1}) =>
+      _fetchSpecializedPaged(
+        token: token,
+        errorLabel: 'Industrial Shed properties',
+        path: '/api/v1/owner/industrial/shed/properties',
+        page: page,
+      );
+
+  /// Agricultural Land — /api/v1/owner/agricultural/land/properties
+  Future<List<Property>> fetchAgriculturalLandProperties({required String token}) =>
+      _fetchSpecialized(
+        token: token,
+        errorLabel: 'Agricultural Land properties',
+        path: '/api/v1/owner/agricultural/land/properties',
+      );
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchAgriculturalLandPropertiesPaged({required String token, int page = 1}) =>
+      _fetchSpecializedPaged(
+        token: token,
+        errorLabel: 'Agricultural Land properties',
+        path: '/api/v1/owner/agricultural/land/properties',
+        page: page,
+      );
 
   /// 2 BHK — /api/v1/owner/twobhk/properties
   Future<List<Property>> fetchTwoBhkProperties({required String token}) =>
@@ -926,7 +969,9 @@ class PropertyService {
       final propTypeOk = (propertyType == null || propertyType == 'Any')
           ? true
           : p.propertyKind.toLowerCase().contains(propertyType.toLowerCase()) ||
-            p.name.toLowerCase().contains(propertyType.toLowerCase());
+            p.name.toLowerCase().contains(propertyType.toLowerCase()) ||
+            (propertyType == 'Industrial Shed' && ((p.categoryName ?? '').toLowerCase().contains('industrial') || p.propertyKind.toLowerCase().contains('industrial'))) ||
+            (propertyType == 'Agricultural Land' && ((p.categoryName ?? '').toLowerCase().contains('agricultur') || p.propertyKind.toLowerCase().contains('agricultur')));
       return amenOk && propTypeOk;
     }).toList();
   }

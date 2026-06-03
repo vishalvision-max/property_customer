@@ -126,6 +126,9 @@ class PropertyRepository {
   fetchStudioApartmentPropertiesPaged({required String token, int page = 1}) =>
       _service.fetchStudioApartmentPropertiesPaged(token: token, page: page);
 
+  Future<List<Property>> fetchRelatedProperties(String propertyId) =>
+      _service.fetchRelatedProperties(propertyId);
+
   Future<List<Property>> fetchRentProperties({required String token}) =>
       _service.fetchRentProperties(token: token);
 
@@ -139,6 +142,20 @@ class PropertyRepository {
   Future<({List<Property> items, bool hasMore, int currentPage})>
   fetchBuyPropertiesPaged({required String token, int page = 1}) =>
       _service.fetchBuyPropertiesPaged(token: token, page: page);
+
+  Future<List<Property>> fetchIndustrialShedProperties({required String token}) =>
+      _service.fetchIndustrialShedProperties(token: token);
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchIndustrialShedPropertiesPaged({required String token, int page = 1}) =>
+      _service.fetchIndustrialShedPropertiesPaged(token: token, page: page);
+
+  Future<List<Property>> fetchAgriculturalLandProperties({required String token}) =>
+      _service.fetchAgriculturalLandProperties(token: token);
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchAgriculturalLandPropertiesPaged({required String token, int page = 1}) =>
+      _service.fetchAgriculturalLandPropertiesPaged(token: token, page: page);
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
   fetchIndependentHousePropertiesPaged({required String token, int page = 1}) =>

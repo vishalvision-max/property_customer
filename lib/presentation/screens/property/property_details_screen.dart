@@ -989,60 +989,54 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
   }
 
   Widget _buildRelatedProperties(BuildContext context, Property currentProp) {
-    final propertyState = ref.watch(propertyNotifierProvider);
-    final allProperties = propertyState.all;
+    return FutureBuilder<List<Property>>(
+      future: ref.read(propertyNotifierProvider.notifier).fetchRelatedProperties(currentProp.id),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox.shrink();
+        }
 
-    final related = allProperties
-        .where((p) => p.id != currentProp.id && p.type == currentProp.type)
-        .take(6)
-        .toList();
-
-    if (related.isEmpty) {
-      final fallbackRelated = allProperties
-          .where((p) => p.id != currentProp.id)
-          .take(6)
-          .toList();
-      if (fallbackRelated.isEmpty) return const SizedBox.shrink();
-      related.addAll(fallbackRelated);
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Divider(height: 1, thickness: 1, color: Color(0xFFF2F4F7)),
-        ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Text(
-            'Related Properties',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF1D2939),
+        final related = snapshot.data!;
+        
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Divider(height: 1, thickness: 1, color: Color(0xFFF2F4F7)),
             ),
-          ),
-        ),
-        SizedBox(
-          height: 240,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            scrollDirection: Axis.horizontal,
-            itemCount: related.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 16),
-            itemBuilder: (context, index) {
-              final prop = related[index];
-              return RelatedPropertyCard(
-                property: prop,
-                onTap: () {
-                  context.push('/property/${prop.id}', extra: prop);
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text(
+                'Related Properties',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1D2939),
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 240,
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                scrollDirection: Axis.horizontal,
+                itemCount: related.length,
+                separatorBuilder: (context, index) => const SizedBox(width: 16),
+                itemBuilder: (context, index) {
+                  final prop = related[index];
+                  return RelatedPropertyCard(
+                    property: prop,
+                    onTap: () {
+                      context.push('/property/${prop.id}', extra: prop);
+                    },
+                  );
                 },
-              );
-            },
-          ),
-        ),
-      ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 

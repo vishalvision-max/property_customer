@@ -51,6 +51,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     'Studio',
     'Duplex',
     'Villa',
+    'Industrial Shed',
+    'Agricultural Land',
   ];
   static const Map<String, String> _sortOptions = {
     '': 'Relevance',

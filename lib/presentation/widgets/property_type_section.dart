@@ -19,6 +19,8 @@ class PropertyTypeSection extends StatelessWidget {
     'Duplex',
     // 'Penthouse',
     'Villa',
+    'Industrial Shed',
+    'Agricultural Land',
   ];
 
   @override

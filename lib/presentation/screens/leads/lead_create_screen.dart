@@ -20,11 +20,7 @@ class LeadCreateScreen extends ConsumerStatefulWidget {
   final String? propertyId;
   final String? type;
 
-  const LeadCreateScreen({
-    super.key,
-    this.propertyId,
-    this.type,
-  });
+  const LeadCreateScreen({super.key, this.propertyId, this.type});
 
   @override
   ConsumerState<LeadCreateScreen> createState() => _LeadCreateScreenState();
@@ -46,15 +42,26 @@ class _LeadCreateScreenState extends ConsumerState<LeadCreateScreen> {
     ('Sale', 'sale'),
     ('Rent', 'rent'),
     ('Lease', 'lease'),
+    // ('Land/Plot', 'land_plot'),
+    // ('Commercial', 'commercial'),
+    ('PG', 'pg'),
+    ('Co-Living', 'co-living'),
+    ('Industrial Shed', 'industrial_shed'),
+    ('Agricultural Land', 'agricultural_land'),
+    // ('New Project', 'new_project'),
   ];
 
   @override
   void initState() {
     super.initState();
-    _propertyIdController = TextEditingController(text: widget.propertyId ?? '0');
+    _propertyIdController = TextEditingController(
+      text: widget.propertyId ?? '0',
+    );
     // Normalize the incoming type; default to 'sale'
     final incoming = (widget.type ?? 'sale').toLowerCase().trim();
-    _selectedType = _typeOptions.any((o) => o.$2 == incoming) ? incoming : 'sale';
+    _selectedType = _typeOptions.any((o) => o.$2 == incoming)
+        ? incoming
+        : 'sale';
   }
 
   @override
@@ -82,13 +89,17 @@ class _LeadCreateScreenState extends ConsumerState<LeadCreateScreen> {
       try {
         if (!isAuthed) {
           AppSnackbar.showError(context, 'Please login to submit the lead');
-          context.push('/login?from=${Uri.encodeComponent('/leads/new?property_id=${widget.propertyId}&type=${widget.type}')}');
+          context.push(
+            '/login?from=${Uri.encodeComponent('/leads/new?property_id=${widget.propertyId}&type=${widget.type}')}',
+          );
           return;
         }
 
         final propertyId = int.tryParse(_propertyIdController.text.trim()) ?? 0;
 
-        await ref.read(leadNotifierProvider.notifier).createBuyerLead(
+        await ref
+            .read(leadNotifierProvider.notifier)
+            .createBuyerLead(
               name: _name.text.trim(),
               phone: _phone.text.trim(),
               email: _email.text.trim(),
@@ -130,10 +141,7 @@ class _LeadCreateScreenState extends ConsumerState<LeadCreateScreen> {
             elevation: 0,
             title: const Text(
               'Create Buyer Lead',
-              style: TextStyle(
-                fontWeight: FontWeight.w900,
-                color: _kTextDark,
-              ),
+              style: TextStyle(fontWeight: FontWeight.w900, color: _kTextDark),
             ),
           ),
           SliverToBoxAdapter(
@@ -331,7 +339,10 @@ class _LeadCreateScreenState extends ConsumerState<LeadCreateScreen> {
                                   decoration: BoxDecoration(
                                     gradient: isSelected
                                         ? const LinearGradient(
-                                            colors: [Color(0xFF6C5CE7), Color(0xFF9B8DF8)],
+                                            colors: [
+                                              Color(0xFF6C5CE7),
+                                              Color(0xFF9B8DF8),
+                                            ],
                                             begin: Alignment.topLeft,
                                             end: Alignment.bottomRight,
                                           )
@@ -347,8 +358,9 @@ class _LeadCreateScreenState extends ConsumerState<LeadCreateScreen> {
                                     boxShadow: isSelected
                                         ? [
                                             BoxShadow(
-                                              color: const Color(0xFF6C5CE7)
-                                                  .withValues(alpha: 0.30),
+                                              color: const Color(
+                                                0xFF6C5CE7,
+                                              ).withValues(alpha: 0.30),
                                               blurRadius: 10,
                                               offset: const Offset(0, 4),
                                             ),
@@ -388,9 +400,9 @@ class _LeadCreateScreenState extends ConsumerState<LeadCreateScreen> {
                       Text(
                         'Select the listing type for this inquiry.',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: _kTextMid,
-                              fontWeight: FontWeight.w500,
-                            ),
+                          color: _kTextMid,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),
@@ -447,9 +459,14 @@ class _Field extends StatelessWidget {
       ),
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: readOnly ? _kTextMid.withValues(alpha: 0.7) : _kPrimary),
+        prefixIcon: Icon(
+          icon,
+          color: readOnly ? _kTextMid.withValues(alpha: 0.7) : _kPrimary,
+        ),
         filled: readOnly,
-        fillColor: readOnly ? Colors.grey.withValues(alpha: 0.1) : Colors.transparent,
+        fillColor: readOnly
+            ? Colors.grey.withValues(alpha: 0.1)
+            : Colors.transparent,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: _kBorder),

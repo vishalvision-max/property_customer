@@ -107,8 +107,9 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
                 ),
               )
             : RefreshIndicator(
-                onRefresh: () =>
-                    ref.read(leadNotifierProvider.notifier).loadMyLeads(page: 1),
+                onRefresh: () => ref
+                    .read(leadNotifierProvider.notifier)
+                    .loadMyLeads(page: 1),
                 child: Builder(
                   builder: (context) {
                     if (state.isLoading && state.items.isEmpty) {
@@ -118,8 +119,9 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
                       return ErrorRetry(
                         title: 'Failed to load leads',
                         message: state.error!,
-                        onRetry: () =>
-                            ref.read(leadNotifierProvider.notifier).loadMyLeads(),
+                        onRetry: () => ref
+                            .read(leadNotifierProvider.notifier)
+                            .loadMyLeads(),
                       );
                     }
                     if (state.items.isEmpty) {
@@ -158,7 +160,13 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
                                 context,
                                 'Status updated',
                               );
-                            } catch (_) {}
+                            } catch (e) {
+                              if (!context.mounted) return;
+                              AppSnackbar.showError(
+                                context,
+                                e.toString().replaceFirst('Exception: ', ''),
+                              );
+                            }
                           },
                         );
                       },

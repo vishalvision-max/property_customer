@@ -298,10 +298,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   items: const [
                     '2 BHK ',
                     'Flats under 50L',
-                    'Near Railway Station',
+                    // 'Near Railway Station',
                     'Ready to Move',
                     'Furnished',
-                    'Gated Society',
+                    // 'Gated Society',
                   ],
                   onTapItem: (label) {
                     context.push(

@@ -395,6 +395,18 @@ class PropertyNotifier extends _$PropertyNotifier {
     return repo.fetchPlotPropertiesPaged(token: token, page: page);
   }
 
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchIndustrialShedPropertiesPaged(String token, {int page = 1}) {
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchIndustrialShedPropertiesPaged(token: token, page: page);
+  }
+
+  Future<({List<Property> items, bool hasMore, int currentPage})>
+  fetchAgriculturalLandPropertiesPaged(String token, {int page = 1}) {
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchAgriculturalLandPropertiesPaged(token: token, page: page);
+  }
+
   Future<List<Property>> fetchPgProperties(String token) {
     final repo = ref.read(propertyRepositoryProvider);
     return repo.fetchPgProperties(token: token);
@@ -448,6 +460,11 @@ class PropertyNotifier extends _$PropertyNotifier {
   fetchAllOwnerPropertiesPaged(String token, {int page = 1, String? city}) {
     final repo = ref.read(propertyRepositoryProvider);
     return repo.fetchAllOwnerPropertiesPaged(token: token, page: page, city: city);
+  }
+
+  Future<List<Property>> fetchRelatedProperties(String propertyId) {
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchRelatedProperties(propertyId);
   }
 
   Future<void> scheduleVisit({

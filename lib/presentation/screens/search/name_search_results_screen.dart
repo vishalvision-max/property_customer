@@ -545,6 +545,16 @@ class _NameSearchResultsScreenState
         for (final type in filters.selectedPropertyTypes) {
           // Handle plurals (e.g., "Apartments" -> "apartment")
           final t = type.toLowerCase().replaceAll(RegExp(r's$'), '');
+          
+          if (t == 'industrial shed' && (kindClean.contains('industrial') || catClean.contains('industrial'))) {
+            typeMatch = true;
+            break;
+          }
+          if (t == 'agricultural land' && (kindClean.contains('agricultur') || catClean.contains('agricultur'))) {
+            typeMatch = true;
+            break;
+          }
+          
           if (kindClean.contains(t) || catClean.contains(t) || nameClean.contains(t)) {
             typeMatch = true;
             break;

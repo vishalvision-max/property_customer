@@ -63,7 +63,7 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
       'Under 50 Lakhs',
       'Ready to Move',
       'Furnished',
-      'Gated Society',
+      // 'Gated Society',
       'Studio Apartment',
     ];
     return specials.contains(search) ? search : null;
@@ -186,6 +186,8 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
             'Villa',
             'Studio',
             'Plot',
+            'Industrial Shed',
+            'Agricultural Land',
           ].contains(_selectedPropertyType)) {
         final notif = ref.read(propertyNotifierProvider.notifier);
         switch (_selectedPropertyType) {
@@ -236,6 +238,24 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
             break;
           case 'Plot':
             final result = await notif.fetchPlotPropertiesPaged(
+              token,
+              page: page,
+            );
+            fetched = result.items;
+            hasMore = result.hasMore;
+            currentPage = result.currentPage;
+            break;
+          case 'Industrial Shed':
+            final result = await notif.fetchIndustrialShedPropertiesPaged(
+              token,
+              page: page,
+            );
+            fetched = result.items;
+            hasMore = result.hasMore;
+            currentPage = result.currentPage;
+            break;
+          case 'Agricultural Land':
+            final result = await notif.fetchAgriculturalLandPropertiesPaged(
               token,
               page: page,
             );
@@ -325,7 +345,37 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
       // Client-side filters
       var filtered = fetched;
 
+      if (_selectedPropertyType != null &&
+          ![
+            'Apartments',
+            'Independent House',
+            'Duplex',
+            'Villa',
+            'Studio',
+            'Plot',
+            'Industrial Shed',
+            'Agricultural Land',
+          ].contains(_selectedPropertyType)) {
+        filtered = filtered.where((p) {
+          final pt = _selectedPropertyType!.toLowerCase();
+          final kind = p.propertyKind.toLowerCase();
+          final name = p.name.toLowerCase();
+          final categoryName = (p.categoryName ?? '').toLowerCase();
 
+          if (pt == 'industrial shed' &&
+              (kind.contains('industrial') ||
+                  categoryName.contains('industrial')))
+            return true;
+          if (pt == 'agricultural land' &&
+              (kind.contains('agricultur') ||
+                  categoryName.contains('agricultur')))
+            return true;
+
+          return kind.contains(pt) ||
+              name.contains(pt) ||
+              categoryName.contains(pt);
+        }).toList();
+      }
       if (_selectedBHKs.isNotEmpty) {
         filtered = filtered.where((p) {
           final specs = getPropertySpecs(p);
@@ -349,8 +399,6 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
             )
             .toList();
       }
-
-
 
       if (mounted) {
         setState(() {
@@ -980,7 +1028,8 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
           'Plot',
           'Studio',
           'Duplex',
-          // 'Penthouse',
+          'Agricultural Land',
+          'Industrial Shed',
           'Villa',
         ];
         return SizedBox(
@@ -1449,7 +1498,7 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                             'Under 50 Lakhs',
                             'Ready to Move',
                             'Furnished',
-                            'Gated Society',
+                            // 'Gated Society',
                             'Studio Apartment',
                           ].map((label) {
                             final isSel = _specialApiSelected == label;
