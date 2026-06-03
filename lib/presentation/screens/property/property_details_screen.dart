@@ -1103,16 +1103,6 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
         }
 
         void handleCall() async {
-          if (!isAuthed) {
-            AppSnackbar.showError(
-              context,
-              'Please login to contact the agent.',
-            );
-            context.push(
-              '/login?from=${Uri.encodeComponent('/property/${p.id}')}',
-            );
-            return;
-          }
           final phone = p.ownerPhone?.trim() ?? '';
           if (phone.isEmpty) {
             AppSnackbar.showMessage(
@@ -1131,16 +1121,6 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
         }
 
         void handleChat() async {
-          if (!isAuthed) {
-            AppSnackbar.showError(
-              context,
-              'Please login to contact the agent.',
-            );
-            context.push(
-              '/login?from=${Uri.encodeComponent('/property/${p.id}')}',
-            );
-            return;
-          }
           final phone = p.ownerPhone?.trim() ?? '';
           if (phone.isEmpty) {
             AppSnackbar.showMessage(

@@ -681,10 +681,18 @@ class PropertyCard extends ConsumerWidget {
                               ),
                               tooltip: 'WhatsApp',
                               onPressed: () async {
-                                final phone =
-                                    property.ownerPhone ?? '+919999999999';
-                                final url = Uri.parse('https://wa.me/$phone');
-                                if (await canLaunchUrl(url)) launchUrl(url);
+                                final phone = property.ownerPhone?.trim() ?? '';
+                                if (phone.isEmpty) return;
+                                String cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
+                                if (!cleanPhone.startsWith('+') && cleanPhone.length == 10) {
+                                  cleanPhone = '91$cleanPhone';
+                                }
+                                final url = Uri.parse('https://wa.me/$cleanPhone');
+                                try {
+                                  await launchUrl(url, mode: LaunchMode.externalNonBrowserApplication);
+                                } catch (_) {
+                                  launchUrl(url, mode: LaunchMode.externalApplication);
+                                }
                               },
                             ),
                           ),
@@ -714,10 +722,12 @@ class PropertyCard extends ConsumerWidget {
                               ),
                               tooltip: 'Call',
                               onPressed: () async {
-                                final phone =
-                                    property.ownerPhone ?? '+919999999999';
+                                final phone = property.ownerPhone?.trim() ?? '';
+                                if (phone.isEmpty) return;
                                 final url = Uri.parse('tel:$phone');
-                                if (await canLaunchUrl(url)) launchUrl(url);
+                                try {
+                                  await launchUrl(url);
+                                } catch (_) {}
                               },
                             ),
                           ),

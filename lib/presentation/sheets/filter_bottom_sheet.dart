@@ -504,8 +504,7 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
                 //     ),
                 //   ],
                 // ),
-                const SizedBox(height: 24),
-
+                // const SizedBox(height: 24),
                 PropertyTypeSection(
                   selectedTypes: filters.selectedPropertyTypes,
                   onTypeToggled: notifier.togglePropertyType,
@@ -517,14 +516,13 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
                   maxArea: filters.maxArea,
                   onAreaChanged: notifier.updateArea,
                 ),
-                const SizedBox(height: 24),
-
-                FilterChipSection(
-                  title: 'Lease Type',
-                  options: const ['Family', 'Company', 'Bachelor'],
-                  selectedOptions: filters.selectedLeaseTypes,
-                  onOptionToggled: notifier.toggleLeaseType,
-                ),
+                // const SizedBox(height: 24),
+                // FilterChipSection(
+                //   title: 'Lease Type',
+                //   options: const ['Family', 'Company', 'Bachelor'],
+                //   selectedOptions: filters.selectedLeaseTypes,
+                //   onOptionToggled: notifier.toggleLeaseType,
+                // ),
                 const SizedBox(height: 24),
 
                 FilterChipSection(
