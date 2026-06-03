@@ -38,14 +38,23 @@ class _LeadCreateScreenState extends ConsumerState<LeadCreateScreen> {
   final _message = TextEditingController();
 
   late final TextEditingController _propertyIdController;
-  late final TextEditingController _typeController;
+
+  // User-selectable type — pre-filled from the linked property but editable
+  late String _selectedType;
+
+  static const _typeOptions = [
+    ('Sale', 'sale'),
+    ('Rent', 'rent'),
+    ('Lease', 'lease'),
+  ];
 
   @override
   void initState() {
     super.initState();
-    // Pre-populate read-only fields
     _propertyIdController = TextEditingController(text: widget.propertyId ?? '0');
-    _typeController = TextEditingController(text: widget.type ?? 'sale');
+    // Normalize the incoming type; default to 'sale'
+    final incoming = (widget.type ?? 'sale').toLowerCase().trim();
+    _selectedType = _typeOptions.any((o) => o.$2 == incoming) ? incoming : 'sale';
   }
 
   @override
@@ -55,7 +64,6 @@ class _LeadCreateScreenState extends ConsumerState<LeadCreateScreen> {
     _email.dispose();
     _message.dispose();
     _propertyIdController.dispose();
-    _typeController.dispose();
     super.dispose();
   }
 
@@ -79,14 +87,13 @@ class _LeadCreateScreenState extends ConsumerState<LeadCreateScreen> {
         }
 
         final propertyId = int.tryParse(_propertyIdController.text.trim()) ?? 0;
-        final type = _typeController.text.trim().toLowerCase();
 
         await ref.read(leadNotifierProvider.notifier).createBuyerLead(
               name: _name.text.trim(),
               phone: _phone.text.trim(),
               email: _email.text.trim(),
               message: _message.text.trim(),
-              type: type,
+              type: _selectedType,
               propertyId: propertyId,
             );
 
@@ -280,16 +287,106 @@ class _LeadCreateScreenState extends ConsumerState<LeadCreateScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      _Field(
-                        controller: _typeController,
-                        label: 'Type',
-                        icon: Icons.category_outlined,
-                        enabled: false,
-                        readOnly: true,
+                      // ── Selectable Type Chips ──────────────────────────
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.category_outlined,
+                            size: 18,
+                            color: _kPrimary,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Listing Type',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: _kTextDark,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      StatefulBuilder(
+                        builder: (context, setChipState) {
+                          return Wrap(
+                            spacing: 10,
+                            runSpacing: 8,
+                            children: _typeOptions.map((option) {
+                              final label = option.$1;
+                              final value = option.$2;
+                              final isSelected = _selectedType == value;
+                              return GestureDetector(
+                                onTap: () {
+                                  setChipState(() => _selectedType = value);
+                                  setState(() {});
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 180),
+                                  curve: Curves.easeInOut,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: isSelected
+                                        ? const LinearGradient(
+                                            colors: [Color(0xFF6C5CE7), Color(0xFF9B8DF8)],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          )
+                                        : null,
+                                    color: isSelected ? null : Colors.white,
+                                    borderRadius: BorderRadius.circular(30),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? Colors.transparent
+                                          : _kBorder,
+                                      width: 1.5,
+                                    ),
+                                    boxShadow: isSelected
+                                        ? [
+                                            BoxShadow(
+                                              color: const Color(0xFF6C5CE7)
+                                                  .withValues(alpha: 0.30),
+                                              blurRadius: 10,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                          ]
+                                        : [],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (isSelected) ...[
+                                        const Icon(
+                                          Icons.check_circle_rounded,
+                                          size: 15,
+                                          color: Colors.white,
+                                        ),
+                                        const SizedBox(width: 6),
+                                      ],
+                                      Text(
+                                        label,
+                                        style: TextStyle(
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: isSelected
+                                              ? Colors.white
+                                              : _kTextMid,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          );
+                        },
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'The listing type is read-only and automatically filled from the active property details.',
+                        'Select the listing type for this inquiry.',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: _kTextMid,
                               fontWeight: FontWeight.w500,

@@ -12,6 +12,7 @@ import '../property/property_name_search_args.dart';
 
 // New Premium filter components
 import '../../widgets/filter_chip.dart';
+import '../../widgets/amenities_section.dart';
 import '../../sheets/filter_bottom_sheet.dart';
 import '../../sheets/budget_bottom_sheet.dart';
 import '../../sheets/property_type_bottom_sheet.dart';
@@ -44,6 +45,7 @@ class _NameSearchResultsScreenState
   // ── Pagination ───────────────────────────────────────────────────────────
   static const int _pageSize = 10;
   int _visibleCount = _pageSize;
+  final ScrollController _scrollController = ScrollController();
 
   static const _kPrimary = Color(0xFF7B2FF7);
   static const _kBg = Color(0xFFF6F7FB);
@@ -60,11 +62,37 @@ class _NameSearchResultsScreenState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _loadBaseItems();
     });
+
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >=
+          _scrollController.position.maxScrollExtent - 200) {
+        _loadMore();
+      }
+    });
+  }
+
+  void _loadMore() {
+    final filters = ref.read(propertyFilterProvider);
+    final category = ref.read(searchCategoryTabProvider);
+    final filteredList = _getFilteredItems(filters, category);
+
+    if (_visibleCount < filteredList.length) {
+      setState(() {
+        _visibleCount += _pageSize;
+      });
+    }
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
+    // Clear filters when user completely leaves the search results screen
+    Future.microtask(() {
+      try {
+        ref.read(propertyFilterProvider.notifier).clearFilters();
+      } catch (_) {}
+    });
     super.dispose();
   }
 
@@ -281,10 +309,7 @@ class _NameSearchResultsScreenState
   }
 
   /// Fetches fresh results from the API using the current [propertyFilterProvider]
-  /// state (intent → mode, budget), then lets [_getFilteredItems] handle
-  /// BHK / property-type / locality filtering locally.
-  /// This intentionally does NOT call [_parseQueryAndGetKeyword] so that
-  /// user-selected filters (BHK, type, budget) are never wiped.
+  /// state, mapping all UI filter values to their corresponding API query params.
   Future<void> _applyFiltersAndReload() async {
     final filters = ref.read(propertyFilterProvider);
 
@@ -294,34 +319,119 @@ class _NameSearchResultsScreenState
     });
 
     try {
-      // Map the intent filter to an API mode string
-      String intentMode = widget.args.mode.isNotEmpty ? widget.args.mode : 'rent';
+      // ── Map intent → API type ──────────────────────────────────────────────
+      String? apiType;
       final intentStr = filters.selectedIntent.toLowerCase();
-      
       if (intentStr == 'rent' || intentStr == 'lease' || intentStr == 'pg/co-living') {
-        intentMode = 'rent';
+        apiType = 'rent';
       } else if (intentStr.isNotEmpty) {
-        // Buy, Commercial, Land/Plots, Villas, Bungalows, etc all map to 'buy' for the API
-        intentMode = 'buy';
+        apiType = 'sale'; // buy, commercial, land/plots, villas, bungalows etc.
+      } else if (widget.args.mode.isNotEmpty) {
+        apiType = widget.args.mode == 'buy' ? 'sale' : widget.args.mode;
       }
 
-      // Convert Cr-based budget to raw rupees for the API
-      final double minRupees = filters.minBudget * 10000000;
-      final double maxRupees =
-          filters.maxBudget >= 20.0 ? 200000000 : filters.maxBudget * 10000000;
+      // ── Map furnishing chips → API values ─────────────────────────────────
+      // UI labels: 'Unfurnished', 'Semi Furnished', 'Fully Furnished'
+      // API accepts: 'unfurnished' | 'furnished' (verified via curl testing)
+      const _furnishingApiMap = {
+        'Unfurnished': 'unfurnished',
+        'Semi Furnished': 'furnished',
+        'Fully Furnished': 'furnished',
+      };
+      final furnishingApi = filters.selectedFurnishing
+          .map((f) => _furnishingApiMap[f])
+          .whereType<String>()
+          .toSet() // deduplicate: Semi + Fully both → 'furnished', send once
+          .toList();
+
+      // ── Map BHK → list of ints for multi-BHK support ──────────────────────
+      // UI: '1 BHK', '2 BHK', '3 BHK' etc.
+      // Sends: bhk=2bhk&bhk=3bhk (all selected values)
+      final bhkList = filters.selectedBhk
+          .map((b) => RegExp(r'\d').firstMatch(b)?.group(0))
+          .whereType<String>()
+          .map((d) => int.tryParse(d))
+          .whereType<int>()
+          .toList();
+
+      // ── Map bathrooms chip → min bathrooms int ────────────────────────────
+      // UI: '1+', '2+', '3+', '4+'
+      int? bathroomsNum;
+      for (final b in filters.selectedBathrooms) {
+        final m = RegExp(r'\d').firstMatch(b);
+        if (m != null) {
+          bathroomsNum = int.tryParse(m.group(0)!);
+          break; // take the minimum selected value
+        }
+      }
+
+      // ── Map "Added" chip → API 'added' value ──────────────────────────────
+      // UI: 'Yesterday', 'Last 3 days', 'Last week', 'Last month'
+      String? addedApi;
+      if (filters.selectedAdded.isNotEmpty) {
+        final raw = filters.selectedAdded.first.toLowerCase();
+        if (raw.contains('today'))       addedApi = 'today';
+        else if (raw.contains('yesterday')) addedApi = 'yesterday';
+        else if (raw.contains('3'))      addedApi = 'last_3_days';
+        else if (raw.contains('week'))   addedApi = 'last_week';
+        else if (raw.contains('month'))  addedApi = 'last_month';
+      }
+
+      // ── Map "Age of Property" chip → API 'property_age' value ─────────────
+      // UI: 'Less than 1 year', 'Less than 3 years', etc.
+      String? propertyAgeApi;
+      if (filters.selectedAge.isNotEmpty) {
+        final raw = filters.selectedAge.first.toLowerCase();
+        if (raw.contains('1 year'))      propertyAgeApi = 'less_than_1_year';
+        else if (raw.contains('3 year')) propertyAgeApi = 'less_than_3_years';
+        else if (raw.contains('5 year')) propertyAgeApi = 'less_than_5_years';
+        else if (raw.contains('10'))     propertyAgeApi = 'less_than_10_years';
+        else                             propertyAgeApi = 'more_than_5_years';
+      }
+
+      // ── Map "Available" chip → API 'availability' value ───────────────────
+      // UI: 'Within a week', 'Within 15 days', 'Within a month', 'After a month'
+      String? availabilityApi;
+      if (filters.selectedAvailable.isNotEmpty) {
+        final raw = filters.selectedAvailable.first.toLowerCase();
+        if (raw.contains('ready'))       availabilityApi = 'ready_to_move';
+        else if (raw.contains('week'))   availabilityApi = 'within_a_week';
+        else if (raw.contains('15'))     availabilityApi = 'within_15_days';
+        else if (raw.contains('month') && !raw.contains('after')) availabilityApi = 'within_a_month';
+        else if (raw.contains('after'))  availabilityApi = 'after_a_month';
+      }
+
+      // ── Budget: convert Cr values → rupees ───────────────────────────────
+      int? minPriceApi = filters.minBudget > 0.0
+          ? (filters.minBudget * 10000000).toInt()
+          : null;
+      int? maxPriceApi = filters.maxBudget < 20.0
+          ? (filters.maxBudget * 10000000).toInt()
+          : null;
+
+      // ── Area filter ───────────────────────────────────────────────────────
+      double? minAreaApi = filters.minArea > 0.0 ? filters.minArea : null;
+      double? maxAreaApi = filters.maxArea < 5000.0 ? filters.maxArea : null;
+
+      // ── City from selectedCity (real location words extracted by parser) ──
+      final cityApi = filters.selectedCity.isNotEmpty ? filters.selectedCity : null;
 
       final items = await ref
           .read(propertyNotifierProvider.notifier)
-          .search(
-            mode: intentMode,
-            budgetRange: BudgetRange(minRupees, maxRupees),
-            // Pass city/locality as the location query if one was set
-            // Only pass selectedCity (real location words extracted by the parser).
-            // Do NOT fall back to _currentQuery — it may contain BHK/type keywords
-            // like '2bhk' which the backend would wrongly interpret as city=2bhk.
-            locationQuery: filters.selectedCity.isNotEmpty
-                ? filters.selectedCity
-                : null,
+          .fetchWithFilters(
+            type: apiType,
+            furnishing: furnishingApi,
+            bhk: bhkList,
+            city: cityApi,
+            amenities: AmenitiesSection.toApiIds(filters.selectedAmenities),
+            bathrooms: bathroomsNum,
+            minArea: minAreaApi,
+            maxArea: maxAreaApi,
+            added: addedApi,
+            propertyAge: propertyAgeApi,
+            availability: availabilityApi,
+            minPrice: minPriceApi,
+            maxPrice: maxPriceApi,
           );
 
       if (mounted) {
@@ -423,38 +533,19 @@ class _NameSearchResultsScreenState
         if (!localityMatch) return false;
       }
 
-      // 3. BHK Type Match
-      // Only filter out a property if it HAS a known BHK value that doesn't match.
-      // Properties with no BHK data (null residential_details) pass through — we
-      // cannot exclude what we cannot verify, and all test-data lacks this field.
-      if (filters.selectedBhk.isNotEmpty && p.bhk != null) {
-        bool bhkMatch = false;
-        for (final bhk in filters.selectedBhk) {
-          final bhkClean = bhk.toLowerCase().replaceAll(' ', '');
-          final nameClean = p.name.toLowerCase().replaceAll(' ', '');
-          final kindClean = p.propertyKind.toLowerCase().replaceAll(' ', '');
-
-          final digitMatch = RegExp(r'\d').firstMatch(bhk)?.group(0);
-          final digit = digitMatch != null ? int.tryParse(digitMatch) : null;
-
-          if (digit != null && p.bhk == digit) {
-            bhkMatch = true;
-            break;
-          }
-          if (nameClean.contains(bhkClean) || kindClean.contains(bhkClean)) {
-            bhkMatch = true;
-            break;
-          }
-        }
-        if (!bhkMatch) return false;
-      }
+      // 3. (API handles BHK type match - removed local filter)
 
       // 4. Property Type Match
-      if (filters.selectedPropertyTypes.isNotEmpty && p.propertyKind.isNotEmpty && p.propertyKind != 'null') {
+      if (filters.selectedPropertyTypes.isNotEmpty) {
         bool typeMatch = false;
+        final kindClean = p.propertyKind.toLowerCase();
+        final catClean = (p.categoryName ?? '').toLowerCase();
+        final nameClean = p.name.toLowerCase();
+
         for (final type in filters.selectedPropertyTypes) {
-          if (p.propertyKind.toLowerCase().contains(type.toLowerCase()) ||
-              p.name.toLowerCase().contains(type.toLowerCase())) {
+          // Handle plurals (e.g., "Apartments" -> "apartment")
+          final t = type.toLowerCase().replaceAll(RegExp(r's$'), '');
+          if (kindClean.contains(t) || catClean.contains(t) || nameClean.contains(t)) {
             typeMatch = true;
             break;
           }
@@ -476,70 +567,11 @@ class _NameSearchResultsScreenState
           !p.description.toLowerCase().contains('verified'))
         return false;
 
-      // 6. Budget Match
-      final priceCr = p.price / 10000000.0;
-      if (priceCr < filters.minBudget ||
-          (filters.maxBudget < 20.0 && priceCr > filters.maxBudget)) {
-        return false;
-      }
+      // 6. (API handles Budget Match - removed local filter)
 
-      // 7. Advanced Filters Match
+      // 7. Advanced Filters Match (Local-only filters)
       if (filters.verifiedOnly && !p.description.toLowerCase().contains('verified')) return false;
-
       if (filters.imagesOnly && p.images.isEmpty) return false;
-      
-      if (filters.minArea > 0.0 || filters.maxArea < 5000.0) {
-        final area = p.area ?? 0.0;
-        if (area < filters.minArea || (filters.maxArea < 5000.0 && area > filters.maxArea)) {
-          return false;
-        }
-      }
-
-      if (filters.selectedFurnishing.isNotEmpty && p.description.isNotEmpty) {
-        bool furnMatch = false;
-        for (final f in filters.selectedFurnishing) {
-          if (p.description.toLowerCase().contains(f.toLowerCase())) furnMatch = true;
-        }
-        if (!furnMatch) return false;
-      }
-
-      if (filters.selectedAmenities.isNotEmpty && p.amenities.isNotEmpty) {
-        bool amenMatch = false;
-        for (final a in filters.selectedAmenities) {
-          for (final pa in p.amenities) {
-            if (pa.toLowerCase().contains(a.toLowerCase())) {
-              amenMatch = true;
-              break;
-            }
-          }
-        }
-        if (!amenMatch) return false;
-      }
-
-      if (filters.selectedBathrooms.isNotEmpty && p.bathrooms != null && p.bathrooms! > 0) {
-        bool bathMatch = false;
-        final baths = p.bathrooms!;
-        for (final b in filters.selectedBathrooms) {
-          if (b == '1+' && baths >= 1) bathMatch = true;
-          if (b == '2+' && baths >= 2) bathMatch = true;
-          if (b == '3+' && baths >= 3) bathMatch = true;
-          if (b == '4+' && baths >= 4) bathMatch = true;
-        }
-        if (!bathMatch) return false;
-      }
-
-      if (filters.selectedAdded.isNotEmpty && p.createdAt != null) {
-        bool addedMatch = false;
-        final now = DateTime.now();
-        final diff = now.difference(p.createdAt!);
-        for (final a in filters.selectedAdded) {
-          if (a == 'Yesterday' && diff.inDays <= 1) addedMatch = true;
-          if (a == 'Last 3 days' && diff.inDays <= 3) addedMatch = true;
-          if (a == 'Last week' && diff.inDays <= 7) addedMatch = true;
-          if (a == 'Last month' && diff.inDays <= 30) addedMatch = true;
-        }
-        if (!addedMatch) return false;
-      }
 
       if (filters.selectedLeaseTypes.isNotEmpty && p.description.isNotEmpty) {
         bool leaseMatch = false;
@@ -944,13 +976,26 @@ class _NameSearchResultsScreenState
     }
 
     return ListView.separated(
+      controller: _scrollController,
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
       itemCount: items.length + (hasMore ? 1 : 0),
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, i) {
-        // Last item → Load More button
+        // Last item → Show loading indicator for smooth pagination
         if (i == items.length) {
-          return _buildLoadMoreButton(totalCount);
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16.0),
+            child: Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(_kPrimary),
+                ),
+              ),
+            ),
+          );
         }
         final p = items[i];
         return PropertyCard(
@@ -958,34 +1003,6 @@ class _NameSearchResultsScreenState
           onTap: () => context.push('/property/${p.id}'),
         );
       },
-    );
-  }
-
-  Widget _buildLoadMoreButton(int totalCount) {
-    final remaining = totalCount - _visibleCount;
-    final nextBatch = remaining.clamp(0, _pageSize);
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Center(
-        child: OutlinedButton.icon(
-          onPressed: () {
-            setState(() => _visibleCount += _pageSize);
-          },
-          icon: const Icon(Icons.expand_more_rounded, size: 20),
-          label: Text(
-            'Load $nextBatch more  ($remaining remaining)',
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-          ),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: _kPrimary,
-            side: BorderSide(color: _kPrimary.withValues(alpha: 0.4)),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          ),
-        ),
-      ),
     );
   }
 }

@@ -54,6 +54,126 @@ class PropertyService {
         page: page,
       );
 
+  /// Full-featured filter API call matching:
+  /// GET /api/v1/properties?type=sale&furnishing=furnished&bhk=2&city=panchkula
+  ///   &facing=south&amenities=pool&bathrooms=1&min_area=100&max_area=300
+  ///   &added=today&property_age=more_than_5_years&corner_property=1
+  ///   &availability=ready_to_move&min_price=...&max_price=...
+  ///
+  /// Supports multi-value params like multiple furnishing= or facing= values.
+  Future<List<Property>> fetchWithFilters({
+    String? type,            // 'sale' | 'rent'
+    List<String> furnishing = const [],
+    List<int> bhk = const [], // support multi-BHK: [2, 3] → bhk=2bhk&bhk=3bhk
+    String? city,
+    List<String> facing = const [],
+    List<String> amenities = const [],
+    int? bathrooms,          // minimum bathrooms
+    double? minArea,
+    double? maxArea,
+    String? added,           // 'today' | 'yesterday' | 'last_week' | 'last_month'
+    String? propertyAge,     // e.g. 'more_than_5_years'
+    bool? cornerProperty,
+    String? availability,    // e.g. 'ready_to_move'
+    int? minPrice,
+    int? maxPrice,
+  }) async {
+    if (kIsWeb) {
+      throw Exception('Properties API is not supported on web in this build');
+    }
+
+    // Build query params list (key, value) to support multi-value params
+    final params = <(String, String)>[];
+
+    params.add(('per_page', '250')); // always return max results for filtering
+    if (type != null && type.trim().isNotEmpty) params.add(('type', type.trim()));
+    if (city != null && city.trim().isNotEmpty) params.add(('city', city.trim()));
+    // BHK format: new backend API expects `bhk[]=1`
+    for (final b in bhk) {
+      params.add(('bhk[]', b.toString()));
+    }
+    if (bathrooms != null) params.add(('bathrooms', bathrooms.toString()));
+    if (minArea != null) params.add(('min_area', minArea.toInt().toString()));
+    if (maxArea != null) params.add(('max_area', maxArea.toInt().toString()));
+    if (minPrice != null) params.add(('min_price', minPrice.toString()));
+    if (maxPrice != null) params.add(('max_price', maxPrice.toString()));
+    if (added != null && added.trim().isNotEmpty) params.add(('added', added.trim()));
+    if (propertyAge != null && propertyAge.trim().isNotEmpty) params.add(('property_age', propertyAge.trim()));
+    if (cornerProperty == true) params.add(('corner_property', '1'));
+    if (availability != null && availability.trim().isNotEmpty) params.add(('availability', availability.trim()));
+
+    // Furnishing & Facing: new backend API expects array brackets `[]`
+    for (final f in furnishing) {
+      if (f.trim().isNotEmpty) params.add(('furnishing[]', f.trim()));
+    }
+    for (final f in facing) {
+      if (f.trim().isNotEmpty) params.add(('facing[]', f.trim()));
+    }
+    // Amenities: backend currently still expects without brackets
+    for (final a in amenities) {
+      if (a.trim().isNotEmpty) params.add(('amenities', a.trim()));
+    }
+
+    // Build query string manually to support repeated keys
+    final queryString = params
+        .map((p) => '${Uri.encodeQueryComponent(p.$1)}=${Uri.encodeQueryComponent(p.$2)}')
+        .join('&');
+
+    final uriStr = '${_baseUri.toString()}/api/v1/properties'
+        + (queryString.isNotEmpty ? '?$queryString' : '');
+
+    final uri = Uri.parse(uriStr);
+    debugPrint('[PropertyService] fetchWithFilters GET $uri');
+
+    final client = HttpClient()..autoUncompress = true;
+    try {
+      final req = await client.getUrl(uri);
+      req.headers.set('Accept', 'application/json');
+
+      final res = await req.close();
+      final body = await res.transform(utf8.decoder).join();
+      final status = res.statusCode;
+      debugPrint('[PropertyService] fetchWithFilters → $status (${body.length} bytes)');
+
+      if (status < 200 || status >= 300) {
+        debugPrint('[PropertyService] fetchWithFilters error: ${body.substring(0, body.length.clamp(0, 300))}');
+        throw Exception('Failed to load filtered properties ($status)');
+      }
+
+      final decoded = body.trim().isEmpty ? null : jsonDecode(body);
+      final List items;
+      if (decoded is List) {
+        items = decoded;
+      } else if (decoded is Map<String, dynamic>) {
+        final outer = decoded['data'] ?? decoded['properties'] ?? decoded['result'];
+        if (outer is List) {
+          items = outer;
+        } else if (outer is Map) {
+          final inner = outer['data'];
+          items = inner is List ? inner : const [];
+        } else {
+          items = const [];
+        }
+      } else {
+        items = const [];
+      }
+
+      debugPrint('[PropertyService] fetchWithFilters parsed ${items.length} items');
+      return items
+          .whereType<Map>()
+          .map((e) => _propertyFromApiJson(e.cast<String, dynamic>()))
+          .where((p) => p.id.isNotEmpty)
+          .toList(growable: false);
+    } on SocketException {
+      throw Exception('Network error. Please check your internet connection.');
+    } catch (e) {
+      debugPrint('[PropertyService] fetchWithFilters unexpected error: $e');
+      rethrow;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
   Future<List<Property>> fetchFiltered({
     int? categoryId,
     String? city,
@@ -783,7 +903,7 @@ class PropertyService {
 
   Future<List<Property>> search({
     required String mode, // rent | buy
-    required BudgetRange budgetRange,
+    BudgetRange? budgetRange,
     String? propertyType,
     List<String> amenities = const [],
     String? locationQuery,
@@ -792,8 +912,8 @@ class PropertyService {
     // Use backend filtering where possible (price, city text, type).
     final all = await fetchFiltered(
       type: mode,
-      minPrice: budgetRange.start.toInt(),
-      maxPrice: budgetRange.end.toInt(),
+      minPrice: budgetRange?.start.toInt(),
+      maxPrice: budgetRange?.end.toInt(),
       city: locationQuery,
       sortBy: sortBy,
     );

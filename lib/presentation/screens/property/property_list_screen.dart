@@ -327,7 +327,9 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
           } else {
             items = await notif.search(
               mode: extra.mode,
-              budgetRange: BudgetRange(extra.budget.start, extra.budget.end),
+              budgetRange: extra.budget != null 
+                  ? BudgetRange(extra.budget!.start, extra.budget!.end) 
+                  : null,
               propertyType: extra.propertyType,
               amenities: extra.amenities,
               locationQuery: extra.locationQuery,

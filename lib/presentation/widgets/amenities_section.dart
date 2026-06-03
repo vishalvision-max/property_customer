@@ -10,16 +10,52 @@ class AmenitiesSection extends StatelessWidget {
     required this.onAmenityToggled,
   });
 
+  /// Maps amenity display name → API numeric ID.
+  /// Source: GET /api/v1/amenities
+  static const Map<String, int> amenityIdMap = {
+    'Lift': 1,
+    'Gym': 2,
+    'Security': 3,
+    'Parking': 4,
+    'Power Backup': 5,
+    'AC': 46,
+    'Swimming Pool': 49,
+    'Intercom': 50,
+    'CCTV': 51,
+    'Garden': 52,
+    'Gated Community': 55,
+    'Club House': 56,
+    'Regular Water Supply': 58,
+    'Pet Friendly': 60,
+    'Servant Room': 61,
+    'Wifi': 62,
+  };
+
+  /// Resolves a list of selected amenity names to their numeric API IDs.
+  /// Call this before passing amenities to the filter API.
+  static List<String> toApiIds(List<String> selectedNames) {
+    return selectedNames
+        .map((name) => amenityIdMap[name])
+        .whereType<int>()
+        .map((id) => id.toString())
+        .toList();
+  }
+
   static const _options = [
-    ('Gas Pipelines', Icons.local_gas_station_rounded),
-    ('Swimming Pool', Icons.pool_rounded),
-    ('Gym', Icons.fitness_center_rounded),
     ('Lift', Icons.elevator_rounded),
-    ('Gated Community', Icons.security_rounded),
+    ('Gym', Icons.fitness_center_rounded),
+    ('Security', Icons.security_rounded),
     ('Parking', Icons.local_parking_rounded),
-    ('Pets Allowed', Icons.pets_rounded),
-    ('Fridge', Icons.kitchen_rounded),
-    ('Washing Machine', Icons.local_laundry_service_rounded),
+    ('Power Backup', Icons.power_rounded),
+    ('AC', Icons.ac_unit_rounded),
+    ('Swimming Pool', Icons.pool_rounded),
+    ('CCTV', Icons.videocam_rounded),
+    ('Garden', Icons.eco_rounded),
+    ('Gated Community', Icons.home_work_rounded),
+    ('Club House', Icons.villa_rounded),
+    ('Pet Friendly', Icons.pets_rounded),
+    ('Servant Room', Icons.meeting_room_rounded),
+    ('Wifi', Icons.wifi_rounded),
   ];
 
   @override
@@ -46,7 +82,7 @@ class AmenitiesSection extends StatelessWidget {
             final title = option.$1;
             final icon = option.$2;
             final isSelected = selectedAmenities.contains(title);
-            
+
             return GestureDetector(
               onTap: () => onAmenityToggled(title),
               child: AnimatedContainer(

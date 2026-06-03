@@ -203,7 +203,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           '/properties',
                           extra: SearchArgs(
                             mode: 'buy',
-                            budget: const RangeValues(0, 3000000),
+                            budget: null,
                             propertyType: 'Any',
                             amenities: const [],
                             locationQuery: '',
@@ -215,7 +215,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           '/properties',
                           extra: SearchArgs(
                             mode: 'rent',
-                            budget: const RangeValues(500, 5000),
+                            budget: null,
                             propertyType: 'Any',
                             amenities: const [],
                             locationQuery: '',
@@ -227,7 +227,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           '/properties',
                           extra: SearchArgs(
                             mode: 'rent',
-                            budget: const RangeValues(500, 5000),
+                            budget: null,
                             propertyType: 'PG',
                             amenities: const [],
                             locationQuery: '',
@@ -239,7 +239,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           '/properties',
                           extra: SearchArgs(
                             mode: 'buy',
-                            budget: const RangeValues(0, 3000000),
+                            budget: null,
                             propertyType: 'Commercial',
                             amenities: const [],
                             locationQuery: '',
@@ -251,7 +251,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           '/properties',
                           extra: SearchArgs(
                             mode: 'buy',
-                            budget: const RangeValues(0, 3000000),
+                            budget: null,
                             propertyType: 'Plot',
                             amenities: const [],
                             locationQuery: '',
@@ -263,7 +263,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           '/properties',
                           extra: SearchArgs(
                             mode: 'buy',
-                            budget: const RangeValues(0, 3000000),
+                            budget: null,
                             propertyType: 'New Project',
                             amenities: const [],
                             locationQuery: '',
@@ -275,7 +275,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           '/properties',
                           extra: SearchArgs(
                             mode: 'buy',
-                            budget: const RangeValues(0, 3000000),
+                            budget: null,
                             propertyType: 'Any',
                             amenities: const [],
                             locationQuery: '',
@@ -308,7 +308,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       '/properties',
                       extra: SearchArgs(
                         mode: _mode,
-                        budget: defaultBudget,
+                        budget: null,
                         propertyType: 'Any',
                         amenities: const [],
                         locationQuery: label,

@@ -137,10 +137,9 @@ class PropertyNotifier extends _$PropertyNotifier {
     }
     state = state.copyWith(all: nextAll);
   }
-
   Future<List<Property>> search({
     required String mode,
-    required BudgetRange budgetRange,
+    BudgetRange? budgetRange,
     String? propertyType,
     List<String> amenities = const [],
     String? locationQuery,
@@ -154,6 +153,45 @@ class PropertyNotifier extends _$PropertyNotifier {
       amenities: amenities,
       locationQuery: locationQuery,
       sortBy: sortBy,
+    );
+  }
+
+  /// Calls the full filter API: GET /api/v1/properties with all supported params.
+  /// Matches the backend query structure from the curl spec.
+  Future<List<Property>> fetchWithFilters({
+    String? type,
+    List<String> furnishing = const [],
+    List<int> bhk = const [],
+    String? city,
+    List<String> facing = const [],
+    List<String> amenities = const [],
+    int? bathrooms,
+    double? minArea,
+    double? maxArea,
+    String? added,
+    String? propertyAge,
+    bool? cornerProperty,
+    String? availability,
+    int? minPrice,
+    int? maxPrice,
+  }) {
+    final repo = ref.read(propertyRepositoryProvider);
+    return repo.fetchWithFilters(
+      type: type,
+      furnishing: furnishing,
+      bhk: bhk,
+      city: city,
+      facing: facing,
+      amenities: amenities,
+      bathrooms: bathrooms,
+      minArea: minArea,
+      maxArea: maxArea,
+      added: added,
+      propertyAge: propertyAge,
+      cornerProperty: cornerProperty,
+      availability: availability,
+      minPrice: minPrice,
+      maxPrice: maxPrice,
     );
   }
 
