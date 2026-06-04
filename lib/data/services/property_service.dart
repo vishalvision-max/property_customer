@@ -216,13 +216,16 @@ class PropertyService {
   /// Fetches only the images (and videos) for a property by ID.
   /// Much lighter than fetchDetails — used by list cards to lazy-load
   /// the thumbnail when the list endpoint returns images: null.
-  Future<List<String>> fetchPropertyImages(String id) async {
+  Future<List<String>> fetchPropertyImages(String id, {String? token}) async {
     if (kIsWeb) return const [];
     final uri = _baseUri.replace(path: '/api/v1/properties/$id');
     final client = HttpClient();
     try {
       final req = await client.getUrl(uri);
       req.headers.set('Accept', 'application/json');
+      if (token != null && token.isNotEmpty) {
+        req.headers.set('Authorization', 'Bearer $token');
+      }
       final res = await req.close();
       final body = await res.transform(utf8.decoder).join();
       if (res.statusCode < 200 || res.statusCode >= 300) return const [];
@@ -264,7 +267,7 @@ class PropertyService {
     }
   }
 
-  Future<Property> fetchDetails(String id) async {
+  Future<Property> fetchDetails(String id, {String? token}) async {
     if (kIsWeb) {
       throw Exception('Properties API is not supported on web in this build');
     }
@@ -273,6 +276,9 @@ class PropertyService {
     try {
       final req = await client.getUrl(uri);
       req.headers.set('Accept', 'application/json');
+      if (token != null && token.isNotEmpty) {
+        req.headers.set('Authorization', 'Bearer $token');
+      }
 
       final res = await req.close();
       final body = await res.transform(utf8.decoder).join();

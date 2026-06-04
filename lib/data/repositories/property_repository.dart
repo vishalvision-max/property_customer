@@ -59,10 +59,11 @@ class PropertyRepository {
     categoryIds: categoryIds,
   );
 
-  Future<Property> fetchDetails(String id) => _service.fetchDetails(id);
+  Future<Property> fetchDetails(String id, {String? token}) => 
+      _service.fetchDetails(id, token: token);
 
-  Future<List<String>> fetchPropertyImages(String id) =>
-      _service.fetchPropertyImages(id);
+  Future<List<String>> fetchPropertyImages(String id, {String? token}) =>
+      _service.fetchPropertyImages(id, token: token);
 
   Future<List<Property>> fetchPopular() => _service.fetchPopular();
 

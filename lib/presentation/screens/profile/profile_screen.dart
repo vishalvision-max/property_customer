@@ -46,9 +46,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ? '-'
               : user.email.trim());
 
-    final isProfileIncomplete = (owner?.name.trim().isEmpty ?? true) || 
-                                (owner?.email.trim().isEmpty ?? true) || 
-                                (owner?.email.endsWith('@example.com') ?? false);
+    final isProfileIncomplete =
+        (owner?.name.trim().isEmpty ?? true) ||
+        (owner?.email.trim().isEmpty ?? true) ||
+        (owner?.email.endsWith('@example.com') ?? false);
 
     return Scaffold(
       backgroundColor: _kBg,
@@ -90,7 +91,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                       IconButton(
                         onPressed: () {},
-                        icon: const Icon(Icons.notifications_none_rounded, color: Colors.white),
+                        icon: const Icon(
+                          Icons.notifications_none_rounded,
+                          color: Colors.white,
+                        ),
                       ),
                     ],
                   ),
@@ -118,11 +122,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             : CachedNetworkImage(
                                 imageUrl: ownerImage,
                                 fit: BoxFit.cover,
-                                errorWidget: (context, url, error) => const Icon(
-                                  Icons.person_rounded,
-                                  color: Colors.white,
-                                  size: 36,
-                                ),
+                                errorWidget: (context, url, error) =>
+                                    const Icon(
+                                      Icons.person_rounded,
+                                      color: Colors.white,
+                                      size: 36,
+                                    ),
                               ),
                       ),
                       const SizedBox(width: 16),
@@ -168,18 +173,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [Colors.amber.shade400, Colors.amber.shade600],
+                          colors: [Colors.red, Colors.red.shade600],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
                         borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.amber.withValues(alpha: 0.3),
-                            blurRadius: 12,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
                       ),
                       child: Row(
                         children: [
@@ -189,7 +187,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               color: Colors.white,
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(Icons.priority_high_rounded, color: Colors.amber.shade700, size: 20),
+                            child: Icon(
+                              Icons.priority_high_rounded,
+                              color: Colors.red,
+                              size: 20,
+                            ),
                           ),
                           const SizedBox(width: 16),
                           const Expanded(
@@ -246,7 +248,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         _SettingsTile(
                           icon: Icons.person_outline_rounded,
                           title: 'Edit Profile',
-                          onTap: user == null ? null : () => context.push('/profile/edit'),
+                          onTap: user == null
+                              ? null
+                              : () => context.push('/profile/edit'),
                         ),
                         _buildDivider(),
                         _SettingsTile(
@@ -292,7 +296,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         _SettingsTile(
                           icon: Icons.shield_outlined,
                           title: 'Change Password',
-                          onTap: user == null ? null : () => context.push('/profile/change-password'),
+                          onTap: user == null
+                              ? null
+                              : () => context.push('/profile/change-password'),
                         ),
                         _buildDivider(),
                         _SettingsTile(
@@ -305,7 +311,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               context: context,
                               backgroundColor: Colors.white,
                               shape: const RoundedRectangleBorder(
-                                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                                borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(24),
+                                ),
                               ),
                               builder: (ctx) => SafeArea(
                                 child: Padding(
@@ -318,7 +326,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                         height: 5,
                                         decoration: BoxDecoration(
                                           color: _kBorder,
-                                          borderRadius: BorderRadius.circular(10),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
                                         ),
                                       ),
                                       const SizedBox(height: 24),
@@ -328,7 +338,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                           color: Colors.red.shade50,
                                           shape: BoxShape.circle,
                                         ),
-                                        child: Icon(Icons.logout_rounded, color: Colors.red.shade400, size: 32),
+                                        child: Icon(
+                                          Icons.logout_rounded,
+                                          color: Colors.red.shade400,
+                                          size: 32,
+                                        ),
                                       ),
                                       const SizedBox(height: 16),
                                       const Text(
@@ -353,35 +367,54 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                         children: [
                                           Expanded(
                                             child: TextButton(
-                                              onPressed: () => Navigator.of(ctx).pop(false),
+                                              onPressed: () =>
+                                                  Navigator.of(ctx).pop(false),
                                               style: TextButton.styleFrom(
-                                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 16,
+                                                    ),
                                                 backgroundColor: _kBg,
                                                 shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(14),
+                                                  borderRadius:
+                                                      BorderRadius.circular(14),
                                                 ),
                                               ),
                                               child: const Text(
                                                 'Cancel',
-                                                style: TextStyle(color: _kTextDark, fontWeight: FontWeight.bold, fontSize: 16),
+                                                style: TextStyle(
+                                                  color: _kTextDark,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16,
+                                                ),
                                               ),
                                             ),
                                           ),
                                           const SizedBox(width: 16),
                                           Expanded(
                                             child: ElevatedButton(
-                                              onPressed: () => Navigator.of(ctx).pop(true),
+                                              onPressed: () =>
+                                                  Navigator.of(ctx).pop(true),
                                               style: ElevatedButton.styleFrom(
-                                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                                backgroundColor: Colors.red.shade500,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 16,
+                                                    ),
+                                                backgroundColor:
+                                                    Colors.red.shade500,
                                                 elevation: 0,
                                                 shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(14),
+                                                  borderRadius:
+                                                      BorderRadius.circular(14),
                                                 ),
                                               ),
                                               child: const Text(
                                                 'Yes, Logout',
-                                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16,
+                                                ),
                                               ),
                                             ),
                                           ),
@@ -394,7 +427,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             );
 
                             if (confirm != true) return;
-                            
+
                             await ref.read(authProvider.notifier).logout();
                             if (!mounted) return;
                             router.go('/login');
@@ -437,7 +470,9 @@ class _SettingsTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = isDestructive ? Colors.red.shade400 : _kTextDark;
-    final iconBg = isDestructive ? Colors.red.shade50 : _kPrimary.withValues(alpha: 0.08);
+    final iconBg = isDestructive
+        ? Colors.red.shade50
+        : _kPrimary.withValues(alpha: 0.08);
     final iconColor = isDestructive ? Colors.red.shade400 : _kPrimary;
 
     return ListTile(
@@ -460,7 +495,10 @@ class _SettingsTile extends StatelessWidget {
         ),
       ),
       trailing: onTap != null
-          ? Icon(Icons.chevron_right_rounded, color: _kTextMid.withValues(alpha: 0.5))
+          ? Icon(
+              Icons.chevron_right_rounded,
+              color: _kTextMid.withValues(alpha: 0.5),
+            )
           : null,
     );
   }

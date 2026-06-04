@@ -20,7 +20,8 @@ class EditOwnerProfileScreen extends ConsumerStatefulWidget {
       _EditOwnerProfileScreenState();
 }
 
-class _EditOwnerProfileScreenState extends ConsumerState<EditOwnerProfileScreen> {
+class _EditOwnerProfileScreenState
+    extends ConsumerState<EditOwnerProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _email = TextEditingController();
@@ -33,7 +34,9 @@ class _EditOwnerProfileScreenState extends ConsumerState<EditOwnerProfileScreen>
       if (!mounted) return;
       final token = ref.read(authProvider).user?.token;
       if (token != null && token.trim().isNotEmpty) {
-        ref.read(ownerProfileNotifierProvider.notifier).load(token: token.trim());
+        ref
+            .read(ownerProfileNotifierProvider.notifier)
+            .load(token: token.trim());
       }
     });
   }
@@ -55,7 +58,9 @@ class _EditOwnerProfileScreenState extends ConsumerState<EditOwnerProfileScreen>
         if (p.name.trim().isNotEmpty && _name.text.trim().isEmpty) {
           _name.text = p.name.trim();
         }
-        if (p.email.trim().isNotEmpty && _email.text.trim().isEmpty && !p.email.endsWith('@example.com')) {
+        if (p.email.trim().isNotEmpty &&
+            _email.text.trim().isEmpty &&
+            !p.email.endsWith('@example.com')) {
           _email.text = p.email.trim();
         }
       }
@@ -69,12 +74,16 @@ class _EditOwnerProfileScreenState extends ConsumerState<EditOwnerProfileScreen>
       }
     });
 
-    final isProfileIncomplete = (ownerState.profile?.name.trim().isEmpty ?? true) || 
-                                (ownerState.profile?.email.trim().isEmpty ?? true) || 
-                                (ownerState.profile?.email.endsWith('@example.com') ?? false);
+    final isProfileIncomplete =
+        (ownerState.profile?.name.trim().isEmpty ?? true) ||
+        (ownerState.profile?.email.trim().isEmpty ?? true) ||
+        (ownerState.profile?.email.endsWith('@example.com') ?? false);
 
     final canSubmit =
-        !_saving && !ownerState.isLoading && _name.text.trim().isNotEmpty && _email.text.trim().isNotEmpty;
+        !_saving &&
+        !ownerState.isLoading &&
+        _name.text.trim().isNotEmpty &&
+        _email.text.trim().isNotEmpty;
 
     return Scaffold(
       backgroundColor: _kBg,
@@ -96,18 +105,11 @@ class _EditOwnerProfileScreenState extends ConsumerState<EditOwnerProfileScreen>
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.amber.shade400, Colors.amber.shade600],
+                  colors: [Colors.red, Colors.red.shade600],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.amber.withValues(alpha: 0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
               ),
               child: Row(
                 children: [
@@ -117,7 +119,11 @@ class _EditOwnerProfileScreenState extends ConsumerState<EditOwnerProfileScreen>
                       color: Colors.white,
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.priority_high_rounded, color: Colors.amber.shade700, size: 20),
+                    child: Icon(
+                      Icons.priority_high_rounded,
+                      color: Colors.red,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 16),
                   const Expanded(
@@ -135,10 +141,7 @@ class _EditOwnerProfileScreenState extends ConsumerState<EditOwnerProfileScreen>
                         SizedBox(height: 2),
                         Text(
                           'Update your name and email to continue.',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                          ),
+                          style: TextStyle(color: Colors.white, fontSize: 13),
                         ),
                       ],
                     ),
@@ -219,7 +222,9 @@ class _EditOwnerProfileScreenState extends ConsumerState<EditOwnerProfileScreen>
                       if (v == null || v.trim().isEmpty) {
                         return 'Email is required';
                       }
-                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v)) {
+                      if (!RegExp(
+                        r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                      ).hasMatch(v)) {
                         return 'Enter a valid email address';
                       }
                       return null;
@@ -239,7 +244,7 @@ class _EditOwnerProfileScreenState extends ConsumerState<EditOwnerProfileScreen>
                             final router = GoRouter.of(context);
                             final messenger = ScaffoldMessenger.of(context);
                             setState(() => _saving = true);
-                            
+
                             final updated = await ref
                                 .read(ownerProfileNotifierProvider.notifier)
                                 .update(

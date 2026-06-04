@@ -11,6 +11,7 @@ import '../data/services/lead_service.dart';
 import '../data/services/local_storage_service.dart';
 import '../data/services/owner_service.dart';
 import '../data/services/property_service.dart';
+import 'auth_provider.dart';
 
 part 'app_providers.g.dart';
 
@@ -80,5 +81,6 @@ OwnerRepository ownerRepository(OwnerRepositoryRef ref) {
 @riverpod
 Future<List<String>> propertyImages(PropertyImagesRef ref, String propertyId) {
   final repo = ref.watch(propertyRepositoryProvider);
-  return repo.fetchPropertyImages(propertyId);
+  final token = ref.watch(authProvider).user?.token;
+  return repo.fetchPropertyImages(propertyId, token: token);
 }

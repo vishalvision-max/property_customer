@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/models/property.dart';
 import '../data/services/property_service.dart';
 import 'app_providers.dart';
+import 'auth_provider.dart';
 
 part 'property_provider.freezed.dart';
 part 'property_provider.g.dart';
@@ -233,7 +234,8 @@ class PropertyNotifier extends _$PropertyNotifier {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final repo = ref.read(propertyRepositoryProvider);
-      final p = await repo.fetchDetails(id);
+      final token = ref.read(authProvider).user?.token;
+      final p = await repo.fetchDetails(id, token: token);
       final nextAll = [...state.all];
       final idx = nextAll.indexWhere((e) => e.id == p.id);
       if (idx >= 0) {
