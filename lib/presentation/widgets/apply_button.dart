@@ -36,7 +36,7 @@ class ApplyButton extends StatelessWidget {
         ),
         onPressed: onPressed,
         child: Text(
-          'View Properties',
+          'Search',
           style: const TextStyle(
             color: Colors.white,
             fontSize: 15,

@@ -55,28 +55,24 @@ class PropertyService {
       );
 
   /// Full-featured filter API call matching:
-  /// GET /api/v1/properties?type=sale&furnishing=furnished&bhk=2&city=panchkula
-  ///   &facing=south&amenities=pool&bathrooms=1&min_area=100&max_area=300
-  ///   &added=today&property_age=more_than_5_years&corner_property=1
-  ///   &availability=ready_to_move&min_price=...&max_price=...
-  ///
-  /// Supports multi-value params like multiple furnishing= or facing= values.
+  /// GET /api/v1/properties?type=sale&bhk=1&property_kind=commercial
+  ///   &category_id=2&bathrooms=2&amenities=2&property_age_years=5000
+  ///   &added=yesterday&furnishing=furnished&min_price=...&max_price=...
   Future<List<Property>> fetchWithFilters({
-    String? type,            // 'sale' | 'rent'
-    List<String> furnishing = const [],
-    List<int> bhk = const [], // support multi-BHK: [2, 3] → bhk=2bhk&bhk=3bhk
+    String? type,            // 'sale' | 'rent' | 'co-living' | 'pg' | 'lease'
+    List<String> furnishing = const [],  // 'unfurnished' | 'furnished'
+    List<int> bhk = const [],            // plain int: bhk=1&bhk=2
     String? city,
-    List<String> facing = const [],
-    List<String> amenities = const [],
-    int? bathrooms,          // minimum bathrooms
+    List<String> amenities = const [],   // numeric IDs as strings: ['1','2']
+    int? bathrooms,
     double? minArea,
     double? maxArea,
-    String? added,           // 'today' | 'yesterday' | 'last_week' | 'last_month'
-    String? propertyAge,     // e.g. 'more_than_5_years'
-    bool? cornerProperty,
+    String? added,           // 'yesterday' | 'last_3_days' | 'last_week' | 'last_month'
+    int? propertyAgeYears,   // sent as property_age_years=N (e.g. 1, 3, 5, 10, 5000)
     String? availability,    // e.g. 'ready_to_move'
     int? minPrice,
     int? maxPrice,
+    int? categoryId,         // property type as backend category_id
   }) async {
     if (kIsWeb) {
       throw Exception('Properties API is not supported on web in this build');
@@ -88,9 +84,10 @@ class PropertyService {
     params.add(('per_page', '250')); // always return max results for filtering
     if (type != null && type.trim().isNotEmpty) params.add(('type', type.trim()));
     if (city != null && city.trim().isNotEmpty) params.add(('city', city.trim()));
-    // BHK format: new backend API expects `bhk[]=1`
+    if (categoryId != null) params.add(('category_id', categoryId.toString()));
+    // BHK: plain repeated keys → bhk=1&bhk=2
     for (final b in bhk) {
-      params.add(('bhk[]', b.toString()));
+      params.add(('bhk', b.toString()));
     }
     if (bathrooms != null) params.add(('bathrooms', bathrooms.toString()));
     if (minArea != null) params.add(('min_area', minArea.toInt().toString()));
@@ -98,18 +95,14 @@ class PropertyService {
     if (minPrice != null) params.add(('min_price', minPrice.toString()));
     if (maxPrice != null) params.add(('max_price', maxPrice.toString()));
     if (added != null && added.trim().isNotEmpty) params.add(('added', added.trim()));
-    if (propertyAge != null && propertyAge.trim().isNotEmpty) params.add(('property_age', propertyAge.trim()));
-    if (cornerProperty == true) params.add(('corner_property', '1'));
+    if (propertyAgeYears != null) params.add(('property_age_years', propertyAgeYears.toString()));
     if (availability != null && availability.trim().isNotEmpty) params.add(('availability', availability.trim()));
 
-    // Furnishing & Facing: new backend API expects array brackets `[]`
+    // Furnishing: plain repeated key → furnishing=unfurnished
     for (final f in furnishing) {
-      if (f.trim().isNotEmpty) params.add(('furnishing[]', f.trim()));
+      if (f.trim().isNotEmpty) params.add(('furnishing', f.trim()));
     }
-    for (final f in facing) {
-      if (f.trim().isNotEmpty) params.add(('facing[]', f.trim()));
-    }
-    // Amenities: backend currently still expects without brackets
+    // Amenities: numeric IDs → amenities=1&amenities=2
     for (final a in amenities) {
       if (a.trim().isNotEmpty) params.add(('amenities', a.trim()));
     }

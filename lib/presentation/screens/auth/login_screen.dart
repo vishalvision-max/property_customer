@@ -219,19 +219,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 20),
 
                 /// Signup
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'New here?',
-                      style: TextStyle(color: Colors.grey.shade600),
-                    ),
-                    TextButton(
-                      onPressed: () => context.push('/signup'),
-                      child: const Text('Create account'),
-                    ),
-                  ],
-                ),
+                // Row(
+                //   mainAxisAlignment: MainAxisAlignment.center,
+                //   children: [
+                //     Text(
+                //       'New here?',
+                //       style: TextStyle(color: Colors.grey.shade600),
+                //     ),
+                //     TextButton(
+                //       onPressed: () => context.push('/signup'),
+                //       child: const Text('Create account'),
+                //     ),
+                //   ],
+                // ),
               ],
             ),
           ),

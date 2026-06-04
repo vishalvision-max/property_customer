@@ -13,6 +13,7 @@ import '../property/property_name_search_args.dart';
 // New Premium filter components
 import '../../widgets/filter_chip.dart';
 import '../../widgets/amenities_section.dart';
+import '../../widgets/property_type_section.dart';
 import '../../sheets/filter_bottom_sheet.dart';
 import '../../sheets/budget_bottom_sheet.dart';
 import '../../sheets/property_type_bottom_sheet.dart';
@@ -240,12 +241,15 @@ class _NameSearchResultsScreenState
 
     try {
       final filters = ref.read(propertyFilterProvider);
+
+      // Only pass type if user explicitly selected an intent.
+      // Passing null means API returns all types (no type filter).
       final intentMode = filters.selectedIntent.isNotEmpty
           ? filters.selectedIntent.toLowerCase()
-          : (widget.args.mode.isNotEmpty ? widget.args.mode : 'rent');
+          : null;
 
       final items = await ref.read(propertyNotifierProvider.notifier).search(
-            mode: intentMode,
+            mode: intentMode ?? '',   // search() accepts empty string = show all
             budgetRange: BudgetRange(filters.minBudget * 10000000, filters.maxBudget * 10000000),
             locationQuery: searchKeyword,
           );
@@ -319,89 +323,93 @@ class _NameSearchResultsScreenState
     });
 
     try {
-      // ── Map intent → API type ──────────────────────────────────────────────
+      // ── 1. type: intent → API value ───────────────────────────────────────
+      // ONLY sent when the user explicitly picks an intent chip.
+      // No selection = null = no type param in the request.
       String? apiType;
       final intentStr = filters.selectedIntent.toLowerCase();
-      if (intentStr == 'rent' || intentStr == 'lease' || intentStr == 'pg/co-living') {
+      if (intentStr == 'buy') {
+        apiType = 'sale';
+      } else if (intentStr == 'rent') {
         apiType = 'rent';
-      } else if (intentStr.isNotEmpty) {
-        apiType = 'sale'; // buy, commercial, land/plots, villas, bungalows etc.
-      } else if (widget.args.mode.isNotEmpty) {
-        apiType = widget.args.mode == 'buy' ? 'sale' : widget.args.mode;
+      } else if (intentStr == 'co-living') {
+        apiType = 'co-living';
+      } else if (intentStr == 'pg') {
+        apiType = 'pg';
+      } else if (intentStr == 'lease') {
+        apiType = 'lease';
       }
+      // intentStr is empty → apiType stays null → no type= param sent
 
-      // ── Map furnishing chips → API values ─────────────────────────────────
-      // UI labels: 'Unfurnished', 'Semi Furnished', 'Fully Furnished'
-      // API accepts: 'unfurnished' | 'furnished' (verified via curl testing)
-      const _furnishingApiMap = {
-        'Unfurnished': 'unfurnished',
-        'Semi Furnished': 'furnished',
-        'Fully Furnished': 'furnished',
-      };
-      final furnishingApi = filters.selectedFurnishing
-          .map((f) => _furnishingApiMap[f])
-          .whereType<String>()
-          .toSet() // deduplicate: Semi + Fully both → 'furnished', send once
-          .toList();
-
-      // ── Map BHK → list of ints for multi-BHK support ──────────────────────
-      // UI: '1 BHK', '2 BHK', '3 BHK' etc.
-      // Sends: bhk=2bhk&bhk=3bhk (all selected values)
+      // ── 2. BHK → plain int list: bhk=1&bhk=2 ─────────────────────────────
       final bhkList = filters.selectedBhk
-          .map((b) => RegExp(r'\d').firstMatch(b)?.group(0))
+          .map((b) => RegExp(r'\d+').firstMatch(b)?.group(0))
           .whereType<String>()
           .map((d) => int.tryParse(d))
           .whereType<int>()
           .toList();
 
-      // ── Map bathrooms chip → min bathrooms int ────────────────────────────
-      // UI: '1+', '2+', '3+', '4+'
+      // ── 3. Furnishing → plain key: furnishing=unfurnished ─────────────────
+      // UI labels: 'Unfurnished', 'Semi Furnished', 'Fully Furnished'
+      // API values: 'unfurnished' | 'semi-furnished' | 'furnished'
+      const _furnishingApiMap = {
+        'Unfurnished': 'unfurnished',
+        'Semi Furnished': 'semi-furnished',
+        'Fully Furnished': 'furnished',
+      };
+      final furnishingApi = filters.selectedFurnishing
+          .map((f) => _furnishingApiMap[f])
+          .whereType<String>()
+          .toList();
+
+      // ── 4. category_id from selected property type ─────────────────────────
+      final categoryId = PropertyTypeSection.toCategoryId(filters.selectedPropertyTypes);
+
+      // ── 5. Bathrooms → plain int ───────────────────────────────────────────
+      // UI: '1+', '2+', '3+', '4+' → send the numeric value
       int? bathroomsNum;
       for (final b in filters.selectedBathrooms) {
-        final m = RegExp(r'\d').firstMatch(b);
+        final m = RegExp(r'\d+').firstMatch(b);
         if (m != null) {
           bathroomsNum = int.tryParse(m.group(0)!);
-          break; // take the minimum selected value
+          break;
         }
       }
 
-      // ── Map "Added" chip → API 'added' value ──────────────────────────────
-      // UI: 'Yesterday', 'Last 3 days', 'Last week', 'Last month'
+      // ── 6. Added → API string ─────────────────────────────────────────────
       String? addedApi;
       if (filters.selectedAdded.isNotEmpty) {
         final raw = filters.selectedAdded.first.toLowerCase();
-        if (raw.contains('today'))       addedApi = 'today';
-        else if (raw.contains('yesterday')) addedApi = 'yesterday';
-        else if (raw.contains('3'))      addedApi = 'last_3_days';
-        else if (raw.contains('week'))   addedApi = 'last_week';
-        else if (raw.contains('month'))  addedApi = 'last_month';
+        if (raw.contains('yesterday'))      addedApi = 'yesterday';
+        else if (raw.contains('3'))         addedApi = 'last_3_days';
+        else if (raw.contains('week'))      addedApi = 'last_week';
+        else if (raw.contains('month'))     addedApi = 'last_month';
       }
 
-      // ── Map "Age of Property" chip → API 'property_age' value ─────────────
-      // UI: 'Less than 1 year', 'Less than 3 years', etc.
-      String? propertyAgeApi;
+      // ── 7. Age of property → property_age_years as int ───────────────────
+      // UI: 'Less than 1 year' → 1, 'Less than 3 years' → 3, etc.
+      int? propertyAgeYears;
       if (filters.selectedAge.isNotEmpty) {
         final raw = filters.selectedAge.first.toLowerCase();
-        if (raw.contains('1 year'))      propertyAgeApi = 'less_than_1_year';
-        else if (raw.contains('3 year')) propertyAgeApi = 'less_than_3_years';
-        else if (raw.contains('5 year')) propertyAgeApi = 'less_than_5_years';
-        else if (raw.contains('10'))     propertyAgeApi = 'less_than_10_years';
-        else                             propertyAgeApi = 'more_than_5_years';
+        if (raw.contains('1 year'))       propertyAgeYears = 1;
+        else if (raw.contains('3 year')) propertyAgeYears = 3;
+        else if (raw.contains('5 year')) propertyAgeYears = 5;
+        else if (raw.contains('10'))     propertyAgeYears = 10;
+        else                             propertyAgeYears = 5000; // more than 10
       }
 
-      // ── Map "Available" chip → API 'availability' value ───────────────────
-      // UI: 'Within a week', 'Within 15 days', 'Within a month', 'After a month'
+      // ── 8. Availability ───────────────────────────────────────────────────
       String? availabilityApi;
       if (filters.selectedAvailable.isNotEmpty) {
         final raw = filters.selectedAvailable.first.toLowerCase();
-        if (raw.contains('ready'))       availabilityApi = 'ready_to_move';
-        else if (raw.contains('week'))   availabilityApi = 'within_a_week';
-        else if (raw.contains('15'))     availabilityApi = 'within_15_days';
-        else if (raw.contains('month') && !raw.contains('after')) availabilityApi = 'within_a_month';
-        else if (raw.contains('after'))  availabilityApi = 'after_a_month';
+        if (raw.contains('ready'))                                  availabilityApi = 'ready_to_move';
+        else if (raw.contains('week'))                              availabilityApi = 'within_a_week';
+        else if (raw.contains('15'))                                availabilityApi = 'within_15_days';
+        else if (raw.contains('month') && !raw.contains('after'))  availabilityApi = 'within_a_month';
+        else if (raw.contains('after'))                             availabilityApi = 'after_a_month';
       }
 
-      // ── Budget: convert Cr values → rupees ───────────────────────────────
+      // ── 9. Budget: convert Cr → rupees ────────────────────────────────────
       int? minPriceApi = filters.minBudget > 0.0
           ? (filters.minBudget * 10000000).toInt()
           : null;
@@ -409,12 +417,15 @@ class _NameSearchResultsScreenState
           ? (filters.maxBudget * 10000000).toInt()
           : null;
 
-      // ── Area filter ───────────────────────────────────────────────────────
+      // ── 10. Area ──────────────────────────────────────────────────────────
       double? minAreaApi = filters.minArea > 0.0 ? filters.minArea : null;
       double? maxAreaApi = filters.maxArea < 5000.0 ? filters.maxArea : null;
 
-      // ── City from selectedCity (real location words extracted by parser) ──
+      // ── 11. City ─────────────────────────────────────────────────────────
       final cityApi = filters.selectedCity.isNotEmpty ? filters.selectedCity : null;
+
+      // ── 12. Amenities → numeric IDs ───────────────────────────────────────
+      final amenityIds = AmenitiesSection.toApiIds(filters.selectedAmenities);
 
       final items = await ref
           .read(propertyNotifierProvider.notifier)
@@ -423,15 +434,16 @@ class _NameSearchResultsScreenState
             furnishing: furnishingApi,
             bhk: bhkList,
             city: cityApi,
-            amenities: AmenitiesSection.toApiIds(filters.selectedAmenities),
+            amenities: amenityIds,
             bathrooms: bathroomsNum,
             minArea: minAreaApi,
             maxArea: maxAreaApi,
             added: addedApi,
-            propertyAge: propertyAgeApi,
+            propertyAgeYears: propertyAgeYears,
             availability: availabilityApi,
             minPrice: minPriceApi,
             maxPrice: maxPriceApi,
+            categoryId: categoryId,
           );
 
       if (mounted) {

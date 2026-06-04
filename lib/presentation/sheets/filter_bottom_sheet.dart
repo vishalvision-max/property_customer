@@ -156,12 +156,8 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
                         [
                           ('Buy', '🏠'),
                           ('Rent', '🔑'),
-                          ('Commercial', '🏢'),
-                          ('Land/Plots', '🌿'),
-                          ('Commercial Lands', '🏗️'),
-                          ('Pg/Co-living', '🛋️'),
-                          ('Villas', '🏡'),
-                          ('Bungalows', '🏘️'),
+                          ('Co-living', ''),
+                          ('Pg', '🛋️'),
                           ('Lease', '📋'),
                         ].map((record) {
                           final intent = record.$1;

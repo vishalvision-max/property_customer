@@ -157,23 +157,22 @@ class PropertyNotifier extends _$PropertyNotifier {
   }
 
   /// Calls the full filter API: GET /api/v1/properties with all supported params.
-  /// Matches the backend query structure from the curl spec.
+  /// Matches the new backend query structure.
   Future<List<Property>> fetchWithFilters({
     String? type,
     List<String> furnishing = const [],
     List<int> bhk = const [],
     String? city,
-    List<String> facing = const [],
     List<String> amenities = const [],
     int? bathrooms,
     double? minArea,
     double? maxArea,
     String? added,
-    String? propertyAge,
-    bool? cornerProperty,
+    int? propertyAgeYears,
     String? availability,
     int? minPrice,
     int? maxPrice,
+    int? categoryId,
   }) {
     final repo = ref.read(propertyRepositoryProvider);
     return repo.fetchWithFilters(
@@ -181,17 +180,16 @@ class PropertyNotifier extends _$PropertyNotifier {
       furnishing: furnishing,
       bhk: bhk,
       city: city,
-      facing: facing,
       amenities: amenities,
       bathrooms: bathrooms,
       minArea: minArea,
       maxArea: maxArea,
       added: added,
-      propertyAge: propertyAge,
-      cornerProperty: cornerProperty,
+      propertyAgeYears: propertyAgeYears,
       availability: availability,
       minPrice: minPrice,
       maxPrice: maxPrice,
+      categoryId: categoryId,
     );
   }
 
