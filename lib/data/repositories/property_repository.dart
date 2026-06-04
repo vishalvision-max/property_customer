@@ -70,8 +70,9 @@ class PropertyRepository {
   Future<List<Property>> fetchNearby({
     required double lat,
     required double lng,
-    int radius = 100,
-  }) => _service.fetchNearby(lat: lat, lng: lng, radius: radius);
+    int radius = 2,
+    String? token,
+  }) => _service.fetchNearby(lat: lat, lng: lng, radius: radius, token: token);
 
   Future<List<Property>> fetchRecommendations({required String token}) =>
       _service.fetchRecommendations(token: token);
@@ -80,8 +81,8 @@ class PropertyRepository {
       _service.fetchAllOwnerProperties(token: token);
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
-  fetchAllOwnerPropertiesPaged({required String token, int page = 1, String? city}) =>
-      _service.fetchAllOwnerPropertiesPaged(token: token, page: page, city: city);
+  fetchAllOwnerPropertiesPaged({required String token, int page = 1, String? city, int? bhk}) =>
+      _service.fetchAllOwnerPropertiesPaged(token: token, page: page, city: city, bhk: bhk);
 
   Future<List<Property>> fetchTwoBhkProperties({required String token}) =>
       _service.fetchTwoBhkProperties(token: token);

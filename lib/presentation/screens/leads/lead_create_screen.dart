@@ -135,12 +135,13 @@ class _LeadCreateScreenState extends ConsumerState<LeadCreateScreen> {
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
+            centerTitle: true,
             pinned: true,
             backgroundColor: Colors.white,
             surfaceTintColor: Colors.white,
             elevation: 0,
             title: const Text(
-              'Create Buyer Lead',
+              'Property Inquiry',
               style: TextStyle(fontWeight: FontWeight.w900, color: _kTextDark),
             ),
           ),

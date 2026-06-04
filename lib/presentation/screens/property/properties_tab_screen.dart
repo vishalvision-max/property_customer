@@ -272,6 +272,7 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
               token,
               page: page,
               city: _panchkulaSelected ? _selectedCity : null,
+              bhk: _selectedBHKs.isNotEmpty ? _selectedBHKs.first : null,
             );
         fetched = result.items;
         hasMore = result.hasMore;

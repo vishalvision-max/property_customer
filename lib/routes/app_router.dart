@@ -15,6 +15,7 @@ import '../presentation/screens/leads/leads_screen.dart';
 import '../presentation/screens/profile/profile_screen.dart';
 import '../presentation/screens/profile/edit_owner_profile_screen.dart';
 import '../presentation/screens/profile/change_password_screen.dart';
+import '../presentation/screens/profile/scheduled_visits_screen.dart';
 import '../presentation/screens/property/property_details_screen.dart';
 import '../presentation/screens/property/property_list_screen.dart';
 import '../presentation/screens/property/property_name_search_args.dart';
@@ -144,6 +145,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/favorites',
         builder: (context, state) => const FavoritesScreen(),
+      ),
+      GoRoute(
+        path: '/scheduled-visits',
+        builder: (context, state) => const ScheduledVisitsScreen(),
       ),
       GoRoute(
         path: '/notifications',

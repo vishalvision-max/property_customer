@@ -50,7 +50,7 @@ class PropertyNotifier extends _$PropertyNotifier {
       final repo = ref.read(propertyRepositoryProvider);
       List<Property> all;
       if (lat != null && lng != null) {
-        all = await repo.fetchNearby(lat: lat, lng: lng, radius: radius);
+        all = await repo.fetchNearby(lat: lat, lng: lng, radius: radius, token: token);
       } else {
         all = await repo.fetchAll();
       }
@@ -94,7 +94,7 @@ class PropertyNotifier extends _$PropertyNotifier {
       List<Property> allProps = const [];
 
       if (lat != null && lng != null) {
-        allProps = await repo.fetchNearby(lat: lat, lng: lng, radius: radius);
+        allProps = await repo.fetchNearby(lat: lat, lng: lng, radius: radius, token: token);
       } else {
         allProps = await repo.fetchAll();
       }
@@ -203,8 +203,9 @@ class PropertyNotifier extends _$PropertyNotifier {
   }) async {
     final repo = ref.read(propertyRepositoryProvider);
     List<Property> all;
+    final token = ref.read(authProvider).user?.token;
     if (lat != null && lng != null) {
-      all = await repo.fetchNearby(lat: lat, lng: lng, radius: radius);
+      all = await repo.fetchNearby(lat: lat, lng: lng, radius: radius, token: token);
     } else {
       all = await repo.fetchAll();
     }
@@ -264,7 +265,8 @@ class PropertyNotifier extends _$PropertyNotifier {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final repo = ref.read(propertyRepositoryProvider);
-      final items = await repo.fetchNearby(lat: lat, lng: lng, radius: radius);
+      final token = ref.read(authProvider).user?.token;
+      final items = await repo.fetchNearby(lat: lat, lng: lng, radius: radius, token: token);
       state = state.copyWith(isLoading: false, nearby: items, error: null);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -457,9 +459,9 @@ class PropertyNotifier extends _$PropertyNotifier {
   }
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
-  fetchAllOwnerPropertiesPaged(String token, {int page = 1, String? city}) {
+  fetchAllOwnerPropertiesPaged(String token, {int page = 1, String? city, int? bhk}) {
     final repo = ref.read(propertyRepositoryProvider);
-    return repo.fetchAllOwnerPropertiesPaged(token: token, page: page, city: city);
+    return repo.fetchAllOwnerPropertiesPaged(token: token, page: page, city: city, bhk: bhk);
   }
 
   Future<List<Property>> fetchRelatedProperties(String propertyId) {

@@ -264,6 +264,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           title: 'Saved Properties',
                           onTap: () => context.push('/favorites'),
                         ),
+                        _buildDivider(),
+                        _SettingsTile(
+                          icon: Icons.calendar_month_outlined,
+                          title: 'My Scheduled Visits',
+                          onTap: () => context.push('/scheduled-visits'),
+                        ),
                       ],
                     ),
                   ),

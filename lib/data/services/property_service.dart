@@ -328,13 +328,15 @@ class PropertyService {
     required String token,
     int page = 1,
     String? city,
+    int? bhk,
   }) async {
     final uri = _baseUri.replace(
-      path: '/api/v1/owner/all/properties',
+      path: '/api/v1/properties',
       queryParameters: {
         'page': page.toString(),
         't': DateTime.now().millisecondsSinceEpoch.toString(),
         if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
+        if (bhk != null) 'bhk': bhk.toString(),
       },
     );
     debugPrint('[PropertyService] GET $uri');
@@ -406,16 +408,17 @@ class PropertyService {
   Future<List<Property>> fetchNearby({
     required double lat,
     required double lng,
-    int radius = 100,
+    int radius = 2,
+    String? token,
   }) async {
     return _fetchFromApi(
-      path: '/api/v1/properties/nearby',
+      path: '/api/v1/owner/nearby/properties',
       query: <String, String>{
-        'per_page': '250',
         'lat': lat.toString(),
         'lng': lng.toString(),
         'radius': radius.toString(),
       },
+      token: token,
     );
   }
 
@@ -999,6 +1002,7 @@ class PropertyService {
   Future<List<Property>> _fetchFromApi({
     String path = '/api/v1/properties',
     Map<String, String> query = const <String, String>{},
+    String? token,
   }) async {
     if (kIsWeb) {
       throw Exception('Properties API is not supported on web in this build');
@@ -1015,6 +1019,9 @@ class PropertyService {
     try {
       final req = await client.getUrl(uri);
       req.headers.set('Accept', 'application/json');
+      if (token != null && token.isNotEmpty) {
+        req.headers.set('Authorization', 'Bearer $token');
+      }
 
       final res = await req.close();
       final body = await res.transform(utf8.decoder).join();

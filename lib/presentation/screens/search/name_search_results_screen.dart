@@ -549,7 +549,30 @@ class _NameSearchResultsScreenState
         if (!localityMatch) return false;
       }
 
-      // 3. (API handles BHK type match - removed local filter)
+      // 3. BHK Match (Local Filter)
+      if (filters.selectedBhk.isNotEmpty) {
+        bool bhkMatch = false;
+        final int propertyBhk = p.bhk ?? 0;
+        
+        for (final bhkString in filters.selectedBhk) {
+          final digitsMatch = RegExp(r'(\d+)').firstMatch(bhkString);
+          if (digitsMatch != null) {
+            final int filterValue = int.parse(digitsMatch.group(0)!);
+            if (bhkString.contains('+')) {
+              if (propertyBhk >= filterValue) {
+                bhkMatch = true;
+                break;
+              }
+            } else {
+              if (propertyBhk == filterValue) {
+                bhkMatch = true;
+                break;
+              }
+            }
+          }
+        }
+        if (!bhkMatch) return false;
+      }
 
       // 4. Property Type Match
       if (filters.selectedPropertyTypes.isNotEmpty) {

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 
 import '../models/lead.dart';
 
@@ -154,41 +155,33 @@ class LeadService {
     required String type,
     required int propertyId,
   }) async {
-    if (kIsWeb) {
-      throw Exception('Leads API is not supported on web in this build');
-    }
     final uri = _baseUri.replace(path: '/api/v1/save-buyer-leads');
 
-    final client = HttpClient();
     try {
-      final req = await client.postUrl(uri);
-      req.headers.contentType = ContentType.json;
-      req.headers.set('Accept', 'application/json');
-      req.headers.set('Authorization', 'Bearer ${token.trim()}');
+      final request = http.MultipartRequest('POST', uri);
+      request.headers['Accept'] = 'application/json';
+      request.headers['Authorization'] = 'Bearer ${token.trim()}';
 
-      req.write(
-        jsonEncode(<String, dynamic>{
-          'name': name,
-          'phone': phone,
-          'email': email,
-          'message': message,
-          'type': type,
-          'lead_types': 'buyer',
-          'property_id': propertyId,
-        }),
-      );
+      request.fields['name'] = name;
+      request.fields['phone'] = phone;
+      request.fields['email'] = email;
+      request.fields['message'] = message;
+      request.fields['type'] = type;
+      request.fields['lead_types'] = 'buyer';
+      if (propertyId > 0) {
+        request.fields['property_id'] = propertyId.toString();
+      }
 
-      final res = await req.close();
-      final body = await res.transform(utf8.decoder).join();
-      final code = res.statusCode;
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      
+      final code = response.statusCode;
       if (code < 200 || code >= 300) {
-        final msg = _extractError(body) ?? 'Failed to submit buyer lead ($code)';
+        final msg = _extractError(response.body) ?? 'Failed to submit buyer lead ($code)';
         throw Exception(msg);
       }
     } on SocketException {
       throw Exception('Network error. Please check your internet connection.');
-    } finally {
-      client.close(force: true);
     }
   }
 

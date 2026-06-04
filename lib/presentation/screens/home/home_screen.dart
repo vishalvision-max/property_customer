@@ -296,7 +296,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: _PopularSearches(
                   items: const [
-                    '2 BHK ',
+                    '2 BHK',
                     'Flats under 50L',
                     // 'Near Railway Station',
                     'Ready to Move',
