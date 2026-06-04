@@ -301,6 +301,100 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           isDestructive: true,
                           onTap: () async {
                             final router = GoRouter.of(context);
+                            final confirm = await showModalBottomSheet<bool>(
+                              context: context,
+                              backgroundColor: Colors.white,
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                              ),
+                              builder: (ctx) => SafeArea(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(24.0),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 50,
+                                        height: 5,
+                                        decoration: BoxDecoration(
+                                          color: _kBorder,
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 24),
+                                      Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.shade50,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Icon(Icons.logout_rounded, color: Colors.red.shade400, size: 32),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      const Text(
+                                        'Logout',
+                                        style: TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
+                                          color: _kTextDark,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      const Text(
+                                        'Are you sure you want to log out of your account?',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          color: _kTextMid,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 32),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: TextButton(
+                                              onPressed: () => Navigator.of(ctx).pop(false),
+                                              style: TextButton.styleFrom(
+                                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                                backgroundColor: _kBg,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(14),
+                                                ),
+                                              ),
+                                              child: const Text(
+                                                'Cancel',
+                                                style: TextStyle(color: _kTextDark, fontWeight: FontWeight.bold, fontSize: 16),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 16),
+                                          Expanded(
+                                            child: ElevatedButton(
+                                              onPressed: () => Navigator.of(ctx).pop(true),
+                                              style: ElevatedButton.styleFrom(
+                                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                                backgroundColor: Colors.red.shade500,
+                                                elevation: 0,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(14),
+                                                ),
+                                              ),
+                                              child: const Text(
+                                                'Yes, Logout',
+                                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+
+                            if (confirm != true) return;
+                            
                             await ref.read(authProvider.notifier).logout();
                             if (!mounted) return;
                             router.go('/login');
