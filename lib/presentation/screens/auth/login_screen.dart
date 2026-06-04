@@ -1,10 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
 
-import '../../../core/constants/app_spacing.dart';
-import '../../../core/utils/app_snackbar.dart';
-import '../../../core/validators/validators.dart';
+import '../../../data/models/user.dart';
+import '../../../providers/app_providers.dart';
 import '../../../providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -16,239 +18,290 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _email = TextEditingController();
-  final _password = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _otpController = TextEditingController();
 
-  bool _valid = false;
-  bool _obscure = true;
-  bool _loginRequested = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _email.addListener(_recompute);
-    _password.addListener(_recompute);
-  }
+  bool _isLoading = false;
+  bool _otpSent = false;
 
   @override
   void dispose() {
-    _email.dispose();
-    _password.dispose();
+    _phoneController.dispose();
+    _otpController.dispose();
     super.dispose();
   }
 
-  void _recompute() {
-    final ok =
-        Validators.email(_email.text) == null &&
-        Validators.password(_password.text) == null;
-    if (ok != _valid) setState(() => _valid = ok);
+  Future<void> _sendOtp() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await http.post(
+        Uri.parse('https://propertysearch.visionvivante.in/api/v1/owner/auth/send/otp'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: {
+          'phone': _phoneController.text.trim(),
+        },
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (mounted) {
+          setState(() {
+            _otpSent = true;
+            
+            // Auto-fill OTP in debug mode / test environment
+            if (data['otp'] != null) {
+              _otpController.text = data['otp'].toString();
+            }
+          });
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(data['message'] ?? 'OTP Sent Successfully')),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(data['message'] ?? 'Failed to send OTP')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _verifyOtp() async {
+    if (_otpController.text.trim().length != 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid 6-digit OTP')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await http.post(
+        Uri.parse('https://propertysearch.visionvivante.in/api/v1/owner/auth/verify/otp'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: {
+          'phone': _phoneController.text.trim(),
+          'otp': _otpController.text.trim(),
+        },
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Login Successful')),
+          );
+
+          // Save token and user manually to prevent a duplicate API call
+          if (data['token'] != null && data['user'] != null) {
+            final storage = ref.read(localStorageProvider);
+            
+            final rawUser = User.fromJson(data['user']);
+            final fullUser = User(
+              id: rawUser.id,
+              name: rawUser.name.isNotEmpty ? rawUser.name : 'User ${rawUser.id}',
+              email: rawUser.email.isNotEmpty ? rawUser.email : '${_phoneController.text.trim()}@example.com',
+              token: data['token'].toString(),
+            );
+            
+            await storage.saveUser(fullUser);
+            
+            // Hydrate the global authProvider so GoRouter knows we are authenticated
+            await ref.read(authProvider.notifier).bootstrap();
+          }
+
+          if (!mounted) return;
+
+          // Navigate to HomeScreen
+          context.go('/home');
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(data['message'] ?? 'Invalid OTP')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final auth = ref.watch(authProvider);
-
-    ref.listen(authProvider, (prev, next) {
-      final err = next.error;
-      if (err != null && err.isNotEmpty) {
-        AppSnackbar.showError(context, err.replaceFirst('Exception: ', ''));
-      }
-      final loginFinished = (prev?.isLoading ?? false) && !next.isLoading;
-      if (_loginRequested &&
-          loginFinished &&
-          next.error == null &&
-          next.user != null) {
-        _loginRequested = false;
-        final from = GoRouterState.of(context).uri.queryParameters['from'];
-        context.go((from != null && from.isNotEmpty) ? from : '/home');
-      }
-    });
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      appBar: AppBar(
+        title: const Text('Login'),
+        centerTitle: true,
+      ),
       body: SafeArea(
         child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: ListView(
-              padding: AppSpacing.pagePadding,
-              children: [
-                const SizedBox(height: 40),
-
-                /// Title
-                Text(
-                  'Welcome back',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.2,
-                  ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
-
-                const SizedBox(height: 8),
-
-                Text(
-                  'Sign in to your account',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
-                ),
-
-                const SizedBox(height: 32),
-
-                /// Card
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black,
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
                   child: Form(
                     key: _formKey,
-                    onChanged: _recompute,
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        /// Email
-                        TextFormField(
-                          controller: _email,
-                          decoration: _inputDecoration('Email'),
-                          validator: Validators.email,
-                          autovalidateMode: AutovalidateMode.onUserInteraction,
-                          keyboardType: TextInputType.emailAddress,
-                          textInputAction: TextInputAction.next,
+                        const Icon(
+                          Icons.real_estate_agent_rounded,
+                          size: 64,
+                          color: Colors.blueAccent,
                         ),
-
-                        const SizedBox(height: 16),
-
-                        /// Password
-                        TextFormField(
-                          controller: _password,
-                          obscureText: _obscure,
-                          decoration: _inputDecoration('Password').copyWith(
-                            suffixIcon: IconButton(
-                              onPressed: () =>
-                                  setState(() => _obscure = !_obscure),
-                              icon: Icon(
-                                _obscure
-                                    ? Icons.visibility_outlined
-                                    : Icons.visibility_off_outlined,
-                              ),
-                            ),
+                        const SizedBox(height: 24),
+                        Text(
+                          'Welcome Back',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
                           ),
-                          validator: Validators.password,
-                          autovalidateMode: AutovalidateMode.onUserInteraction,
-                          textInputAction: TextInputAction.done,
-                          onFieldSubmitted: (_) async {
-                            if (!_valid || auth.isLoading) return;
-                            if (!_formKey.currentState!.validate()) return;
-                            _loginRequested = true;
-                            await ref
-                                .read(authProvider.notifier)
-                                .login(
-                                  email: _email.text.trim(),
-                                  password: _password.text,
-                                );
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _otpSent ? 'Enter the OTP sent to your phone' : 'Sign in with your phone number',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.grey),
+                        ),
+                        const SizedBox(height: 32),
+                        
+                        TextFormField(
+                          controller: _phoneController,
+                          keyboardType: TextInputType.phone,
+                          enabled: !_otpSent && !_isLoading,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(10),
+                          ],
+                          decoration: const InputDecoration(
+                            labelText: 'Phone Number',
+                            prefixIcon: Icon(Icons.phone),
+                            border: OutlineInputBorder(),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Phone number is required';
+                            }
+                            if (value.length != 10) {
+                              return 'Enter a valid 10-digit number';
+                            }
+                            return null;
                           },
                         ),
 
-                        const SizedBox(height: 12),
-
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: () => context.push('/forgot'),
-                            child: const Text('Forgot password?'),
+                        if (_otpSent) ...[
+                          const SizedBox(height: 20),
+                          TextFormField(
+                            controller: _otpController,
+                            keyboardType: TextInputType.number,
+                            enabled: !_isLoading,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(6),
+                            ],
+                            decoration: const InputDecoration(
+                              labelText: 'OTP',
+                              prefixIcon: Icon(Icons.lock),
+                              border: OutlineInputBorder(),
+                            ),
                           ),
-                        ),
+                        ],
 
-                        const SizedBox(height: 12),
-
-                        /// Button
+                        const SizedBox(height: 32),
+                        
                         SizedBox(
-                          width: double.infinity,
-                          height: 48,
+                          height: 50,
                           child: ElevatedButton(
-                            onPressed: _valid && !auth.isLoading
-                                ? () async {
-                                    if (!_formKey.currentState!.validate()) {
-                                      return;
-                                    }
-                                    _loginRequested = true;
-                                    await ref
-                                        .read(authProvider.notifier)
-                                        .login(
-                                          email: _email.text.trim(),
-                                          password: _password.text,
-                                        );
-                                  }
-                                : null,
+                            onPressed: _isLoading ? null : (_otpSent ? _verifyOtp : _sendOtp),
                             style: ElevatedButton.styleFrom(
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            child: auth.isLoading
+                            child: _isLoading
                                 ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(strokeWidth: 2.5),
                                   )
-                                : const Text(
-                                    'Login',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                                : Text(
+                                    _otpSent ? 'Verify OTP' : 'Send OTP',
+                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                                   ),
                           ),
                         ),
+
+                        if (_otpSent) ...[
+                          const SizedBox(height: 16),
+                          TextButton(
+                            onPressed: _isLoading
+                                ? null
+                                : () {
+                                    setState(() {
+                                      _otpSent = false;
+                                      _otpController.clear();
+                                    });
+                                  },
+                            child: const Text('Change Phone Number'),
+                          ),
+                        ],
                       ],
                     ),
                   ),
                 ),
-
-                const SizedBox(height: 20),
-
-                /// Signup
-                // Row(
-                //   mainAxisAlignment: MainAxisAlignment.center,
-                //   children: [
-                //     Text(
-                //       'New here?',
-                //       style: TextStyle(color: Colors.grey.shade600),
-                //     ),
-                //     TextButton(
-                //       onPressed: () => context.push('/signup'),
-                //       child: const Text('Create account'),
-                //     ),
-                //   ],
-                // ),
-              ],
+              ),
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  InputDecoration _inputDecoration(String label) {
-    return InputDecoration(
-      labelText: label,
-      filled: true,
-      fillColor: const Color(0xFFF1F3F5),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
       ),
     );
   }

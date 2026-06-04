@@ -19,5 +19,23 @@ class AppSnackbar {
       ),
     );
   }
+
+  static void showPersistentMessage(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(days: 365), // practically infinite
+        action: SnackBarAction(
+          label: 'Close',
+          textColor: Colors.white,
+          onPressed: () {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          },
+        ),
+      ),
+    );
+  }
 }
 

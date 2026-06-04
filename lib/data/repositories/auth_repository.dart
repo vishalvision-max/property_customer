@@ -16,6 +16,16 @@ class AuthRepository {
     return user;
   }
 
+  Future<String> sendOtp({required String phone}) async {
+    return _service.sendOtp(phone: phone);
+  }
+
+  Future<User> verifyOtp({required String phone, required String otp}) async {
+    final user = await _service.verifyOtp(phone: phone, otp: otp);
+    await _storage.saveUser(user);
+    return user;
+  }
+
   Future<User> signup({
     required String name,
     required String email,

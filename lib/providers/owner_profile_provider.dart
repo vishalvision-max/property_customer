@@ -45,12 +45,13 @@ class OwnerProfileNotifier extends _$OwnerProfileNotifier {
   Future<OwnerProfile?> update({
     required String token,
     required String name,
+    required String email,
     File? imageFile,
   }) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final repo = ref.read(ownerRepositoryProvider);
-      final updated = await repo.updateProfile(token: token, name: name, imageFile: imageFile);
+      final updated = await repo.updateProfile(token: token, name: name, email: email, imageFile: imageFile);
       try {
         final fresh = await repo.fetchProfile(token: token);
         state = state.copyWith(isLoading: false, profile: fresh, error: null);

@@ -100,7 +100,8 @@ PropertySpecs getPropertySpecs(Property p) {
   String parking = '';
   if (p.parking != null && p.parking! > 0) {
     parking = '${p.parking}';
-  } else if (p.amenities.contains('Parking') || p.amenities.contains('Visitor Parking')) {
+  } else if (p.amenities.contains('Parking') ||
+      p.amenities.contains('Visitor Parking')) {
     parking = 'Yes';
   }
 
@@ -111,7 +112,7 @@ PropertySpecs getPropertySpecs(Property p) {
   } else if (p.propertyKind.trim().isNotEmpty) {
     type = p.propertyKind.trim();
   }
-  
+
   if (p.type.toLowerCase() == 'pg') {
     type = 'PG / Co-Living';
   }
@@ -683,15 +684,28 @@ class PropertyCard extends ConsumerWidget {
                               onPressed: () async {
                                 final phone = property.ownerPhone?.trim() ?? '';
                                 if (phone.isEmpty) return;
-                                String cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
-                                if (!cleanPhone.startsWith('+') && cleanPhone.length == 10) {
+                                String cleanPhone = phone.replaceAll(
+                                  RegExp(r'[^\d+]'),
+                                  '',
+                                );
+                                if (!cleanPhone.startsWith('+') &&
+                                    cleanPhone.length == 10) {
                                   cleanPhone = '91$cleanPhone';
                                 }
-                                final url = Uri.parse('https://wa.me/$cleanPhone');
+                                final url = Uri.parse(
+                                  'https://wa.me/$cleanPhone',
+                                );
                                 try {
-                                  await launchUrl(url, mode: LaunchMode.externalNonBrowserApplication);
+                                  await launchUrl(
+                                    url,
+                                    mode: LaunchMode
+                                        .externalNonBrowserApplication,
+                                  );
                                 } catch (_) {
-                                  launchUrl(url, mode: LaunchMode.externalApplication);
+                                  launchUrl(
+                                    url,
+                                    mode: LaunchMode.externalApplication,
+                                  );
                                 }
                               },
                             ),

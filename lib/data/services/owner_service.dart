@@ -57,6 +57,7 @@ class OwnerService {
   Future<OwnerProfile> updateProfile({
     required String token,
     required String name,
+    required String email,
     File? imageFile,
   }) async {
     if (kIsWeb) {
@@ -70,6 +71,7 @@ class OwnerService {
       req.headers['accept'] = 'application/json';
       req.headers['authorization'] = 'Bearer ${token.trim()}';
       req.fields['name'] = name.trim();
+      req.fields['email'] = email.trim();
 
       if (imageFile != null) {
         final file = await http.MultipartFile.fromPath('image', imageFile.path);

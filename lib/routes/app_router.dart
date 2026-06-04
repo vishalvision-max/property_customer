@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../presentation/screens/auth/forgot_password_screen.dart';
 import '../presentation/screens/auth/login_screen.dart';
+import '../presentation/screens/auth/otp_screen.dart';
 import '../presentation/screens/auth/onboarding_screen.dart';
 import '../presentation/screens/auth/signup_screen.dart';
 import '../presentation/screens/auth/splash_screen.dart';
@@ -89,6 +90,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const OnboardingScreen(),
       ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: '/verify-otp',
+        builder: (context, state) {
+          final phone = state.extra as String? ?? '';
+          return OtpScreen(phone: phone);
+        },
+      ),
       // GoRoute(
       //   path: '/signup',
       //   builder: (context, state) => const SignupScreen(),

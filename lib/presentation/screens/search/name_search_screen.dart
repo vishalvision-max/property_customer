@@ -172,9 +172,8 @@ class _NameSearchScreenState extends ConsumerState<NameSearchScreen> {
                             ),
                           );
                         },
-                        loading: () => const Center(
-                          child: CircularProgressIndicator(),
-                        ),
+                        loading: () =>
+                            const Center(child: CircularProgressIndicator()),
                         error: (_, _) => const Center(
                           child: Text(
                             'Start typing to search',
@@ -215,11 +214,6 @@ class _NameSearchScreenState extends ConsumerState<NameSearchScreen> {
                   ),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _submit,
-        icon: const Icon(Icons.search_rounded),
-        label: const Text('Search'),
       ),
     );
   }

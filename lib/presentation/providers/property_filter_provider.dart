@@ -195,6 +195,7 @@ class PropertyFilterNotifier extends StateNotifier<PropertyFilterState> {
 
   int getActiveFilterCount() {
     int count = 0;
+    if (state.selectedIntent.isNotEmpty) count += 1;
     if (state.selectedLocalities.isNotEmpty) count += 1;
     if (state.selectedBhk.isNotEmpty) count += 1;
     if (state.selectedPropertyTypes.isNotEmpty) count += 1;

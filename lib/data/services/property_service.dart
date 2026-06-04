@@ -18,7 +18,9 @@ class PropertyService {
     required String date,
     required String time,
   }) async {
-    final uri = _baseUri.replace(path: '/api/v1/owner/scheduled/visit/property');
+    final uri = _baseUri.replace(
+      path: '/api/v1/owner/scheduled/visit/property',
+    );
     final response = await http.post(
       uri,
       headers: {
@@ -46,33 +48,33 @@ class PropertyService {
   }
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
-  fetchAllPaged({int page = 1}) =>
-      _fetchSpecializedPaged(
-        token: '',
-        errorLabel: 'All Properties',
-        path: '/api/v1/properties',
-        page: page,
-      );
+  fetchAllPaged({int page = 1}) => _fetchSpecializedPaged(
+    token: '',
+    errorLabel: 'All Properties',
+    path: '/api/v1/properties',
+    page: page,
+  );
 
   /// Full-featured filter API call matching:
   /// GET /api/v1/properties?type=sale&bhk=1&property_kind=commercial
   ///   &category_id=2&bathrooms=2&amenities=2&property_age_years=5000
   ///   &added=yesterday&furnishing=furnished&min_price=...&max_price=...
   Future<List<Property>> fetchWithFilters({
-    String? type,            // 'sale' | 'rent' | 'co-living' | 'pg' | 'lease'
-    List<String> furnishing = const [],  // 'unfurnished' | 'furnished'
-    List<int> bhk = const [],            // plain int: bhk=1&bhk=2
+    String? type, // 'sale' | 'rent' | 'co-living' | 'pg' | 'lease'
+    List<String> furnishing = const [], // 'unfurnished' | 'furnished'
+    List<int> bhk = const [], // plain int: bhk=1&bhk=2
     String? city,
-    List<String> amenities = const [],   // numeric IDs as strings: ['1','2']
+    List<String> amenities = const [], // numeric IDs as strings: ['1','2']
     int? bathrooms,
     double? minArea,
     double? maxArea,
-    String? added,           // 'yesterday' | 'last_3_days' | 'last_week' | 'last_month'
-    int? propertyAgeYears,   // sent as property_age_years=N (e.g. 1, 3, 5, 10, 5000)
-    String? availability,    // e.g. 'ready_to_move'
+    String? added, // 'yesterday' | 'last_3_days' | 'last_week' | 'last_month'
+    int?
+    propertyAgeYears, // sent as property_age_years=N (e.g. 1, 3, 5, 10, 5000)
+    String? availability, // e.g. 'ready_to_move'
     int? minPrice,
     int? maxPrice,
-    int? categoryId,         // property type as backend category_id
+    List<int> categoryIds = const [], // property types as backend category_id[]
   }) async {
     if (kIsWeb) {
       throw Exception('Properties API is not supported on web in this build');
@@ -82,9 +84,15 @@ class PropertyService {
     final params = <(String, String)>[];
 
     params.add(('per_page', '250')); // always return max results for filtering
-    if (type != null && type.trim().isNotEmpty) params.add(('type', type.trim()));
-    if (city != null && city.trim().isNotEmpty) params.add(('city', city.trim()));
-    if (categoryId != null) params.add(('category_id', categoryId.toString()));
+    if (type != null && type.trim().isNotEmpty)
+      params.add(('type', type.trim()));
+    if (city != null && city.trim().isNotEmpty)
+      params.add(('city', city.trim()));
+
+    // category_id: array representation → category_id[]=2&category_id[]=34
+    for (final cid in categoryIds) {
+      params.add(('category_id[]', cid.toString()));
+    }
     // BHK: plain repeated keys → bhk=1&bhk=2
     for (final b in bhk) {
       params.add(('bhk', b.toString()));
@@ -94,9 +102,12 @@ class PropertyService {
     if (maxArea != null) params.add(('max_area', maxArea.toInt().toString()));
     if (minPrice != null) params.add(('min_price', minPrice.toString()));
     if (maxPrice != null) params.add(('max_price', maxPrice.toString()));
-    if (added != null && added.trim().isNotEmpty) params.add(('added', added.trim()));
-    if (propertyAgeYears != null) params.add(('property_age_years', propertyAgeYears.toString()));
-    if (availability != null && availability.trim().isNotEmpty) params.add(('availability', availability.trim()));
+    if (added != null && added.trim().isNotEmpty)
+      params.add(('added', added.trim()));
+    if (propertyAgeYears != null)
+      params.add(('property_age_years', propertyAgeYears.toString()));
+    if (availability != null && availability.trim().isNotEmpty)
+      params.add(('availability', availability.trim()));
 
     // Furnishing: plain repeated key → furnishing=unfurnished
     for (final f in furnishing) {
@@ -109,11 +120,15 @@ class PropertyService {
 
     // Build query string manually to support repeated keys
     final queryString = params
-        .map((p) => '${Uri.encodeQueryComponent(p.$1)}=${Uri.encodeQueryComponent(p.$2)}')
+        .map(
+          (p) =>
+              '${Uri.encodeQueryComponent(p.$1)}=${Uri.encodeQueryComponent(p.$2)}',
+        )
         .join('&');
 
-    final uriStr = '${_baseUri.toString()}/api/v1/properties'
-        + (queryString.isNotEmpty ? '?$queryString' : '');
+    final uriStr =
+        '${_baseUri.toString()}/api/v1/properties' +
+        (queryString.isNotEmpty ? '?$queryString' : '');
 
     final uri = Uri.parse(uriStr);
     debugPrint('[PropertyService] fetchWithFilters GET $uri');
@@ -126,10 +141,14 @@ class PropertyService {
       final res = await req.close();
       final body = await res.transform(utf8.decoder).join();
       final status = res.statusCode;
-      debugPrint('[PropertyService] fetchWithFilters → $status (${body.length} bytes)');
+      debugPrint(
+        '[PropertyService] fetchWithFilters → $status (${body.length} bytes)',
+      );
 
       if (status < 200 || status >= 300) {
-        debugPrint('[PropertyService] fetchWithFilters error: ${body.substring(0, body.length.clamp(0, 300))}');
+        debugPrint(
+          '[PropertyService] fetchWithFilters error: ${body.substring(0, body.length.clamp(0, 300))}',
+        );
         throw Exception('Failed to load filtered properties ($status)');
       }
 
@@ -138,7 +157,8 @@ class PropertyService {
       if (decoded is List) {
         items = decoded;
       } else if (decoded is Map<String, dynamic>) {
-        final outer = decoded['data'] ?? decoded['properties'] ?? decoded['result'];
+        final outer =
+            decoded['data'] ?? decoded['properties'] ?? decoded['result'];
         if (outer is List) {
           items = outer;
         } else if (outer is Map) {
@@ -151,7 +171,9 @@ class PropertyService {
         items = const [];
       }
 
-      debugPrint('[PropertyService] fetchWithFilters parsed ${items.length} items');
+      debugPrint(
+        '[PropertyService] fetchWithFilters parsed ${items.length} items',
+      );
       return items
           .whereType<Map>()
           .map((e) => _propertyFromApiJson(e.cast<String, dynamic>()))
@@ -394,9 +416,7 @@ class PropertyService {
   Future<List<Property>> fetchRelatedProperties(String propertyId) async {
     return _fetchFromApi(
       path: '/api/v1/related/properties',
-      query: <String, String>{
-        'property_id': propertyId,
-      },
+      query: <String, String>{'property_id': propertyId},
     );
   }
 
@@ -592,12 +612,13 @@ class PropertyService {
   }
 
   /// Industrial Shed — /api/v1/owner/industrial/shed/properties
-  Future<List<Property>> fetchIndustrialShedProperties({required String token}) =>
-      _fetchSpecialized(
-        token: token,
-        errorLabel: 'Industrial Shed properties',
-        path: '/api/v1/owner/industrial/shed/properties',
-      );
+  Future<List<Property>> fetchIndustrialShedProperties({
+    required String token,
+  }) => _fetchSpecialized(
+    token: token,
+    errorLabel: 'Industrial Shed properties',
+    path: '/api/v1/owner/industrial/shed/properties',
+  );
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
   fetchIndustrialShedPropertiesPaged({required String token, int page = 1}) =>
@@ -609,12 +630,13 @@ class PropertyService {
       );
 
   /// Agricultural Land — /api/v1/owner/agricultural/land/properties
-  Future<List<Property>> fetchAgriculturalLandProperties({required String token}) =>
-      _fetchSpecialized(
-        token: token,
-        errorLabel: 'Agricultural Land properties',
-        path: '/api/v1/owner/agricultural/land/properties',
-      );
+  Future<List<Property>> fetchAgriculturalLandProperties({
+    required String token,
+  }) => _fetchSpecialized(
+    token: token,
+    errorLabel: 'Agricultural Land properties',
+    path: '/api/v1/owner/agricultural/land/properties',
+  );
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
   fetchAgriculturalLandPropertiesPaged({required String token, int page = 1}) =>
@@ -643,9 +665,7 @@ class PropertyService {
       );
 
   /// Flats under 50 Lakhs — /api/v1/owner/flats/under/fiftylakh
-  Future<List<Property>> fetchFlatsUnderFiftyLakh({
-    required String token,
-  }) =>
+  Future<List<Property>> fetchFlatsUnderFiftyLakh({required String token}) =>
       _fetchSpecialized(
         token: token,
         errorLabel: 'Flats under 50L',
@@ -662,9 +682,7 @@ class PropertyService {
       );
 
   /// Ready to Move — /api/v1/owner/availability/readytomove
-  Future<List<Property>> fetchReadyToMoveProperties({
-    required String token,
-  }) =>
+  Future<List<Property>> fetchReadyToMoveProperties({required String token}) =>
       _fetchSpecialized(
         token: token,
         errorLabel: 'Ready to Move',
@@ -681,9 +699,7 @@ class PropertyService {
       );
 
   /// Furnished — /api/v1/owner/furnishing/furnished
-  Future<List<Property>> fetchFurnishedProperties({
-    required String token,
-  }) =>
+  Future<List<Property>> fetchFurnishedProperties({required String token}) =>
       _fetchSpecialized(
         token: token,
         errorLabel: 'Furnished',
@@ -700,9 +716,7 @@ class PropertyService {
       );
 
   /// Gated Society — /api/v1/owner/gated/society
-  Future<List<Property>> fetchGatedSocietyProperties({
-    required String token,
-  }) =>
+  Future<List<Property>> fetchGatedSocietyProperties({required String token}) =>
       _fetchSpecialized(
         token: token,
         errorLabel: 'Gated Society',
@@ -721,12 +735,11 @@ class PropertyService {
   /// Studio Apartment — /api/v1/owner/studio/apartment
   Future<List<Property>> fetchStudioApartmentProperties({
     required String token,
-  }) =>
-      _fetchSpecialized(
-        token: token,
-        errorLabel: 'Studio Apartment',
-        path: '/api/v1/owner/studio/apartment',
-      );
+  }) => _fetchSpecialized(
+    token: token,
+    errorLabel: 'Studio Apartment',
+    path: '/api/v1/owner/studio/apartment',
+  );
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
   fetchStudioApartmentPropertiesPaged({required String token, int page = 1}) =>
@@ -962,9 +975,17 @@ class PropertyService {
       final propTypeOk = (propertyType == null || propertyType == 'Any')
           ? true
           : p.propertyKind.toLowerCase().contains(propertyType.toLowerCase()) ||
-            p.name.toLowerCase().contains(propertyType.toLowerCase()) ||
-            (propertyType == 'Industrial Shed' && ((p.categoryName ?? '').toLowerCase().contains('industrial') || p.propertyKind.toLowerCase().contains('industrial'))) ||
-            (propertyType == 'Agricultural Land' && ((p.categoryName ?? '').toLowerCase().contains('agricultur') || p.propertyKind.toLowerCase().contains('agricultur')));
+                p.name.toLowerCase().contains(propertyType.toLowerCase()) ||
+                (propertyType == 'Industrial Shed' &&
+                    ((p.categoryName ?? '').toLowerCase().contains(
+                          'industrial',
+                        ) ||
+                        p.propertyKind.toLowerCase().contains('industrial'))) ||
+                (propertyType == 'Agricultural Land' &&
+                    ((p.categoryName ?? '').toLowerCase().contains(
+                          'agricultur',
+                        ) ||
+                        p.propertyKind.toLowerCase().contains('agricultur')));
       return amenOk && propTypeOk;
     }).toList();
   }
@@ -992,10 +1013,14 @@ class PropertyService {
       final res = await req.close();
       final body = await res.transform(utf8.decoder).join();
       final status = res.statusCode;
-      debugPrint('[PropertyService] fetchFiltered → $status (${body.length} bytes)');
+      debugPrint(
+        '[PropertyService] fetchFiltered → $status (${body.length} bytes)',
+      );
 
       if (status < 200 || status >= 300) {
-        debugPrint('[PropertyService] fetchFiltered error body: ${body.substring(0, body.length.clamp(0, 300))}');
+        debugPrint(
+          '[PropertyService] fetchFiltered error body: ${body.substring(0, body.length.clamp(0, 300))}',
+        );
         throw Exception('Failed to load properties ($status)');
       }
       final decoded = body.trim().isEmpty ? null : jsonDecode(body);
@@ -1023,7 +1048,9 @@ class PropertyService {
         items = const [];
       }
 
-      debugPrint('[PropertyService] fetchFiltered parsed ${items.length} raw items');
+      debugPrint(
+        '[PropertyService] fetchFiltered parsed ${items.length} raw items',
+      );
       return items
           .whereType<Map>()
           .map((e) => _propertyFromApiJson(e.cast<String, dynamic>()))
@@ -1040,8 +1067,8 @@ class PropertyService {
     }
   }
 
-
-  Property propertyFromApiJson(Map<String, dynamic> json) => _propertyFromApiJson(json);
+  Property propertyFromApiJson(Map<String, dynamic> json) =>
+      _propertyFromApiJson(json);
 
   Property _propertyFromApiJson(Map<String, dynamic> json) {
     // Support a few common backend field-name variants to avoid breaking
@@ -1089,7 +1116,8 @@ class PropertyService {
     ].where((e) => e.trim().isNotEmpty).join(', ');
 
     final type = pickString(['type', 'mode', 'purpose']).toLowerCase();
-    final normalizedType = (type.contains('buy') || type.contains('sale') || type.contains('sell'))
+    final normalizedType =
+        (type.contains('buy') || type.contains('sale') || type.contains('sell'))
         ? 'buy'
         : (type.contains('rent') || type.contains('lease') ? 'rent' : 'buy');
 
@@ -1185,12 +1213,15 @@ class PropertyService {
     ]);
     final availability = DateTime.tryParse(availabilityRaw) ?? DateTime.now();
 
-    final resDetails = json['residential_details'] is Map ? Map<String, dynamic>.from(json['residential_details']) : <String, dynamic>{};
+    final resDetails = json['residential_details'] is Map
+        ? Map<String, dynamic>.from(json['residential_details'])
+        : <String, dynamic>{};
 
     final bhk = (() {
       if (pickInt(['bhk']) != 0) return pickInt(['bhk']);
       // residential_details may have numeric 'bhk' or string 'bhk_type' like '2 BHK'
-      if (resDetails['bhk'] != null) return int.tryParse(resDetails['bhk'].toString());
+      if (resDetails['bhk'] != null)
+        return int.tryParse(resDetails['bhk'].toString());
       final bhkType = resDetails['bhk_type']?.toString() ?? '';
       if (bhkType.isNotEmpty) {
         final m = RegExp(r'(\d+)').firstMatch(bhkType);
@@ -1198,15 +1229,43 @@ class PropertyService {
       }
       return null;
     })();
-    final bedrooms = pickInt(['bedrooms']) != 0 ? pickInt(['bedrooms']) : (resDetails['bedrooms'] != null ? int.tryParse(resDetails['bedrooms'].toString()) : null);
-    final bathrooms = pickInt(['bathrooms']) != 0 ? pickInt(['bathrooms']) : (resDetails['bathrooms'] != null ? int.tryParse(resDetails['bathrooms'].toString()) : null);
-    final balconies = pickInt(['balconies']) != 0 ? pickInt(['balconies']) : (resDetails['balconies'] != null ? int.tryParse(resDetails['balconies'].toString()) : null);
-    final parking = pickInt(['parking']) != 0 ? pickInt(['parking']) : (resDetails['parking'] != null ? int.tryParse(resDetails['parking'].toString()) : null);
-    
-    final superBuiltUpArea = json['super_built_up_area'] != null ? double.tryParse(json['super_built_up_area'].toString()) : (resDetails['super_built_up_area'] != null ? double.tryParse(resDetails['super_built_up_area'].toString()) : null);
-    final carpetArea = json['carpet_area'] != null ? double.tryParse(json['carpet_area'].toString()) : (resDetails['carpet_area'] != null ? double.tryParse(resDetails['carpet_area'].toString()) : null);
-    final builtUpArea = json['built_up_area'] != null ? double.tryParse(json['built_up_area'].toString()) : (resDetails['built_up_area'] != null ? double.tryParse(resDetails['built_up_area'].toString()) : null);
-    
+    final bedrooms = pickInt(['bedrooms']) != 0
+        ? pickInt(['bedrooms'])
+        : (resDetails['bedrooms'] != null
+              ? int.tryParse(resDetails['bedrooms'].toString())
+              : null);
+    final bathrooms = pickInt(['bathrooms']) != 0
+        ? pickInt(['bathrooms'])
+        : (resDetails['bathrooms'] != null
+              ? int.tryParse(resDetails['bathrooms'].toString())
+              : null);
+    final balconies = pickInt(['balconies']) != 0
+        ? pickInt(['balconies'])
+        : (resDetails['balconies'] != null
+              ? int.tryParse(resDetails['balconies'].toString())
+              : null);
+    final parking = pickInt(['parking']) != 0
+        ? pickInt(['parking'])
+        : (resDetails['parking'] != null
+              ? int.tryParse(resDetails['parking'].toString())
+              : null);
+
+    final superBuiltUpArea = json['super_built_up_area'] != null
+        ? double.tryParse(json['super_built_up_area'].toString())
+        : (resDetails['super_built_up_area'] != null
+              ? double.tryParse(resDetails['super_built_up_area'].toString())
+              : null);
+    final carpetArea = json['carpet_area'] != null
+        ? double.tryParse(json['carpet_area'].toString())
+        : (resDetails['carpet_area'] != null
+              ? double.tryParse(resDetails['carpet_area'].toString())
+              : null);
+    final builtUpArea = json['built_up_area'] != null
+        ? double.tryParse(json['built_up_area'].toString())
+        : (resDetails['built_up_area'] != null
+              ? double.tryParse(resDetails['built_up_area'].toString())
+              : null);
+
     String? furnishing = json['furnishing']?.toString();
     if (furnishing == null || furnishing.isEmpty) {
       furnishing = resDetails['furnishing']?.toString();
@@ -1215,13 +1274,17 @@ class PropertyService {
     if (facing.isEmpty) {
       facing = resDetails['facing']?.toString() ?? '';
     }
-    final categoryName = json['category'] is Map ? (json['category']['name']?.toString()) : null;
+    final categoryName = json['category'] is Map
+        ? (json['category']['name']?.toString())
+        : null;
     final ownerPhone = json['owner_phone']?.toString();
 
     // New Fields
-    final area = json['area'] != null ? double.tryParse(json['area'].toString()) : null;
+    final area = json['area'] != null
+        ? double.tryParse(json['area'].toString())
+        : null;
     final areaUnit = json['area_unit']?.toString();
-    
+
     final furnishingsList = <String>[];
     if (json['furnishings'] is List) {
       for (final item in json['furnishings']) {
@@ -1239,11 +1302,21 @@ class PropertyService {
       }
     }
 
-    final plotDetails = json['plot_details'] is Map ? Map<String, dynamic>.from(json['plot_details']) : null;
-    final pgDetails = json['pg_details'] is Map ? Map<String, dynamic>.from(json['pg_details']) : null;
-    final officeDetails = json['office_details'] is Map ? Map<String, dynamic>.from(json['office_details']) : null;
-    final shopDetails = json['shop_details'] is Map ? Map<String, dynamic>.from(json['shop_details']) : null;
-    final warehouseDetails = json['warehouse_details'] is Map ? Map<String, dynamic>.from(json['warehouse_details']) : null;
+    final plotDetails = json['plot_details'] is Map
+        ? Map<String, dynamic>.from(json['plot_details'])
+        : null;
+    final pgDetails = json['pg_details'] is Map
+        ? Map<String, dynamic>.from(json['pg_details'])
+        : null;
+    final officeDetails = json['office_details'] is Map
+        ? Map<String, dynamic>.from(json['office_details'])
+        : null;
+    final shopDetails = json['shop_details'] is Map
+        ? Map<String, dynamic>.from(json['shop_details'])
+        : null;
+    final warehouseDetails = json['warehouse_details'] is Map
+        ? Map<String, dynamic>.from(json['warehouse_details'])
+        : null;
     final residentialDetails = resDetails.isNotEmpty ? resDetails : null;
 
     return Property(
@@ -1252,7 +1325,8 @@ class PropertyService {
       location: location,
       price: price,
       type: normalizedType,
-      propertyKind: categoryName ?? pickString(['property_kind', 'propertyKind']),
+      propertyKind:
+          categoryName ?? pickString(['property_kind', 'propertyKind']),
       amenities: parseAmenities(),
       images: images,
       videos: videos,
@@ -1284,7 +1358,8 @@ class PropertyService {
       parkingCharges: pickInt(['parking_charges']),
       paintingCharges: pickInt(['painting_charges']),
       bookingAmount: pickInt(['booking_amount']),
-      priceNegotiable: json['price_negotiable'] == 1 || json['price_negotiable'] == true,
+      priceNegotiable:
+          json['price_negotiable'] == 1 || json['price_negotiable'] == true,
       propertyHighlights: pickString(['property_highlights']),
       promotionTags: pickString(['promotion_tags']),
       facing: facing.isNotEmpty ? facing : null,

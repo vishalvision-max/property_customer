@@ -225,6 +225,7 @@ class _NameSearchResultsScreenState
       // No location keyword found — pass empty string so the API
       // returns all properties (fetchAll behaviour) instead of
       // doing a literal search on the raw composite query string.
+      ref.read(propertyFilterProvider.notifier).updateCity('');
       return '';
     }
 
@@ -362,8 +363,11 @@ class _NameSearchResultsScreenState
           .whereType<String>()
           .toList();
 
-      // ── 4. category_id from selected property type ─────────────────────────
-      final categoryId = PropertyTypeSection.toCategoryId(filters.selectedPropertyTypes);
+      // ── 4. category_id from selected property types ────────────────────────
+      final categoryIds = filters.selectedPropertyTypes
+          .map((name) => PropertyTypeSection.categoryIdMap[name])
+          .whereType<int>()
+          .toList();
 
       // ── 5. Bathrooms → plain int ───────────────────────────────────────────
       // UI: '1+', '2+', '3+', '4+' → send the numeric value
@@ -443,7 +447,7 @@ class _NameSearchResultsScreenState
             availability: availabilityApi,
             minPrice: minPriceApi,
             maxPrice: maxPriceApi,
-            categoryId: categoryId,
+            categoryIds: categoryIds,
           );
 
       if (mounted) {
@@ -856,6 +860,7 @@ class _NameSearchResultsScreenState
               isSelected: filters.selectedBhk.contains('2 BHK'),
               onTap: () {
                 notifier.toggleBhk('2 BHK');
+                _applyFiltersAndReload();
               },
             ),
             const SizedBox(width: 8),
@@ -875,6 +880,7 @@ class _NameSearchResultsScreenState
               ),
               onTap: () {
                 notifier.clearFilters();
+                _applyFiltersAndReload();
               },
             ),
           ],
@@ -889,19 +895,74 @@ class _NameSearchResultsScreenState
   ) {
     final chips = <Widget>[];
 
+    if (filters.selectedIntent.isNotEmpty) {
+      chips.add(_appliedChip(filters.selectedIntent, () {
+        notifier.updateIntent('');
+        _applyFiltersAndReload();
+      }));
+    }
     for (final loc in filters.selectedLocalities) {
-      chips.add(_appliedChip(loc, () => notifier.removeLocality(loc)));
+      chips.add(_appliedChip(loc, () {
+        notifier.removeLocality(loc);
+        _applyFiltersAndReload();
+      }));
     }
     for (final bhk in filters.selectedBhk) {
-      chips.add(_appliedChip(bhk, () => notifier.toggleBhk(bhk)));
+      chips.add(_appliedChip(bhk, () {
+        notifier.toggleBhk(bhk);
+        _applyFiltersAndReload();
+      }));
     }
     for (final pt in filters.selectedPropertyTypes) {
-      chips.add(_appliedChip(pt, () => notifier.togglePropertyType(pt)));
+      chips.add(_appliedChip(pt, () {
+        notifier.togglePropertyType(pt);
+        _applyFiltersAndReload();
+      }));
+    }
+    for (final f in filters.selectedFurnishing) {
+      chips.add(_appliedChip(f, () {
+        notifier.toggleFurnishing(f);
+        _applyFiltersAndReload();
+      }));
+    }
+    for (final b in filters.selectedBathrooms) {
+      chips.add(_appliedChip('$b Bath', () {
+        notifier.toggleBathroom(b);
+        _applyFiltersAndReload();
+      }));
+    }
+    for (final age in filters.selectedAge) {
+      chips.add(_appliedChip(age, () {
+        notifier.toggleAge(age);
+        _applyFiltersAndReload();
+      }));
+    }
+    for (final added in filters.selectedAdded) {
+      chips.add(_appliedChip(added, () {
+        notifier.toggleAdded(added);
+        _applyFiltersAndReload();
+      }));
+    }
+    for (final amen in filters.selectedAmenities) {
+      chips.add(_appliedChip(amen, () {
+        notifier.toggleAmenity(amen);
+        _applyFiltersAndReload();
+      }));
     }
     if (filters.minBudget > 0.0 || filters.maxBudget < 20.0) {
       final label =
           '₹${filters.minBudget.toStringAsFixed(1)}Cr - ₹${filters.maxBudget.toStringAsFixed(1)}Cr';
-      chips.add(_appliedChip(label, () => notifier.updateBudget(0.0, 20.0)));
+      chips.add(_appliedChip(label, () {
+        notifier.updateBudget(0.0, 20.0);
+        _applyFiltersAndReload();
+      }));
+    }
+    if (filters.minArea > 0.0 || filters.maxArea < 5000.0) {
+      final label = '${filters.minArea.toStringAsFixed(0)} - ${filters.maxArea.toStringAsFixed(0)} Sq.Ft';
+      chips.add(_appliedChip(label, () {
+        notifier.updateArea(0.0, 5000.0);
+        _applyFiltersAndReload();
+      }));
     }
 
     if (chips.isEmpty) return const SizedBox.shrink();

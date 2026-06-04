@@ -63,6 +63,30 @@ class Auth extends _$Auth {
     state = state.copyWith(seenOnboarding: true);
   }
 
+  Future<String?> sendOtp({required String phone}) async {
+    state = state.copyWith(isLoading: true, error: null, message: null);
+    try {
+      final repo = ref.read(authRepositoryProvider);
+      final msg = await repo.sendOtp(phone: phone);
+      state = state.copyWith(isLoading: false, error: null, message: msg);
+      return msg;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString(), message: null);
+      return null;
+    }
+  }
+
+  Future<void> verifyOtp({required String phone, required String otp}) async {
+    state = state.copyWith(isLoading: true, error: null, message: null, user: null);
+    try {
+      final repo = ref.read(authRepositoryProvider);
+      final user = await repo.verifyOtp(phone: phone, otp: otp);
+      state = state.copyWith(isLoading: false, user: user, error: null, message: null);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString(), message: null);
+    }
+  }
+
   Future<void> login({required String email, required String password}) async {
     state = state.copyWith(isLoading: true, error: null, message: null, user: null);
     try {

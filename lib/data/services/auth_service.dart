@@ -63,6 +63,110 @@ class AuthService {
     }
   }
 
+  Future<String> sendOtp({required String phone}) async {
+    if (kIsWeb) {
+      throw Exception('OTP sending is not supported on web');
+    }
+    final uri = _baseUri.replace(path: '/api/v1/owner/auth/send/otp');
+    try {
+      final response = await http.post(
+        uri,
+        headers: {
+          'content-type': 'application/x-www-form-urlencoded',
+          'accept': 'application/json',
+        },
+        body: {
+          'phone': phone,
+        },
+      );
+
+      final body = response.body;
+      final status = response.statusCode;
+
+      Map<String, dynamic>? json;
+      if (body.trim().isNotEmpty) {
+        final decoded = jsonDecode(body);
+        if (decoded is Map<String, dynamic>) json = decoded;
+      }
+
+      if (status < 200 || status >= 300) {
+        final msg = _extractError(json) ?? 'Failed to send OTP ($status)';
+        throw Exception(msg);
+      }
+
+      if (json != null && json['status'] == false) {
+        final msg = _extractError(json) ?? 'Failed to send OTP';
+        throw Exception(msg);
+      }
+
+      final otpVal = json?['otp']?.toString() ?? '';
+      final msg = json?['message']?.toString() ?? 'Otp Sent Successfully';
+      if (otpVal.isNotEmpty) {
+        return '$msg: $otpVal';
+      }
+      return msg;
+    } on SocketException {
+      throw Exception('Network error. Please check your internet connection.');
+    }
+  }
+
+  Future<User> verifyOtp({required String phone, required String otp}) async {
+    if (kIsWeb) {
+      throw Exception('OTP verification is not supported on web');
+    }
+    final uri = _baseUri.replace(path: '/api/v1/owner/auth/verify/otp');
+    try {
+      final response = await http.post(
+        uri,
+        headers: {
+          'content-type': 'application/x-www-form-urlencoded',
+          'accept': 'application/json',
+        },
+        body: {
+          'phone': phone,
+          'otp': otp,
+        },
+      );
+
+      final body = response.body;
+      final status = response.statusCode;
+
+      Map<String, dynamic>? json;
+      if (body.trim().isNotEmpty) {
+        final decoded = jsonDecode(body);
+        if (decoded is Map<String, dynamic>) json = decoded;
+      }
+
+      if (status < 200 || status >= 300) {
+        final msg = _extractError(json) ?? 'OTP verification failed ($status)';
+        throw Exception(msg);
+      }
+
+      if (json != null && json['status'] == false) {
+        final msg = _extractError(json) ?? 'OTP verification failed';
+        throw Exception(msg);
+      }
+
+      final userJson = (json?['user'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
+      final user = User.fromJson(userJson);
+      final token = (json?['token'] ?? user.token).toString();
+
+      if (user.id.isEmpty || token.isEmpty) {
+        throw Exception('Verification succeeded but response was unexpected');
+      }
+
+      return User(
+        id: user.id,
+        name: user.name.isNotEmpty ? user.name : 'User ${user.id}',
+        email: user.email.isNotEmpty ? user.email : '$phone@example.com',
+        token: token,
+      );
+    } on SocketException {
+      throw Exception('Network error. Please check your internet connection.');
+    }
+  }
+
+
   Future<User> signup({
     required String name,
     required String email,

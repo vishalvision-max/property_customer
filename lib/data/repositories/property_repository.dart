@@ -41,7 +41,7 @@ class PropertyRepository {
     String? availability,
     int? minPrice,
     int? maxPrice,
-    int? categoryId,
+    List<int> categoryIds = const [],
   }) => _service.fetchWithFilters(
     type: type,
     furnishing: furnishing,
@@ -56,7 +56,7 @@ class PropertyRepository {
     availability: availability,
     minPrice: minPrice,
     maxPrice: maxPrice,
-    categoryId: categoryId,
+    categoryIds: categoryIds,
   );
 
   Future<Property> fetchDetails(String id) => _service.fetchDetails(id);

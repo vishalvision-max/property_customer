@@ -172,7 +172,7 @@ class PropertyNotifier extends _$PropertyNotifier {
     String? availability,
     int? minPrice,
     int? maxPrice,
-    int? categoryId,
+    List<int> categoryIds = const [],
   }) {
     final repo = ref.read(propertyRepositoryProvider);
     return repo.fetchWithFilters(
@@ -189,7 +189,7 @@ class PropertyNotifier extends _$PropertyNotifier {
       availability: availability,
       minPrice: minPrice,
       maxPrice: maxPrice,
-      categoryId: categoryId,
+      categoryIds: categoryIds,
     );
   }
 
