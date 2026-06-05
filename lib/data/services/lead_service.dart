@@ -16,7 +16,7 @@ class LeadService {
       throw Exception('Leads API is not supported on web in this build');
     }
     final uri = _baseUri.replace(
-      path: '/api/v1/own-leads',
+      path: '/api/v1/owner/enqueries/index',
       queryParameters: <String, String>{'page': page.toString()},
     );
 
@@ -153,10 +153,10 @@ class LeadService {
     required String email,
     required String message,
     required String type,
+    required String userId,
     required int propertyId,
   }) async {
-    final uri = _baseUri.replace(path: '/api/v1/save-buyer-leads');
-
+    final uri = _baseUri.replace(path: '/api/v1/owner/enquiry/create');
     try {
       final request = http.MultipartRequest('POST', uri);
       request.headers['Accept'] = 'application/json';
@@ -167,21 +167,77 @@ class LeadService {
       request.fields['email'] = email;
       request.fields['message'] = message;
       request.fields['type'] = type;
-      request.fields['lead_types'] = 'buyer';
+      request.fields['user_id'] = userId;
       if (propertyId > 0) {
         request.fields['property_id'] = propertyId.toString();
       }
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-      
+
       final code = response.statusCode;
       if (code < 200 || code >= 300) {
-        final msg = _extractError(response.body) ?? 'Failed to submit buyer lead ($code)';
+        final msg =
+            _extractError(response.body) ??
+            'Failed to submit buyer lead ($code)';
         throw Exception(msg);
       }
     } on SocketException {
       throw Exception('Network error. Please check your internet connection.');
+    }
+  }
+
+  Future<List<Lead>> fetchEnquiries({required String token}) async {
+    print('TOKEN: $token');
+    final uri = _baseUri.replace(path: '/api/v1/owner/enqueries/index');
+
+    final client = HttpClient();
+    try {
+      final req = await client.getUrl(uri);
+      req.headers.set('Accept', 'application/json');
+      req.headers.set('Authorization', 'Bearer $token');
+
+      final res = await req.close();
+      final body = await res.transform(utf8.decoder).join();
+      final status = res.statusCode;
+
+      print('API URL: $uri');
+      print('API STATUS: $status');
+      print('API BODY: $body');
+
+      if (status < 200 || status >= 300) {
+        if (status == 404) {
+          try {
+            final decodedError = body.trim().isEmpty ? null : jsonDecode(body);
+            if (decodedError is Map && decodedError['status'] == false) {
+              return <Lead>[];
+            }
+          } catch (_) {}
+        }
+        throw Exception('Failed to load enquiries ($status)');
+      }
+
+      final decoded = body.trim().isEmpty ? null : jsonDecode(body);
+      final data = decoded is Map<String, dynamic>
+          ? (decoded['data'] ?? decoded)
+          : decoded;
+
+      if (data is List) {
+        return data
+            .whereType<Map>()
+            .map((e) => Lead.fromJson(e.cast<String, dynamic>()))
+            .toList();
+      } else if (data is Map && data['data'] is List) {
+        return (data['data'] as List)
+            .whereType<Map>()
+            .map((e) => Lead.fromJson(e.cast<String, dynamic>()))
+            .toList();
+      }
+      return <Lead>[];
+    } on SocketException {
+      throw Exception('Network error. Please check your internet connection.');
+    } finally {
+      client.close(force: true);
     }
   }
 

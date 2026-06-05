@@ -2,12 +2,14 @@ class OwnerProfile {
   final String id;
   final String name;
   final String email;
+  final String phone;
   final String imageUrl;
 
   const OwnerProfile({
     required this.id,
     required this.name,
     required this.email,
+    required this.phone,
     required this.imageUrl,
   });
 
@@ -16,6 +18,7 @@ class OwnerProfile {
       id: (json['id'] ?? json['owner_id'] ?? '').toString(),
       name: (json['name'] ?? json['full_name'] ?? '').toString(),
       email: (json['email'] ?? '').toString(),
+      phone: (json['phone'] ?? json['mobile'] ?? '').toString(),
       imageUrl: (json['image'] ?? json['avatar'] ?? json['profile_image'] ?? '').toString(),
     );
   }
@@ -24,6 +27,7 @@ class OwnerProfile {
         'id': id,
         'name': name,
         'email': email,
+        'phone': phone,
         'image': imageUrl,
       };
 }

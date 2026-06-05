@@ -162,7 +162,8 @@ class LeadNotifier extends _$LeadNotifier {
     required String type,
     required int propertyId,
   }) async {
-    final token = _tokenOrNull();
+    final user = ref.read(authProvider).user;
+    final token = user?.token;
     if (token == null || token.trim().isEmpty) {
       throw Exception('Please login to submit a lead');
     }
@@ -176,6 +177,7 @@ class LeadNotifier extends _$LeadNotifier {
         email: email,
         message: message,
         type: type,
+        userId: user!.id,
         propertyId: propertyId,
       );
       state = state.copyWith(isLoading: false, error: null);

@@ -11,6 +11,8 @@ class ShimmerList extends StatelessWidget {
     final baseColor = Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.55);
     final highlight = Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.25);
     return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       itemCount: itemCount,
       separatorBuilder: (context, index) => const SizedBox(height: 12),

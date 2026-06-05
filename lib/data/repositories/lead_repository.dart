@@ -60,6 +60,7 @@ class LeadRepository {
     required String email,
     required String message,
     required String type,
+    required String userId,
     required int propertyId,
   }) => _service.createBuyerLead(
     token: token,
@@ -68,6 +69,10 @@ class LeadRepository {
     email: email,
     message: message,
     type: type,
+    userId: userId,
     propertyId: propertyId,
   );
+
+  Future<List<Lead>> fetchEnquiries({required String token}) =>
+      _service.fetchEnquiries(token: token);
 }

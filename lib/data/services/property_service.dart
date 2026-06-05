@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/property.dart';
+import '../models/scheduled_visit.dart';
 
 class PropertyService {
   static final Uri _baseUri = Uri.parse(
@@ -40,6 +41,33 @@ class PropertyService {
       return;
     } else {
       throw Exception('Failed to schedule visit: ${response.statusCode}');
+    }
+  }
+
+  Future<List<ScheduledVisit>> fetchScheduledVisits(String token) async {
+    final uri = _baseUri.replace(path: '/api/v1/owner/scheduled/visit/index');
+    final response = await http.get(
+      uri,
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final decoded = jsonDecode(response.body);
+      final data = decoded['data'] ?? decoded;
+      
+      if (data is List) {
+        return data.map((e) => ScheduledVisit.fromJson(e as Map<String, dynamic>)).toList();
+      } else if (data is Map && data['data'] is List) {
+        return (data['data'] as List)
+            .map((e) => ScheduledVisit.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+      return [];
+    } else {
+      throw Exception('Failed to fetch scheduled visits: ${response.statusCode}');
     }
   }
 

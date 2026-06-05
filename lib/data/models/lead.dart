@@ -3,6 +3,7 @@ class Lead {
   final String name;
   final String phone;
   final String? email;
+  final String? message;
   final String type;
   final String propertyType;
   final String city;
@@ -18,6 +19,7 @@ class Lead {
     required this.name,
     required this.phone,
     required this.email,
+    this.message,
     required this.type,
     required this.propertyType,
     required this.city,
@@ -38,6 +40,7 @@ class Lead {
       name: (json['name'] ?? '').toString(),
       phone: (json['phone'] ?? '').toString(),
       email: json['email']?.toString(),
+      message: json['message']?.toString(),
       type: (json['type'] ?? '').toString(),
       propertyType: (json['property_type'] ?? '').toString(),
       city: (json['city'] ?? '').toString(),

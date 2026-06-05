@@ -25,6 +25,7 @@ class _EditOwnerProfileScreenState
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _email = TextEditingController();
+  final _phone = TextEditingController();
   bool _saving = false;
 
   @override
@@ -45,6 +46,7 @@ class _EditOwnerProfileScreenState
   void dispose() {
     _name.dispose();
     _email.dispose();
+    _phone.dispose();
     super.dispose();
   }
 
@@ -62,6 +64,9 @@ class _EditOwnerProfileScreenState
             _email.text.trim().isEmpty &&
             !p.email.endsWith('@example.com')) {
           _email.text = p.email.trim();
+        }
+        if (p.phone.trim().isNotEmpty && _phone.text.trim().isEmpty) {
+          _phone.text = p.phone.trim();
         }
       }
       if (next.error != null && next.error != prev?.error) {
@@ -198,6 +203,25 @@ class _EditOwnerProfileScreenState
                         ? 'Name is required'
                         : null,
                     onChanged: (_) => setState(() {}),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _phone,
+                    enabled: false,
+                    decoration: InputDecoration(
+                      labelText: 'Phone Number',
+                      prefixIcon: const Icon(Icons.phone_outlined),
+                      filled: true,
+                      fillColor: const Color(0xFFF9FAFB),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: _kBorder),
+                      ),
+                      disabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: _kBorder),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   TextFormField(

@@ -6,7 +6,7 @@ part of 'property_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$propertyNotifierHash() => r'1271f671aedf6a6c2cae9275f2e35da0b2bf0330';
+String _$propertyNotifierHash() => r'3da8a3cc4085d81a6b06736b0426cb128217df35';
 
 /// See also [PropertyNotifier].
 @ProviderFor(PropertyNotifier)

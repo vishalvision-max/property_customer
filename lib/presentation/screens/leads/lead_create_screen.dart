@@ -262,6 +262,7 @@ class _LeadCreateScreenState extends ConsumerState<LeadCreateScreen> {
                         keyboardType: TextInputType.phone,
                         textInputAction: TextInputAction.next,
                         enabled: !busy,
+                        maxLength: 10,
                       ),
                       const SizedBox(height: 16),
                       _Field(
@@ -429,7 +430,7 @@ class _Field extends StatelessWidget {
   final bool readOnly;
   final int? minLines;
   final int? maxLines;
-
+  final int? maxLength;
   const _Field({
     required this.controller,
     required this.label,
@@ -441,6 +442,7 @@ class _Field extends StatelessWidget {
     this.readOnly = false,
     this.minLines,
     this.maxLines,
+    this.maxLength,
   });
 
   @override
@@ -454,6 +456,7 @@ class _Field extends StatelessWidget {
       textInputAction: textInputAction,
       minLines: minLines,
       maxLines: maxLines ?? 1,
+      maxLength: maxLength,
       style: TextStyle(
         color: readOnly ? _kTextMid : _kTextDark,
         fontWeight: readOnly ? FontWeight.w600 : FontWeight.normal,

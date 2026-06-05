@@ -6,7 +6,7 @@ part of 'lead_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$leadNotifierHash() => r'6503daaf1e038ebabdcd4c2b8b3fc59e48f56ce1';
+String _$leadNotifierHash() => r'e059c2029e34c695a6facfea97a387a079c0d202';
 
 /// See also [LeadNotifier].
 @ProviderFor(LeadNotifier)
