@@ -2,6 +2,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -51,12 +52,22 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   String _mode = 'rent';
   ProviderSubscription<LocationState>? _locationSub;
+  StreamSubscription<ServiceStatus>? _serviceStatusStream;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   int _visibleCount = 4;
 
   @override
   void initState() {
     super.initState();
+    _serviceStatusStream = Geolocator.getServiceStatusStream().listen((ServiceStatus status) {
+      if (status == ServiceStatus.enabled) {
+        final loc = ref.read(locationProvider);
+        if (loc.currentLabel.isEmpty || loc.currentLabel == 'Unknown Location' || loc.currentLabel == 'Set location') {
+          ref.read(locationProvider.notifier).fetchCurrent();
+        }
+      }
+    });
+
     // Load saved location immediately
     Future<void>.microtask(() async {
       await ref.read(locationProvider.notifier).load();
@@ -175,6 +186,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void dispose() {
     _locationSub?.close();
+    _serviceStatusStream?.cancel();
     super.dispose();
   }
 
