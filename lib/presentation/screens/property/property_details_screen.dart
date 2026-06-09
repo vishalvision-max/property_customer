@@ -16,6 +16,7 @@ import '../../widgets/related_property_card.dart';
 import '../../widgets/responsive_item_grid.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:share_plus/share_plus.dart';
 
 const _kPrimary = Color(0xFF5C46E8);
 const _fallbackImage =
@@ -619,7 +620,13 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
       rows.add(_buildTermsRow('Lock-in Period', p.lockInPeriod!, context));
     }
     if (p.availableFrom != null && p.availableFrom!.isNotEmpty) {
-      rows.add(_buildTermsRow('Available From', p.availableFrom!, context));
+      String dateStr = p.availableFrom!;
+      if (dateStr.contains(' ')) {
+        dateStr = dateStr.split(' ').first;
+      } else if (dateStr.contains('T')) {
+        dateStr = dateStr.split('T').first;
+      }
+      rows.add(_buildTermsRow('Available From', dateStr, context));
     }
 
     if (p.furnishing != null && p.furnishing!.trim().isNotEmpty) {
@@ -716,6 +723,12 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                     .join(' ');
               })
               .join(', ');
+        } else if (k.contains('date') || k == 'available_from' || k.contains('possession')) {
+          if (valStr.contains(' ')) {
+            valStr = valStr.split(' ').first;
+          } else if (valStr.contains('T')) {
+            valStr = valStr.split('T').first;
+          }
         }
 
         rows.add(_buildTermsRow(formattedKey, valStr, context));
@@ -1190,10 +1203,16 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                       images: p.images,
                       title: p.name,
                       onBack: () => context.pop(),
-                      onShare: () => AppSnackbar.showMessage(
-                        context,
-                        'Sharing property listing details...',
-                      ),
+                      onShare: () {
+                        // Formatting the price beautifully for the share message
+                        final priceString = _formatIndianPrice(p.price, p.type);
+                        final shareText = '🏡 *Check out this amazing property!*\n\n'
+                            '*${p.name}*\n'
+                            '📍 Location: ${p.location}\n'
+                            '💰 Price: $priceString\n\n'
+                            '📱 Download the Vision Vivante Property app to view full details and photos!';
+                        Share.share(shareText, subject: p.name);
+                      },
                       onToggleFavorite: toggleFavorite,
                       isFavorited: isFav,
                       isLoading:

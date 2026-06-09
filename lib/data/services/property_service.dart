@@ -319,7 +319,7 @@ class PropertyService {
     if (kIsWeb) {
       throw Exception('Properties API is not supported on web in this build');
     }
-    final uri = _baseUri.replace(path: '/api/v1/propertie/$id');
+    final uri = _baseUri.replace(path: '/api/v1/property/$id');
     final client = HttpClient();
     try {
       final req = await client.getUrl(uri);
