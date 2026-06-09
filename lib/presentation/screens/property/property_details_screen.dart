@@ -131,7 +131,12 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
   }
 
   String _formatIndianPrice(int price, String type) {
-    if (type == 'rent') {
+    final t = type.toLowerCase();
+    if (t == 'rent' ||
+        t == 'lease' ||
+        t == 'pg' ||
+        t == 'co-living' ||
+        t == 'co-livin') {
       if (price >= 100000) {
         double lakhs = price / 100000.0;
         return '₹${lakhs.toStringAsFixed(lakhs % 1 == 0 ? 0 : 1)} Lakh/mo';
@@ -552,7 +557,8 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
     }
 
     // Third width minus spacing and padding, using .floorToDouble() to prevent floating point wrap
-    final cardWidth = ((MediaQuery.of(context).size.width - 32 - 24) / 3).floorToDouble();
+    final cardWidth = ((MediaQuery.of(context).size.width - 32 - 24) / 3)
+        .floorToDouble();
 
     return Container(
       // height: 100,
@@ -723,7 +729,9 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                     .join(' ');
               })
               .join(', ');
-        } else if (k.contains('date') || k == 'available_from' || k.contains('possession')) {
+        } else if (k.contains('date') ||
+            k == 'available_from' ||
+            k.contains('possession')) {
           if (valStr.contains(' ')) {
             valStr = valStr.split(' ').first;
           } else if (valStr.contains('T')) {
@@ -1206,7 +1214,8 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                       onShare: () {
                         // Formatting the price beautifully for the share message
                         final priceString = _formatIndianPrice(p.price, p.type);
-                        final shareText = '🏡 *Check out this amazing property!*\n\n'
+                        final shareText =
+                            '🏡 *Check out this amazing property!*\n\n'
                             '*${p.name}*\n'
                             '📍 Location: ${p.location}\n'
                             '💰 Price: $priceString\n\n'
@@ -1229,16 +1238,32 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                       padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
                       child: Text(
                         (() {
-                          final type = specs.type;
+                          final kind = p.propertyKind.trim();
                           final cleanLocality = _getCleanLocality(p.location);
-                          if (type.toLowerCase().contains('plot') ||
-                              type.toLowerCase().contains('land')) {
-                            return 'Residential Plot in $cleanLocality';
+                          final typeLower = p.type.toLowerCase();
+                          String intentType = typeLower;
+                          if (typeLower == 'buy' || typeLower == 'sale')
+                            intentType = 'For Sale';
+                          else if (typeLower == 'rent')
+                            intentType = 'For Rent';
+                          else if (typeLower == 'lease')
+                            intentType = 'For Lease';
+                          else if (typeLower == 'pg')
+                            intentType = 'PG';
+                          else if (typeLower == 'co-living' ||
+                              typeLower == 'co-livin')
+                            intentType = 'Co-Living';
+                          else {
+                            intentType = typeLower
+                                .split(' ')
+                                .map(
+                                  (w) => w.isNotEmpty
+                                      ? '${w[0].toUpperCase()}${w.substring(1)}'
+                                      : '',
+                                )
+                                .join(' ');
                           }
-                          if (type.toLowerCase().contains('commercial') ||
-                              type.toLowerCase().contains('shop')) {
-                            return 'Commercial Space in $cleanLocality';
-                          }
+
                           String bhkPrefix = '';
                           if (p.bhk != null && p.bhk! > 0) {
                             bhkPrefix = '${p.bhk} BHK ';
@@ -1254,7 +1279,21 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
                                   '${int.tryParse(bhkMatch.group(1) ?? '') ?? ''} BHK ';
                             }
                           }
-                          return '$bhkPrefix$type in $cleanLocality';
+
+                          if (kind.isNotEmpty) {
+                            final formattedKind = kind
+                                .split(' ')
+                                .map(
+                                  (w) => w.isNotEmpty
+                                      ? '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}'
+                                      : '',
+                                )
+                                .join(' ');
+                            return '$bhkPrefix$formattedKind in $cleanLocality • $intentType'
+                                .trim();
+                          }
+                          return '$bhkPrefix$intentType in $cleanLocality'
+                              .trim();
                         })(),
                         style: const TextStyle(
                           fontSize: 20,
@@ -2049,6 +2088,25 @@ class _HeroMediaLightState extends State<_HeroMediaLight> {
                       ),
                     ),
                   )
+                else if (widget.property.type.toLowerCase() == 'lease')
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF7ED),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      'For Lease',
+                      style: TextStyle(
+                        color: Color(0xFFEA580C),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  )
                 else if (widget.property.type.toLowerCase() == 'pg')
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -2056,11 +2114,31 @@ class _HeroMediaLightState extends State<_HeroMediaLight> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF9F5FF),
+                      color: const Color(0xFFFDF2FA),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: const Text(
-                      'PG / Co-Living',
+                      'PG',
+                      style: TextStyle(
+                        color: Color(0xFFC11574),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  )
+                else if (widget.property.type.toLowerCase() == 'co-living' ||
+                    widget.property.type.toLowerCase() == 'co-livin')
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF4F3FF),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      'Co-Living',
                       style: TextStyle(
                         color: Color(0xFF6941C6),
                         fontSize: 10,
@@ -2068,7 +2146,6 @@ class _HeroMediaLightState extends State<_HeroMediaLight> {
                       ),
                     ),
                   ),
-
                 if (widget.property.categoryName != null &&
                     widget.property.categoryName!.trim().isNotEmpty)
                   Container(

@@ -607,7 +607,7 @@ class _NameSearchResultsScreenState
         final intentStr = filters.selectedIntent.toLowerCase();
         
         // Base API type check
-        if ((intentStr == 'rent' || intentStr == 'lease' || intentStr == 'pg/co-living') && pt != 'rent') return false;
+        if ((intentStr == 'rent' || intentStr == 'lease' || intentStr == 'pg/co-living') && pt != 'rent' && pt != 'lease' && pt != 'pg' && pt != 'co-living' && pt != 'co-livin') return false;
         if ((intentStr == 'buy' || intentStr == 'villas' || intentStr == 'bungalows' || intentStr == 'land/plots' || intentStr == 'commercial lands') && pt != 'buy' && pt != 'sale') return false;
 
         // Specific property kind checks for the new intent modes

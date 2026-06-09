@@ -1230,11 +1230,11 @@ class PropertyService {
       state,
     ].where((e) => e.trim().isNotEmpty).join(', ');
 
-    final type = pickString(['type', 'mode', 'purpose']).toLowerCase();
-    final normalizedType =
-        (type.contains('buy') || type.contains('sale') || type.contains('sell'))
-        ? 'buy'
-        : (type.contains('rent') || type.contains('lease') ? 'rent' : 'buy');
+    final type = pickString(['type', 'mode', 'purpose']);
+    final rawType = type.trim().toLowerCase();
+    
+    // Fallback normalization just in case, but prefer the raw type if it's one of the 5.
+    final finalType = rawType.isNotEmpty ? rawType : 'buy';
 
     final price = pickInt(['price', 'rent', 'amount', 'budget']);
     List<String> parseAmenities() {
@@ -1439,7 +1439,7 @@ class PropertyService {
       name: name.isEmpty ? 'Property' : name,
       location: location,
       price: price,
-      type: normalizedType,
+      type: finalType,
       propertyKind: (() {
         final pk = pickString(['property_kind', 'propertyKind']);
         if (pk.isNotEmpty) return pk;

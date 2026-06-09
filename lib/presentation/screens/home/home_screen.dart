@@ -1837,7 +1837,12 @@ class _FeaturedPropertyCard extends ConsumerWidget {
     }
 
     String formatPrice(int price, String type) {
-      if (type == 'rent') {
+      final t = type.toLowerCase();
+      if (t == 'rent' ||
+          t == 'lease' ||
+          t == 'pg' ||
+          t == 'co-living' ||
+          t == 'co-livin') {
         if (price >= 100000) {
           double lakhs = price / 100000.0;
           return '₹${lakhs.toStringAsFixed(lakhs % 1 == 0 ? 0 : 1)} Lakh/mo';

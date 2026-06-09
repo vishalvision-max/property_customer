@@ -185,12 +185,17 @@ class PropertyCard extends ConsumerWidget {
     this.enableVideoPreview = true,
     this.videoLoop = true,
   });
-
   static const _fallbackPropertyImage =
       'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=900&q=80&auto=format&fit=crop';
 
   String _formatIndianPrice(int price, String type) {
-    if (type == 'rent') {
+    final t = type.toLowerCase();
+    if (t == 'rent' ||
+        t == 'lease' ||
+        t == 'pg' ||
+        t == 'co-living' ||
+        t == 'co-livin') {
+      print("vishal $type");
       if (price >= 100000) {
         double lakhs = price / 100000.0;
         return '₹${lakhs.toStringAsFixed(lakhs % 1 == 0 ? 0 : 1)} Lakh/mo';
@@ -217,6 +222,8 @@ class PropertyCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final String propertyType = property.type.toLowerCase();
+
     final isAuthed = ref.watch(authProvider).user != null;
     final isFav = ref.watch(
       favoritesProvider.select((s) => s.contains(property.id)),
@@ -227,15 +234,29 @@ class PropertyCard extends ConsumerWidget {
     final isFeatured = featured || (property.id.hashCode.abs() % 3 == 0);
 
     final typeStr = (() {
-      final type = specs.type;
-      if (type.toLowerCase().contains('plot') ||
-          type.toLowerCase().contains('land')) {
-        return 'Residential Plot';
+      final kind = property.propertyKind.trim();
+      final typeLower = property.type.toLowerCase();
+      String intentType = typeLower;
+      if (typeLower == 'buy' || typeLower == 'sale')
+        intentType = 'For Sale';
+      else if (typeLower == 'rent')
+        intentType = 'For Rent';
+      else if (typeLower == 'lease')
+        intentType = 'For Lease';
+      else if (typeLower == 'pg')
+        intentType = 'PG';
+      else if (typeLower == 'co-living' || typeLower == 'co-livin')
+        intentType = 'Co-Living';
+      else {
+        intentType = typeLower
+            .split(' ')
+            .map(
+              (w) =>
+                  w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '',
+            )
+            .join(' ');
       }
-      if (type.toLowerCase().contains('commercial') ||
-          type.toLowerCase().contains('shop')) {
-        return 'Commercial Space';
-      }
+
       String bhkPrefix = '';
       if (property.bhk != null && property.bhk! > 0) {
         bhkPrefix = '${property.bhk} BHK ';
@@ -250,7 +271,20 @@ class PropertyCard extends ConsumerWidget {
           bhkPrefix = '${int.tryParse(bhkMatch.group(1) ?? '') ?? ''} BHK ';
         }
       }
-      return '$bhkPrefix$type';
+
+      if (kind.isNotEmpty) {
+        final formattedKind = kind
+            .split(' ')
+            .map(
+              (w) => w.isNotEmpty
+                  ? '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}'
+                  : '',
+            )
+            .join(' ');
+        return '$bhkPrefix$formattedKind • $intentType'.trim();
+      }
+
+      return '$bhkPrefix$intentType'.trim();
     })();
 
     final locationParts = (() {
@@ -324,16 +358,46 @@ class PropertyCard extends ConsumerWidget {
     Color transactionColor = Colors.transparent;
 
     final pType = property.type.toLowerCase();
-    if (pType == 'sale' || pType == 'buy') {
-      showTransactionType = true;
-      transactionText = 'For Sale';
-      transactionBg = const Color(0xFFECFDF3); // Green background
-      transactionColor = const Color(0xFF027A48); // Dark green text
-    } else if (pType == 'rent') {
-      showTransactionType = true;
-      transactionText = 'For Rent';
-      transactionBg = const Color(0xFFEFF8FF); // Blue background
-      transactionColor = const Color(0xFF175CD3); // Dark blue text
+
+    showTransactionType = true;
+
+    switch (pType) {
+      case 'sale':
+      case 'buy':
+        transactionText = 'For Sale';
+        transactionBg = const Color(0xFFECFDF3);
+        transactionColor = const Color(0xFF027A48);
+        break;
+
+      case 'rent':
+        transactionText = 'For Rent';
+        transactionBg = const Color(0xFFEFF8FF);
+        transactionColor = const Color(0xFF175CD3);
+        break;
+
+      case 'lease':
+        transactionText = 'For Lease';
+        transactionBg = const Color(0xFFFFF7ED);
+        transactionColor = const Color(0xFFEA580C);
+        break;
+
+      case 'pg':
+        transactionText = 'PG';
+        transactionBg = const Color(0xFFFDF2FA);
+        transactionColor = const Color(0xFFC11574);
+        break;
+
+      case 'co-living':
+      case 'co-livin':
+        transactionText = 'Co-Living';
+        transactionBg = const Color(0xFFF4F3FF);
+        transactionColor = const Color(0xFF6941C6);
+        break;
+
+      default:
+        transactionText = property.type.toUpperCase();
+        transactionBg = const Color(0xFFF2F4F7);
+        transactionColor = const Color(0xFF344054);
     }
 
     return Padding(
