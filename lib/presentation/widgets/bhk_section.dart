@@ -17,7 +17,8 @@ class BhkSection extends StatelessWidget {
     '3 BHK',
     '4 BHK',
     '5 BHK',
-    '5+ BHK',
+    '6 BHK',
+    '6+ BHK',
   ];
 
   @override

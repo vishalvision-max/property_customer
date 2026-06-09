@@ -16,12 +16,15 @@ import '../../../providers/property_provider.dart';
 import '../../../providers/favorites_provider.dart';
 import '../../../providers/lead_provider.dart';
 import '../../../providers/nav_provider.dart';
+import '../../../providers/app_providers.dart';
 import '../../widgets/property_card.dart';
 import '../../widgets/related_property_card.dart';
 import '../../widgets/shimmer_list.dart';
 import '../property/property_list_args.dart';
 import '../search/search_args.dart';
 import '../search/name_search_args.dart';
+import '../property/property_name_search_args.dart';
+import 'map_location_screen.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  DESIGN TOKENS
@@ -57,13 +60,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     Future<void>.microtask(() async {
       await ref.read(locationProvider.notifier).load();
       final loc = ref.read(locationProvider);
-      if (loc.lat == null || loc.lng == null) {
+      if (loc.currentLabel.isEmpty || loc.currentLabel == 'Unknown Location') {
         await ref.read(locationProvider.notifier).fetchCurrent();
       }
-      // Once coordinates are ready, reload home data with location so
-      // nearby properties are used as the data source.
+
       final ready = ref.read(locationProvider);
-      if (ready.lat != null && ready.lng != null) {
+      if (ready.currentLabel.isNotEmpty &&
+          ready.currentLabel != 'Unknown Location') {
         if (!mounted) return;
         final token = ref.read(authProvider).user?.token;
         ref
@@ -71,15 +74,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             .loadHomeForMode(
               type: _mode,
               token: token,
-              lat: ready.lat,
-              lng: ready.lng,
+              city: ready.currentLabel,
             );
       }
     });
 
     _locationSub = ref.listenManual(locationProvider, (prev, next) {
-      final changed = (prev?.lat != next.lat) || (prev?.lng != next.lng);
-      if (changed && next.lat != null && next.lng != null) {
+      final changed = prev?.currentLabel != next.currentLabel;
+      if (changed &&
+          next.currentLabel.isNotEmpty &&
+          next.currentLabel != 'Unknown Location') {
         Future<void>.microtask(() {
           if (!mounted) return;
           final token = ref.read(authProvider).user?.token;
@@ -88,8 +92,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               .loadHomeForMode(
                 type: _mode,
                 token: token,
-                lat: next.lat,
-                lng: next.lng,
+                city: next.currentLabel,
               );
         });
       }
@@ -101,12 +104,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       // Load with the default mode ('rent') so the initial view is already filtered.
       ref
           .read(propertyNotifierProvider.notifier)
-          .loadHomeForMode(
-            type: _mode,
-            token: token,
-            lat: loc.lat,
-            lng: loc.lng,
-          );
+          .loadHomeForMode(type: _mode, token: token, city: loc.currentLabel);
       if (token != null && token.trim().isNotEmpty) {
         ref
             .read(ownerProfileNotifierProvider.notifier)
@@ -149,10 +147,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ? 'Nearby Properties'
         : 'Recommended';
 
-    final defaultBudget = _mode == 'rent'
-        ? const RangeValues(500, 5000)
-        : const RangeValues(0, 3000000);
-
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: _kBg,
@@ -170,8 +164,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               .loadHomeForMode(
                 type: _mode,
                 token: token,
-                lat: loc.lat,
-                lng: loc.lng,
+                city: loc.currentLabel,
               );
         },
         child: CustomScrollView(
@@ -200,90 +193,50 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     switch (label) {
                       case 'Buy':
                         context.push(
-                          '/properties',
-                          extra: SearchArgs(
-                            mode: 'buy',
-                            budget: null,
-                            propertyType: 'Any',
-                            amenities: const [],
-                            locationQuery: '',
-                            fromTab: true,
+                          '/name-search-results',
+                          extra: PropertyNameSearchArgs(
+                            query: 'Buy',
+                            mode: _mode,
                           ),
                         );
                       case 'Rent':
                         context.push(
-                          '/properties',
-                          extra: SearchArgs(
-                            mode: 'rent',
-                            budget: null,
-                            propertyType: 'Any',
-                            amenities: const [],
-                            locationQuery: '',
-                            fromTab: true,
+                          '/name-search-results',
+                          extra: PropertyNameSearchArgs(
+                            query: 'Rent',
+                            mode: _mode,
                           ),
                         );
                       case 'PG / Living':
                         context.push(
-                          '/properties',
-                          extra: SearchArgs(
-                            mode: 'rent',
-                            budget: null,
-                            propertyType: 'PG',
-                            amenities: const [],
-                            locationQuery: '',
-                            fromTab: true,
+                          '/name-search-results',
+                          extra: PropertyNameSearchArgs(
+                            query: 'PG',
+                            mode: _mode,
                           ),
                         );
                       case 'Commercial':
                         context.push(
-                          '/properties',
-                          extra: SearchArgs(
-                            mode: 'buy',
-                            budget: null,
-                            propertyType: 'Commercial',
-                            amenities: const [],
-                            locationQuery: '',
-                            fromTab: true,
+                          '/name-search-results',
+                          extra: PropertyNameSearchArgs(
+                            query: 'Commercial',
+                            mode: _mode,
                           ),
                         );
                       case 'Land/Plot':
                         context.push(
-                          '/properties',
-                          extra: SearchArgs(
-                            mode: 'buy',
-                            budget: null,
-                            propertyType: 'Plot',
-                            amenities: const [],
-                            locationQuery: '',
-                            fromTab: true,
+                          '/name-search-results',
+                          extra: PropertyNameSearchArgs(
+                            query: 'Plot',
+                            mode: _mode,
                           ),
                         );
-                      case 'New Projects':
-                        context.push(
-                          '/properties',
-                          extra: SearchArgs(
-                            mode: 'buy',
-                            budget: null,
-                            propertyType: 'New Project',
-                            amenities: const [],
-                            locationQuery: '',
-                            fromTab: true,
-                          ),
-                        );
-                      case 'Builders':
-                        context.push(
-                          '/properties',
-                          extra: SearchArgs(
-                            mode: 'buy',
-                            budget: null,
-                            propertyType: 'Any',
-                            amenities: const [],
-                            locationQuery: '',
-                            fromTab: true,
-                          ),
-                        );
+
                       default: // More — show all properties
-                        context.push('/properties');
+                        context.push(
+                          '/name-search-results',
+                          extra: PropertyNameSearchArgs(query: '', mode: _mode),
+                        );
                     }
                   },
                 ),
@@ -305,14 +258,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ],
                   onTapItem: (label) {
                     context.push(
-                      '/properties',
-                      extra: SearchArgs(
-                        mode: _mode,
-                        budget: null,
-                        propertyType: 'Any',
-                        amenities: const [],
-                        locationQuery: label,
-                      ),
+                      '/name-search-results',
+                      extra: PropertyNameSearchArgs(query: label, mode: _mode),
                     );
                   },
                 ),
@@ -389,34 +336,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ),
               ),
-
-            // ════════ TOP BUILDERS ════════
-            SliverToBoxAdapter(
-              child: _SectionHeader(
-                title: 'Top Builders',
-                onSeeAll: () => context.push('/properties'),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: SizedBox(
-                height: 68,
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  scrollDirection: Axis.horizontal,
-                  children: const [
-                    _BuilderChip(asset: 'assets/icons/Dlf_pbu.png'),
-                    SizedBox(width: 10),
-                    _BuilderChip(asset: 'assets/icons/godrej.png'),
-                    SizedBox(width: 10),
-                    _BuilderChip(asset: 'assets/icons/ats.png'),
-                    SizedBox(width: 10),
-                    _BuilderChip(asset: 'assets/icons/emaar.png'),
-                    SizedBox(width: 10),
-                    _BuilderChip(asset: 'assets/icons/prestige.png'),
-                  ],
-                ),
-              ),
-            ),
 
             // ════════ RECOMMENDED / NEARBY — vertical list ════════
             SliverToBoxAdapter(
@@ -540,12 +459,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _openLocationSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => const _LocationSheet(),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const MapLocationScreen()));
   }
 }
 
@@ -1064,15 +980,8 @@ class _HomeDrawer extends ConsumerWidget {
                   onTap: () {
                     Navigator.of(context).pop();
                     context.push(
-                      '/properties',
-                      extra: SearchArgs(
-                        mode: 'buy',
-                        budget: const RangeValues(0, 3000000),
-                        propertyType: 'Any',
-                        amenities: const [],
-                        locationQuery: '',
-                        fromTab: true,
-                      ),
+                      '/name-search-results',
+                      extra: PropertyNameSearchArgs(query: 'Buy', mode: 'buy'),
                     );
                   },
                 ),
@@ -1086,14 +995,10 @@ class _HomeDrawer extends ConsumerWidget {
                   onTap: () {
                     Navigator.of(context).pop();
                     context.push(
-                      '/properties',
-                      extra: SearchArgs(
+                      '/name-search-results',
+                      extra: PropertyNameSearchArgs(
+                        query: 'Rent',
                         mode: 'rent',
-                        budget: const RangeValues(500, 5000),
-                        propertyType: 'Any',
-                        amenities: const [],
-                        locationQuery: '',
-                        fromTab: true,
                       ),
                     );
                   },
@@ -1108,15 +1013,8 @@ class _HomeDrawer extends ConsumerWidget {
                   onTap: () {
                     Navigator.of(context).pop();
                     context.push(
-                      '/properties',
-                      extra: SearchArgs(
-                        mode: 'rent',
-                        budget: const RangeValues(500, 5000),
-                        propertyType: 'PG',
-                        amenities: const [],
-                        locationQuery: '',
-                        fromTab: true,
-                      ),
+                      '/name-search-results',
+                      extra: PropertyNameSearchArgs(query: 'PG', mode: 'rent'),
                     );
                   },
                 ),
@@ -1130,14 +1028,10 @@ class _HomeDrawer extends ConsumerWidget {
                   onTap: () {
                     Navigator.of(context).pop();
                     context.push(
-                      '/properties',
-                      extra: SearchArgs(
+                      '/name-search-results',
+                      extra: PropertyNameSearchArgs(
+                        query: 'Commercial',
                         mode: 'buy',
-                        budget: const RangeValues(0, 3000000),
-                        propertyType: 'Commercial',
-                        amenities: const [],
-                        locationQuery: '',
-                        fromTab: true,
                       ),
                     );
                   },
@@ -1157,50 +1051,6 @@ class _HomeDrawer extends ConsumerWidget {
                         mode: 'buy',
                         budget: const RangeValues(0, 3000000),
                         propertyType: 'Plot',
-                        amenities: const [],
-                        locationQuery: '',
-                        fromTab: true,
-                      ),
-                    );
-                  },
-                ),
-                _drawerTile(
-                  icon: const Icon(
-                    Icons.domain_outlined,
-                    color: Color(0xFF627D98),
-                    size: 22,
-                  ),
-                  title: 'New Projects',
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    context.push(
-                      '/properties',
-                      extra: SearchArgs(
-                        mode: 'buy',
-                        budget: const RangeValues(0, 3000000),
-                        propertyType: 'New Project',
-                        amenities: const [],
-                        locationQuery: '',
-                        fromTab: true,
-                      ),
-                    );
-                  },
-                ),
-                _drawerTile(
-                  icon: const Icon(
-                    Icons.construction_outlined,
-                    color: Color(0xFF627D98),
-                    size: 22,
-                  ),
-                  title: 'Builder Projects',
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    context.push(
-                      '/properties',
-                      extra: SearchArgs(
-                        mode: 'buy',
-                        budget: const RangeValues(0, 3000000),
-                        propertyType: 'Any',
                         amenities: const [],
                         locationQuery: '',
                         fromTab: true,
@@ -1248,7 +1098,7 @@ class _HomeDrawer extends ConsumerWidget {
                     color: Color(0xFF627D98),
                     size: 22,
                   ),
-                  title: 'Shortlisted',
+                  title: 'Favorites',
                   trailing: _badge(shortlistedCount),
                   onTap: () {
                     Navigator.of(context).pop();
@@ -1265,28 +1115,14 @@ class _HomeDrawer extends ConsumerWidget {
                     }
                   },
                 ),
-                _drawerTile(
-                  icon: const Icon(
-                    Icons.home_work_outlined,
-                    color: Color(0xFF627D98),
-                    size: 22,
-                  ),
-                  title: 'My Properties',
-                  trailing: _badge(myPropertiesCount),
-                  onTap: () {
-                    ref
-                        .read(navProvider.notifier)
-                        .goTo(1); // Go to Properties tab
-                    Navigator.of(context).pop();
-                  },
-                ),
+
                 _drawerTile(
                   icon: const Icon(
                     Icons.calendar_today_outlined,
                     color: Color(0xFF627D98),
                     size: 22,
                   ),
-                  title: 'Site Visits',
+                  title: 'Scheduled Visits',
                   trailing: _badge(siteVisitsCount),
                   onTap: () {
                     Navigator.of(context).pop();
@@ -1296,10 +1132,10 @@ class _HomeDrawer extends ConsumerWidget {
                         'Please login to view appointments',
                       );
                       context.push(
-                        '/login?from=${Uri.encodeComponent('/leads')}',
+                        '/login?from=${Uri.encodeComponent('/scheduled-visits')}',
                       );
                     } else {
-                      context.push('/leads');
+                      context.push('/scheduled-visits');
                     }
                   },
                 ),
@@ -1313,94 +1149,6 @@ class _HomeDrawer extends ConsumerWidget {
                   ),
                 ),
 
-                // SECTION 3: My Offers, Alerts, Saved Searches, Recently Viewed
-                _drawerTile(
-                  icon: const Icon(
-                    Icons.local_offer_outlined,
-                    color: Color(0xFF627D98),
-                    size: 22,
-                  ),
-                  title: 'My Offers',
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    AppSnackbar.showMessage(
-                      context,
-                      'No offers submitted yet.',
-                    );
-                  },
-                ),
-                _drawerTile(
-                  icon: const Icon(
-                    Icons.notifications_none_outlined,
-                    color: Color(0xFF627D98),
-                    size: 22,
-                  ),
-                  title: 'Alerts',
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    context.push('/notifications');
-                  },
-                ),
-                _drawerTile(
-                  icon: const Icon(
-                    Icons.saved_search_rounded,
-                    color: Color(0xFF627D98),
-                    size: 22,
-                  ),
-                  title: 'Saved Searches',
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    context.push(
-                      '/name-search',
-                      extra: NameSearchArgs(mode: currentMode),
-                    );
-                  },
-                ),
-                _drawerTile(
-                  icon: const Icon(
-                    Icons.visibility_outlined,
-                    color: Color(0xFF627D98),
-                    size: 22,
-                  ),
-                  title: 'Recently Viewed',
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    context.push('/properties');
-                  },
-                ),
-
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Divider(
-                    height: 1,
-                    thickness: 1,
-                    color: Color(0xFFF2F4F7),
-                  ),
-                ),
-
-                // SECTION 4: Settings, Help & Support, Logout
-                _drawerTile(
-                  icon: const Icon(
-                    Icons.settings_outlined,
-                    color: Color(0xFF627D98),
-                    size: 22,
-                  ),
-                  title: 'Settings',
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    if (!isAuthed) {
-                      AppSnackbar.showError(
-                        context,
-                        'Please login to view settings',
-                      );
-                      context.push(
-                        '/login?from=${Uri.encodeComponent('/profile')}',
-                      );
-                    } else {
-                      context.push('/profile');
-                    }
-                  },
-                ),
                 _drawerTile(
                   icon: const Icon(
                     Icons.headset_mic_outlined,
@@ -1513,16 +1261,7 @@ class _QuickActions extends StatelessWidget {
         label: 'Land/Plot',
         onTap: () => onItemTap('Land/Plot'),
       ),
-      _QAItem(
-        asset: 'assets/icons/newProject.png',
-        label: 'New Projects',
-        onTap: () => onItemTap('New Projects'),
-      ),
-      _QAItem(
-        asset: 'assets/icons/builder.png',
-        label: 'Builders',
-        onTap: () => onItemTap('Builders'),
-      ),
+
       _QAItem(
         asset: 'assets/icons/more.png',
         label: 'More',
@@ -1531,49 +1270,35 @@ class _QuickActions extends StatelessWidget {
     ];
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(10, 14, 10, 12),
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
       decoration: BoxDecoration(
-        color: _kCard,
-        borderRadius: BorderRadius.circular(20),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
+            color: _kPrimary.withValues(alpha: 0.06),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
           ),
         ],
+        border: Border.all(color: Colors.white, width: 2),
       ),
       child: Column(
         children: [
           Row(
             children: items
-                .take(4)
+                .take(3)
                 .map((i) => Expanded(child: _QACell(item: i)))
                 .toList(),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 16),
           Row(
             children: items
-                .skip(4)
+                .skip(3)
                 .map((i) => Expanded(child: _QACell(item: i)))
                 .toList(),
           ),
-          const SizedBox(height: 10),
-          // Row(
-          //   children: [
-          //     _ModePill(
-          //       label: 'Rent',
-          //       selected: mode == 'rent',
-          //       onTap: () => onModeChanged('rent'),
-          //     ),
-          //     const SizedBox(width: 10),
-          //     _ModePill(
-          //       label: 'Buy',
-          //       selected: mode != 'rent',
-          //       onTap: () => onModeChanged('buy'),
-          //     ),
-          //   ],
-          // ),
         ],
       ),
     );
@@ -1599,35 +1324,43 @@ class _QACell extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: item.onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16),
+      splashColor: _kPrimary.withValues(alpha: 0.1),
+      highlightColor: _kPrimary.withValues(alpha: 0.05),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
-              width: 46,
-              height: 46,
-              // decoration: BoxDecoration(
-              //   color: Colors.white,
-              //   borderRadius: BorderRadius.circular(13),
-              //   border: Border.all(color: _kBorder),
-              // ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(13),
-                child: Image.asset(item.asset, fit: BoxFit.cover),
+            Container(
+              width: 56,
+              height: 56,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8F9FA),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0xFFF1F3F5)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
+              child: Image.asset(item.asset, fit: BoxFit.contain),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 10),
             Text(
               item.label,
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 10.5,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: _kTextDark,
+                letterSpacing: -0.2,
               ),
             ),
           ],
@@ -1998,48 +1731,6 @@ class _SectionHeader extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  BUILDER CHIP
-// ─────────────────────────────────────────────────────────────
-class _BuilderChip extends StatelessWidget {
-  final String asset;
-  const _BuilderChip({required this.asset});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 60,
-      width: 92,
-      decoration: BoxDecoration(
-        color: _kCard,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _kBorder),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Image.asset(
-            asset,
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) => const Icon(
-              Icons.image_not_supported_outlined,
-              color: _kTextMid,
-              size: 22,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────
 //  EMPTY STATE
 // ─────────────────────────────────────────────────────────────
 class _EmptySection extends StatelessWidget {
@@ -2090,132 +1781,6 @@ class _EmptySection extends StatelessWidget {
 // Bottom navigation removed (now managed via Drawer).
 
 // ─────────────────────────────────────────────────────────────
-//  LOCATION SHEET  (logic fully unchanged)
-// ─────────────────────────────────────────────────────────────
-class _LocationSheet extends ConsumerStatefulWidget {
-  const _LocationSheet();
-
-  @override
-  ConsumerState<_LocationSheet> createState() => _LocationSheetState();
-}
-
-class _LocationSheetState extends ConsumerState<_LocationSheet> {
-  late final TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final state = ref.watch(locationProvider);
-
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: AppSpacing.pagePadding,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Location',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: _kTextDark,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      decoration: const InputDecoration(
-                        labelText: 'Enter city/locality',
-                        prefixIcon: Icon(Icons.place_outlined),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  IconButton.filledTonal(
-                    onPressed: state.isLoading
-                        ? null
-                        : () => ref
-                              .read(locationProvider.notifier)
-                              .fetchCurrent(),
-                    icon: state.isLoading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.my_location_rounded),
-                  ),
-                ],
-              ),
-              if (state.error != null) ...[
-                const SizedBox(height: 10),
-                Text(
-                  state.error!.replaceFirst('Exception: ', ''),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 14),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final loc in state.saved.take(8))
-                    ActionChip(
-                      label: Text(loc),
-                      onPressed: () async {
-                        await ref
-                            .read(locationProvider.notifier)
-                            .setManual(loc);
-                        if (!context.mounted) return;
-                        Navigator.of(context).pop();
-                      },
-                    ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: FilledButton.icon(
-                  onPressed: () async {
-                    await ref
-                        .read(locationProvider.notifier)
-                        .setManual(_controller.text);
-                    if (!context.mounted) return;
-                    Navigator.of(context).pop();
-                  },
-                  icon: const Icon(Icons.check_rounded),
-                  label: const Text('Use this location'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _FeaturedPropertyCard extends ConsumerWidget {
   final Property p;

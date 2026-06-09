@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../data/models/property_filter_model.dart';
 
-final propertyFilterProvider = StateNotifierProvider<PropertyFilterNotifier, PropertyFilterState>((ref) {
+final propertyFilterProvider = StateNotifierProvider.autoDispose<PropertyFilterNotifier, PropertyFilterState>((ref) {
   return PropertyFilterNotifier();
 });
 

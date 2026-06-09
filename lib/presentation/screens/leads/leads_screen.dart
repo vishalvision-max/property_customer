@@ -60,7 +60,9 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
     return Scaffold(
       backgroundColor: _kBg,
       body: CustomScrollView(
-        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
         slivers: [
           SliverAppBar(
             expandedHeight: 120.0,
@@ -70,7 +72,11 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
             surfaceTintColor: Colors.white,
             elevation: 0,
             flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsets.only(left: 20, bottom: 16, right: 20),
+              titlePadding: const EdgeInsets.only(
+                left: 20,
+                bottom: 16,
+                right: 20,
+              ),
               title: const Text(
                 'Property Enquiries',
                 style: TextStyle(
@@ -85,10 +91,7 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [
-                      _kPrimary.withValues(alpha: 0.08),
-                      Colors.white,
-                    ],
+                    colors: [_kPrimary.withValues(alpha: 0.08), Colors.white],
                   ),
                 ),
               ),
@@ -152,11 +155,7 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
               const SizedBox(height: 12),
               const Text(
                 'Please log in to view your property enquiries and track lead statuses.',
-                style: TextStyle(
-                  fontSize: 15,
-                  color: _kTextMid,
-                  height: 1.5,
-                ),
+                style: TextStyle(fontSize: 15, color: _kTextMid, height: 1.5),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
@@ -202,7 +201,8 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
           child: ErrorRetry(
             title: 'Failed to load enquiries',
             message: state.error!,
-            onRetry: () => ref.read(leadNotifierProvider.notifier).loadMyLeads(),
+            onRetry: () =>
+                ref.read(leadNotifierProvider.notifier).loadMyLeads(),
           ),
         ),
       );
@@ -210,56 +210,54 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
     if (state.items.isEmpty) {
       return const SliverFillRemaining(
         hasScrollBody: false,
-        child: Center(
-          child: Text('No inquiry found'),
-        ),
+        child: Center(child: Text('No enquiry found')),
       );
     }
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            final lead = state.items[index];
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: _LeadCard(
-                name: lead.name,
-                phone: lead.phone,
-                email: lead.email,
-                message: lead.message,
-                city: lead.city,
-                type: lead.type,
-                propertyType: lead.propertyType,
-                status: lead.status,
-                createdAt: lead.createdAt,
-                onUpdateStatus: () async {
-                  final picked = await _pickStatus(context, current: lead.status);
-                  if (picked == null) return;
-                  try {
-                    await ref
-                        .read(leadNotifierProvider.notifier)
-                        .updateStatus(leadId: lead.id, status: picked);
-                    if (!context.mounted) return;
-                    AppSnackbar.showMessage(context, 'Status updated');
-                  } catch (e) {
-                    if (!context.mounted) return;
-                    AppSnackbar.showError(
-                      context,
-                      e.toString().replaceFirst('Exception: ', ''),
-                    );
-                  }
-                },
-              ),
-            );
-          },
-          childCount: state.items.length,
-        ),
+        delegate: SliverChildBuilderDelegate((context, index) {
+          final lead = state.items[index];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: _LeadCard(
+              name: lead.name,
+              phone: lead.phone,
+              email: lead.email,
+              message: lead.message,
+              city: lead.city,
+              type: lead.type,
+              propertyType: lead.propertyType,
+              status: lead.status,
+              createdAt: lead.createdAt,
+              onUpdateStatus: () async {
+                final picked = await _pickStatus(context, current: lead.status);
+                if (picked == null) return;
+                try {
+                  await ref
+                      .read(leadNotifierProvider.notifier)
+                      .updateStatus(leadId: lead.id, status: picked);
+                  if (!context.mounted) return;
+                  AppSnackbar.showMessage(context, 'Status updated');
+                } catch (e) {
+                  if (!context.mounted) return;
+                  AppSnackbar.showError(
+                    context,
+                    e.toString().replaceFirst('Exception: ', ''),
+                  );
+                }
+              },
+            ),
+          );
+        }, childCount: state.items.length),
       ),
     );
   }
 
-  Future<String?> _pickStatus(BuildContext context, {required String current}) async {
+  Future<String?> _pickStatus(
+    BuildContext context, {
+    required String current,
+  }) async {
     const statuses = ['assigned', 'contacted', 'converted', 'closed'];
     final cur = current.toLowerCase();
     return showModalBottomSheet<String>(
@@ -299,9 +297,14 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
                   return InkWell(
                     onTap: () => Navigator.of(context).pop(s),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 16,
+                      ),
                       decoration: BoxDecoration(
-                        color: selected ? _kPrimary.withValues(alpha: 0.05) : Colors.transparent,
+                        color: selected
+                            ? _kPrimary.withValues(alpha: 0.05)
+                            : Colors.transparent,
                       ),
                       child: Row(
                         children: [
@@ -309,12 +312,18 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: selected ? _kPrimary : Colors.grey.shade100,
+                              color: selected
+                                  ? _kPrimary
+                                  : Colors.grey.shade100,
                             ),
                             child: Icon(
-                              selected ? Icons.check_rounded : Icons.label_outline_rounded,
+                              selected
+                                  ? Icons.check_rounded
+                                  : Icons.label_outline_rounded,
                               size: 16,
-                              color: selected ? Colors.white : Colors.grey.shade600,
+                              color: selected
+                                  ? Colors.white
+                                  : Colors.grey.shade600,
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -322,7 +331,9 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
                             s.toUpperCase(),
                             style: TextStyle(
                               fontSize: 15,
-                              fontWeight: selected ? FontWeight.bold : FontWeight.w600,
+                              fontWeight: selected
+                                  ? FontWeight.bold
+                                  : FontWeight.w600,
                               color: selected ? _kPrimary : _kTextDark,
                             ),
                           ),
@@ -369,15 +380,35 @@ class _LeadCard extends StatelessWidget {
   (Color bg, Color fg, IconData icon) _statusConfig(String st) {
     switch (st.toLowerCase()) {
       case 'assigned':
-        return (const Color(0xFFE0E7FF), const Color(0xFF4338CA), Icons.assignment_ind_rounded);
+        return (
+          const Color(0xFFE0E7FF),
+          const Color(0xFF4338CA),
+          Icons.assignment_ind_rounded,
+        );
       case 'contacted':
-        return (const Color(0xFFFEF3C7), const Color(0xFFB45309), Icons.phone_in_talk_rounded);
+        return (
+          const Color(0xFFFEF3C7),
+          const Color(0xFFB45309),
+          Icons.phone_in_talk_rounded,
+        );
       case 'converted':
-        return (const Color(0xFFD1FAE5), const Color(0xFF059669), Icons.verified_rounded);
+        return (
+          const Color(0xFFD1FAE5),
+          const Color(0xFF059669),
+          Icons.verified_rounded,
+        );
       case 'closed':
-        return (const Color(0xFFF3F4F6), const Color(0xFF4B5563), Icons.do_not_disturb_alt_rounded);
+        return (
+          const Color(0xFFF3F4F6),
+          const Color(0xFF4B5563),
+          Icons.do_not_disturb_alt_rounded,
+        );
       default:
-        return (const Color(0xFFF3F4F6), const Color(0xFF4B5563), Icons.info_outline_rounded);
+        return (
+          const Color(0xFFF3F4F6),
+          const Color(0xFF4B5563),
+          Icons.info_outline_rounded,
+        );
     }
   }
 
@@ -407,9 +438,7 @@ class _LeadCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               decoration: BoxDecoration(
                 color: conf.$1.withValues(alpha: 0.5),
-                border: Border(
-                  bottom: BorderSide(color: conf.$1, width: 1),
-                ),
+                border: Border(bottom: BorderSide(color: conf.$1, width: 1)),
               ),
               child: Row(
                 children: [
@@ -436,7 +465,7 @@ class _LeadCard extends StatelessWidget {
                 ],
               ),
             ),
-            
+
             // Content
             Padding(
               padding: const EdgeInsets.all(20),
@@ -514,7 +543,7 @@ class _LeadCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  
+
                   // Chips for property info
                   Wrap(
                     spacing: 8,
@@ -528,7 +557,7 @@ class _LeadCard extends StatelessWidget {
                         _buildInfoChip(Icons.domain_rounded, propertyType),
                     ],
                   ),
-                  
+
                   if (message != null && message!.trim().isNotEmpty) ...[
                     const SizedBox(height: 16),
                     Container(
@@ -536,12 +565,18 @@ class _LeadCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: _kPrimary.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: _kPrimary.withValues(alpha: 0.1)),
+                        border: Border.all(
+                          color: _kPrimary.withValues(alpha: 0.1),
+                        ),
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.chat_bubble_outline_rounded, size: 16, color: _kPrimary.withValues(alpha: 0.7)),
+                          Icon(
+                            Icons.chat_bubble_outline_rounded,
+                            size: 16,
+                            color: _kPrimary.withValues(alpha: 0.7),
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -557,11 +592,11 @@ class _LeadCard extends StatelessWidget {
                       ),
                     ),
                   ],
-                  
+
                   const SizedBox(height: 20),
                   const Divider(height: 1, color: _kBorder),
                   const SizedBox(height: 12),
-                  
+
                   // Action Button
                   SizedBox(
                     width: double.infinity,

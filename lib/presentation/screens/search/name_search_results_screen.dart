@@ -17,6 +17,7 @@ import '../../widgets/property_type_section.dart';
 import '../../sheets/filter_bottom_sheet.dart';
 import '../../sheets/budget_bottom_sheet.dart';
 import '../../sheets/property_type_bottom_sheet.dart';
+import '../../sheets/bhk_bottom_sheet.dart';
 import '../../providers/property_filter_provider.dart';
 import '../../../data/models/property_filter_model.dart';
 
@@ -88,12 +89,6 @@ class _NameSearchResultsScreenState
   void dispose() {
     _searchController.dispose();
     _scrollController.dispose();
-    // Clear filters when user completely leaves the search results screen
-    Future.microtask(() {
-      try {
-        ref.read(propertyFilterProvider.notifier).clearFilters();
-      } catch (_) {}
-    });
     super.dispose();
   }
 
@@ -102,6 +97,7 @@ class _NameSearchResultsScreenState
     final clean = query.replaceAll(',', ' ').trim();
     final words = clean
         .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
         .map((w) => w.toLowerCase())
         .toList();
 
@@ -307,6 +303,22 @@ class _NameSearchResultsScreenState
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (_) => const PropertyTypeBottomSheet(),
+    );
+    if (applied == true && mounted) {
+      _applyFiltersAndReload();
+    }
+  }
+
+  void _openBhkBottomSheet() async {
+    final applied = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      enableDrag: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => const BhkBottomSheet(),
     );
     if (applied == true && mounted) {
       _applyFiltersAndReload();
@@ -879,12 +891,11 @@ class _NameSearchResultsScreenState
             ),
             const SizedBox(width: 8),
             CustomFilterChip(
-              label: '2 BHK',
-              isSelected: filters.selectedBhk.contains('2 BHK'),
-              onTap: () {
-                notifier.toggleBhk('2 BHK');
-                _applyFiltersAndReload();
-              },
+              label: filters.selectedBhk.isNotEmpty
+                  ? 'BHK (${filters.selectedBhk.length})'
+                  : 'BHK Type',
+              isSelected: filters.selectedBhk.isNotEmpty,
+              onTap: _openBhkBottomSheet,
             ),
             const SizedBox(width: 8),
             CustomFilterChip(
@@ -1074,7 +1085,7 @@ class _NameSearchResultsScreenState
   ) {
     if (items.isEmpty) {
       return const EmptyState(
-        title: 'No results matched',
+        title: 'No Property Found',
         message:
             'Try clearing some active filters or modifying search keywords.',
         asset: 'assets/illustrations/empty_search.svg',

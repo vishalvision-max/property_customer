@@ -38,6 +38,9 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyB9zroafCQGFNKoU1g5-ScptQBJo2FgpKw"/>
     </application>
     <queries>
         <!-- Support URL links like WhatsApp https://wa.me -->

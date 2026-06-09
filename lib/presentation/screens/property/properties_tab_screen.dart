@@ -331,13 +331,14 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
             break;
           default:
             final loc = ref.read(locationProvider);
-            final backendMode = _selectedMode == 'New Projects'
-                ? 'buy'
-                : 'rent';
+            final backendMode = 'rent';
             fetched = await notif.fetchForType(
               mode: backendMode,
-              lat: loc.lat,
-              lng: loc.lng,
+              city:
+                  loc.currentLabel.isNotEmpty &&
+                      loc.currentLabel != 'Unknown Location'
+                  ? loc.currentLabel
+                  : null,
             );
             hasMore = false;
         }

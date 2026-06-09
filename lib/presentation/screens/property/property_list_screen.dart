@@ -280,8 +280,11 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
                 propertyType: extra.propertyType == 'Any'
                     ? null
                     : extra.propertyType,
-                lat: loc.lat,
-                lng: loc.lng,
+                city:
+                    loc.currentLabel.isNotEmpty &&
+                        loc.currentLabel != 'Unknown Location'
+                    ? loc.currentLabel
+                    : null,
               );
         }
       } else {
@@ -327,8 +330,8 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
           } else {
             items = await notif.search(
               mode: extra.mode,
-              budgetRange: extra.budget != null 
-                  ? BudgetRange(extra.budget!.start, extra.budget!.end) 
+              budgetRange: extra.budget != null
+                  ? BudgetRange(extra.budget!.start, extra.budget!.end)
                   : null,
               propertyType: extra.propertyType,
               amenities: extra.amenities,
@@ -690,7 +693,7 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
             height: MediaQuery.sizeOf(context).height * 0.6,
             alignment: Alignment.center,
             child: const EmptyState(
-              title: 'No results',
+              title: 'No Property Found',
               message:
                   'Try adjusting filters or selecting a different location.',
               asset: 'assets/illustrations/empty_search.svg',

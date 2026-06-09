@@ -22,14 +22,14 @@ class PropertyState with _$PropertyState {
   }) = _PropertyState;
 
   factory PropertyState.initial() => const PropertyState(
-        isLoading: false,
-        all: [],
-        featured: [],
-        recommended: [],
-        nearby: [],
-        selected: null,
-        error: null,
-      );
+    isLoading: false,
+    all: [],
+    featured: [],
+    recommended: [],
+    nearby: [],
+    selected: null,
+    error: null,
+  );
 }
 
 @riverpod
@@ -50,7 +50,12 @@ class PropertyNotifier extends _$PropertyNotifier {
       final repo = ref.read(propertyRepositoryProvider);
       List<Property> all;
       if (lat != null && lng != null) {
-        all = await repo.fetchNearby(lat: lat, lng: lng, radius: radius, token: token);
+        all = await repo.fetchNearby(
+          lat: lat,
+          lng: lng,
+          radius: radius,
+          token: token,
+        );
       } else {
         all = await repo.fetchAll();
       }
@@ -84,25 +89,14 @@ class PropertyNotifier extends _$PropertyNotifier {
   Future<void> loadHomeForMode({
     required String type,
     String? token,
-    double? lat,
-    double? lng,
-    int radius = 100,
+    String? city,
   }) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final repo = ref.read(propertyRepositoryProvider);
-      List<Property> allProps = const [];
 
-      if (lat != null && lng != null) {
-        allProps = await repo.fetchNearby(lat: lat, lng: lng, radius: radius, token: token);
-      } else {
-        allProps = await repo.fetchAll();
-      }
-
-      final filtered = allProps
-          .where((p) => p.type == type)
-          .toList(growable: false);
-
+      // Fetch using the global filters method
+      final filtered = await repo.fetchWithFilters(type: type, city: city);
       state = state.copyWith(
         isLoading: false,
         all: filtered,
@@ -110,7 +104,7 @@ class PropertyNotifier extends _$PropertyNotifier {
         recommended: filtered.length > 1
             ? filtered.skip(1).toList(growable: false)
             : filtered,
-        nearby: lat != null && lng != null ? filtered : state.nearby,
+        nearby: filtered,
         error: null,
       );
     } catch (e) {
@@ -138,6 +132,7 @@ class PropertyNotifier extends _$PropertyNotifier {
     }
     state = state.copyWith(all: nextAll);
   }
+
   Future<List<Property>> search({
     required String mode,
     BudgetRange? budgetRange,
@@ -197,27 +192,20 @@ class PropertyNotifier extends _$PropertyNotifier {
   Future<List<Property>> fetchForType({
     required String mode,
     String? propertyType,
-    double? lat,
-    double? lng,
-    int radius = 100,
+    String? city,
   }) async {
     final repo = ref.read(propertyRepositoryProvider);
-    List<Property> all;
-    final token = ref.read(authProvider).user?.token;
-    if (lat != null && lng != null) {
-      all = await repo.fetchNearby(lat: lat, lng: lng, radius: radius, token: token);
-    } else {
-      all = await repo.fetchAll();
-    }
+    final all = await repo.fetchWithFilters(type: mode, city: city);
 
     return all
         .where((p) {
-          final typeOk = p.type == mode;
           final subTypeOk = (propertyType == null || propertyType == 'Any')
               ? true
-              : (p.propertyKind.toLowerCase().contains(propertyType.toLowerCase()) || 
-                 p.name.toLowerCase().contains(propertyType.toLowerCase()));
-          return typeOk && subTypeOk;
+              : (p.propertyKind.toLowerCase().contains(
+                      propertyType.toLowerCase(),
+                    ) ||
+                    p.name.toLowerCase().contains(propertyType.toLowerCase()));
+          return subTypeOk;
         })
         .toList(growable: false);
   }
@@ -266,7 +254,12 @@ class PropertyNotifier extends _$PropertyNotifier {
     try {
       final repo = ref.read(propertyRepositoryProvider);
       final token = ref.read(authProvider).user?.token;
-      final items = await repo.fetchNearby(lat: lat, lng: lng, radius: radius, token: token);
+      final items = await repo.fetchNearby(
+        lat: lat,
+        lng: lng,
+        radius: radius,
+        token: token,
+      );
       state = state.copyWith(isLoading: false, nearby: items, error: null);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -459,9 +452,19 @@ class PropertyNotifier extends _$PropertyNotifier {
   }
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
-  fetchAllOwnerPropertiesPaged(String token, {int page = 1, String? city, int? bhk}) {
+  fetchAllOwnerPropertiesPaged(
+    String token, {
+    int page = 1,
+    String? city,
+    int? bhk,
+  }) {
     final repo = ref.read(propertyRepositoryProvider);
-    return repo.fetchAllOwnerPropertiesPaged(token: token, page: page, city: city, bhk: bhk);
+    return repo.fetchAllOwnerPropertiesPaged(
+      token: token,
+      page: page,
+      city: city,
+      bhk: bhk,
+    );
   }
 
   Future<List<Property>> fetchRelatedProperties(String propertyId) {

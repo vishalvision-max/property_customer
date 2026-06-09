@@ -54,6 +54,7 @@ dependencies:
   url_launcher: ^6.3.2
   riverpod_annotation: ^2.3.5
   freezed_annotation: ^2.4.4
+  google_maps_flutter: ^2.17.1
 
 dev_dependencies:
   flutter_test:

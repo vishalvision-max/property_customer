@@ -30,6 +30,10 @@ class LeadService {
       final body = await res.transform(utf8.decoder).join();
       final status = res.statusCode;
 
+      if (status == 404) {
+        return LeadPage(data: [], currentPage: 1, lastPage: 1, total: 0);
+      }
+
       if (status < 200 || status >= 300) {
         throw Exception('Failed to load leads ($status)');
       }
@@ -205,15 +209,11 @@ class LeadService {
       print('API STATUS: $status');
       print('API BODY: $body');
 
+      if (status == 404) {
+        return <Lead>[];
+      }
+
       if (status < 200 || status >= 300) {
-        if (status == 404) {
-          try {
-            final decodedError = body.trim().isEmpty ? null : jsonDecode(body);
-            if (decodedError is Map && decodedError['status'] == false) {
-              return <Lead>[];
-            }
-          } catch (_) {}
-        }
         throw Exception('Failed to load enquiries ($status)');
       }
 

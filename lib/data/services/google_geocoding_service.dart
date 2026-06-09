@@ -61,5 +61,29 @@ class GoogleGeocodingService {
     }
     return parts.join(', ');
   }
-}
 
+  Future<List<String>> autocomplete(String query) async {
+    if (!isConfigured || query.trim().isEmpty) return [];
+
+    final uri = Uri.https('maps.googleapis.com', '/maps/api/place/autocomplete/json', {
+      'input': query,
+      'key': apiKey,
+      'components': 'country:in', // Optional: restrict to India if appropriate
+    });
+
+    try {
+      final res = await http.get(uri);
+      if (res.statusCode != 200) return [];
+
+      final json = jsonDecode(res.body);
+      if (json['status'] != 'OK' && json['status'] != 'ZERO_RESULTS') return [];
+
+      final predictions = json['predictions'];
+      if (predictions is! List) return [];
+
+      return predictions.map((p) => p['description'] as String).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+}

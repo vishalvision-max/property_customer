@@ -48,18 +48,17 @@ class PropertyService {
     final uri = _baseUri.replace(path: '/api/v1/owner/scheduled/visit/index');
     final response = await http.get(
       uri,
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
     );
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final decoded = jsonDecode(response.body);
       final data = decoded['data'] ?? decoded;
-      
+
       if (data is List) {
-        return data.map((e) => ScheduledVisit.fromJson(e as Map<String, dynamic>)).toList();
+        return data
+            .map((e) => ScheduledVisit.fromJson(e as Map<String, dynamic>))
+            .toList();
       } else if (data is Map && data['data'] is List) {
         return (data['data'] as List)
             .map((e) => ScheduledVisit.fromJson(e as Map<String, dynamic>))
@@ -67,7 +66,9 @@ class PropertyService {
       }
       return [];
     } else {
-      throw Exception('Failed to fetch scheduled visits: ${response.statusCode}');
+      throw Exception(
+        'Failed to fetch scheduled visits: ${response.statusCode}',
+      );
     }
   }
 
@@ -299,7 +300,7 @@ class PropertyService {
     if (kIsWeb) {
       throw Exception('Properties API is not supported on web in this build');
     }
-    final uri = _baseUri.replace(path: '/api/v1/properties/$id');
+    final uri = _baseUri.replace(path: '/api/v1/property/$id');
     final client = HttpClient();
     try {
       final req = await client.getUrl(uri);
@@ -913,12 +914,12 @@ class PropertyService {
         page: page,
       );
 
-  /// Commercial Properties — /api/v1/owner/commercial/properties
+  /// Commercial Properties — /api/v1/property/987
   Future<List<Property>> fetchCommercialProperties({required String token}) =>
       _fetchSpecialized(
         token: token,
         errorLabel: 'Commercial Properties',
-        path: '/api/v1/owner/commercial/properties',
+        path: '/api/v1/property/987',
       );
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
@@ -926,7 +927,7 @@ class PropertyService {
       _fetchSpecializedPaged(
         token: token,
         errorLabel: 'Commercial Properties',
-        path: '/api/v1/owner/commercial/properties',
+        path: '/api/v1/property/987',
         page: page,
       );
 

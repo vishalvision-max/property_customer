@@ -54,6 +54,17 @@ class Location extends _$Location {
     await storage.saveLocations(nextSaved.toList());
   }
 
+  Future<void> setPickedLocation(String label, double lat, double lng) async {
+    final v = label.trim();
+    if (v.isEmpty) return;
+    final nextSaved = {...state.saved};
+    nextSaved.add(v);
+    state = state.copyWith(currentLabel: v, lat: lat, lng: lng, saved: nextSaved.toList(), error: null);
+    final storage = ref.read(localStorageProvider);
+    await storage.setPreferredLocation(v);
+    await storage.saveLocations(nextSaved.toList());
+  }
+
   Future<void> fetchCurrent() async {
     state = state.copyWith(isLoading: true, error: null);
     try {
