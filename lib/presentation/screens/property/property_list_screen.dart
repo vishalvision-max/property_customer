@@ -387,34 +387,21 @@ class _PropertyListScreenState extends ConsumerState<PropertyListScreen> {
     return args.mode == 'buy' ? 'Buy Properties' : 'Rent Properties';
   }
 
-  // ─── Location sheet ───
-  void _openLocationSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => _LocationSheet(
-        onLocationChanged: (_) {
-          // Refresh results with new location
-          setState(() => _loadBaseItems());
-        },
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final location = ref.watch(locationProvider);
     final filters = ref.watch(commonFilterNotifierProvider);
 
     // Synchronize controller with search text if updated externally
     if (_areaController.text != filters.searchText) {
       _areaController.text = filters.searchText;
     }
+
+    // Watch for location changes to reload properties globally
+    ref.listen(locationProvider, (previous, next) {
+      if (previous?.currentLabel != next.currentLabel) {
+        _loadBaseItems();
+      }
+    });
 
     return Scaffold(
       backgroundColor: _kBg,

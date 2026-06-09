@@ -40,12 +40,27 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
   // ── Centralized Filter Mappings (reading commonFilterNotifierProvider) ────
   String get _selectedCity {
     final city = ref.read(commonFilterNotifierProvider).city;
-    return city.isEmpty ? 'Panchkula' : city;
+    if (city.isNotEmpty) return city.split(',').first.trim();
+
+    final locLabel = ref.read(locationProvider).currentLabel;
+    if (locLabel != 'Set location') {
+      return locLabel.split(',').first.trim();
+    }
+    return '';
   }
 
   String get _selectedState {
     final state = ref.read(commonFilterNotifierProvider).state;
-    return state.isEmpty ? 'Haryana' : state;
+    if (state.isNotEmpty) return state;
+
+    final locLabel = ref.read(locationProvider).currentLabel;
+    if (locLabel != 'Set location' && locLabel != 'Unknown Location') {
+      final parts = locLabel.split(',');
+      if (parts.length > 1) {
+        return parts[1].trim();
+      }
+    }
+    return '';
   }
 
   bool get _panchkulaSelected =>
@@ -337,8 +352,9 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
               city:
                   loc.currentLabel.isNotEmpty &&
                       loc.currentLabel != 'Unknown Location'
-                  ? loc.currentLabel
+                  ? _selectedCity
                   : null,
+              state: _selectedState.isNotEmpty ? _selectedState : null,
             );
             hasMore = false;
         }
@@ -1375,6 +1391,13 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
   Widget build(BuildContext context) {
     // Watch for changes so the UI reactively updates when filters change
     ref.watch(commonFilterNotifierProvider);
+
+    // Watch for location changes to reload properties globally
+    ref.listen(locationProvider, (previous, next) {
+      if (previous?.currentLabel != next.currentLabel) {
+        _load();
+      }
+    });
 
     return Scaffold(
       backgroundColor: _kBg,

@@ -8,6 +8,10 @@ import '../models/property.dart';
 import '../models/scheduled_visit.dart';
 
 class PropertyService {
+  final String? Function()? getCity;
+
+  PropertyService({this.getCity});
+
   static final Uri _baseUri = Uri.parse(
     'https://propertysearch.visionvivante.in',
   );
@@ -73,7 +77,7 @@ class PropertyService {
   }
 
   Future<List<Property>> fetchProperties() async {
-    return _fetchFromApi(query: const {'per_page': '250'});
+    return _fetchFromApi(query: const {'per_page': '100000'});
   }
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
@@ -93,6 +97,7 @@ class PropertyService {
     List<String> furnishing = const [], // 'unfurnished' | 'furnished'
     List<int> bhk = const [], // plain int: bhk=1&bhk=2
     String? city,
+    String? state,
     List<String> amenities = const [], // numeric IDs as strings: ['1','2']
     int? bathrooms,
     double? minArea,
@@ -112,11 +117,21 @@ class PropertyService {
     // Build query params list (key, value) to support multi-value params
     final params = <(String, String)>[];
 
-    params.add(('per_page', '250')); // always return max results for filtering
+    params.add((
+      'per_page',
+      '100000',
+    )); // always return max results for filtering
     if (type != null && type.trim().isNotEmpty)
       params.add(('type', type.trim()));
-    if (city != null && city.trim().isNotEmpty)
-      params.add(('city', city.trim()));
+    final resolvedCity = city != null && city.trim().isNotEmpty
+        ? city.trim()
+        : getCity?.call();
+    if (resolvedCity != null && resolvedCity.trim().isNotEmpty) {
+      params.add(('city', resolvedCity.trim()));
+    }
+    if (state != null && state.trim().isNotEmpty) {
+      params.add(('state', state.trim()));
+    }
 
     // category_id: array representation → category_id[]=2&category_id[]=34
     for (final cid in categoryIds) {
@@ -174,6 +189,10 @@ class PropertyService {
         '[PropertyService] fetchWithFilters → $status (${body.length} bytes)',
       );
 
+      if (status == 404) {
+        return <Property>[];
+      }
+
       if (status < 200 || status >= 300) {
         debugPrint(
           '[PropertyService] fetchWithFilters error: ${body.substring(0, body.length.clamp(0, 300))}',
@@ -229,7 +248,7 @@ class PropertyService {
     final apiType = type == 'buy' ? 'sale' : type;
     return _fetchFromApi(
       query: <String, String>{
-        'per_page': '250',
+        'per_page': '100000',
         if (categoryId != null) 'category_id': categoryId.toString(),
         if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
         if (minPrice != null) 'min_price': minPrice.toString(),
@@ -300,7 +319,7 @@ class PropertyService {
     if (kIsWeb) {
       throw Exception('Properties API is not supported on web in this build');
     }
-    final uri = _baseUri.replace(path: '/api/v1/property/$id');
+    final uri = _baseUri.replace(path: '/api/v1/propertie/$id');
     final client = HttpClient();
     try {
       final req = await client.getUrl(uri);
@@ -359,12 +378,15 @@ class PropertyService {
     String? city,
     int? bhk,
   }) async {
+    final finalCity = city ?? getCity?.call();
+
     final uri = _baseUri.replace(
       path: '/api/v1/properties',
       queryParameters: {
         'page': page.toString(),
         't': DateTime.now().millisecondsSinceEpoch.toString(),
-        if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
+        if (finalCity != null && finalCity.trim().isNotEmpty)
+          'city': finalCity.trim(),
         if (bhk != null) 'bhk': bhk.toString(),
       },
     );
@@ -514,10 +536,18 @@ class PropertyService {
     required String path,
     Map<String, String> queryParams = const {},
   }) async {
+    final resolvedCity = getCity?.call();
+    final effectiveQuery = Map<String, String>.from(queryParams);
+    if (resolvedCity != null &&
+        resolvedCity.isNotEmpty &&
+        !effectiveQuery.containsKey('city')) {
+      effectiveQuery['city'] = resolvedCity;
+    }
+
     final uri = _baseUri.replace(
       path: path,
       queryParameters: {
-        ...queryParams,
+        ...effectiveQuery,
         't': DateTime.now().millisecondsSinceEpoch.toString(),
       },
     );
@@ -583,10 +613,18 @@ class PropertyService {
     int page = 1,
     Map<String, String> queryParams = const {},
   }) async {
+    final resolvedCity = getCity?.call();
+    final effectiveQuery = Map<String, String>.from(queryParams);
+    if (resolvedCity != null &&
+        resolvedCity.isNotEmpty &&
+        !effectiveQuery.containsKey('city')) {
+      effectiveQuery['city'] = resolvedCity;
+    }
+
     final uri = _baseUri.replace(
       path: path,
       queryParameters: {
-        ...queryParams,
+        ...effectiveQuery,
         'page': page.toString(),
         't': DateTime.now().millisecondsSinceEpoch.toString(),
       },
@@ -982,7 +1020,7 @@ class PropertyService {
     final q = keyword.trim();
     return _fetchFromApi(
       query: <String, String>{
-        'per_page': '250',
+        'per_page': '100000',
         if (q.isNotEmpty) 'keyword': q,
       },
     );
@@ -1037,9 +1075,17 @@ class PropertyService {
       throw Exception('Properties API is not supported on web in this build');
     }
 
+    final resolvedCity = getCity?.call();
+    final effectiveQuery = Map<String, String>.from(query);
+    if (resolvedCity != null &&
+        resolvedCity.isNotEmpty &&
+        !effectiveQuery.containsKey('city')) {
+      effectiveQuery['city'] = resolvedCity;
+    }
+
     final uri = _baseUri.replace(
       path: path,
-      queryParameters: query.isEmpty ? null : query,
+      queryParameters: effectiveQuery.isEmpty ? null : effectiveQuery,
     );
     debugPrint('[PropertyService] GET $uri');
     // autoUncompress = true tells dart:io's HttpClient to automatically

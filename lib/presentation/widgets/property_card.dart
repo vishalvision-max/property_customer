@@ -597,157 +597,134 @@ class PropertyCard extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    if (!compact) ...[
-                      const SizedBox(height: 20),
+                    // if (!compact) ...[
+                    //   const SizedBox(height: 20),
 
-                      // Divider
-                      const Divider(
-                        color: Color(0xFFEAECF0),
-                        height: 1,
-                        thickness: 1,
-                      ),
-                      const SizedBox(height: 16),
+                    //   // Divider
+                    //   const Divider(
+                    //     color: Color(0xFFEAECF0),
+                    //     height: 1,
+                    //     thickness: 1,
+                    //   ),
+                    //   const SizedBox(height: 16),
 
-                      // Bottom Action Row
-                      Row(
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Updated',
-                                style: TextStyle(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xFF98A2B3),
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                updatedTimeAgo,
-                                style: const TextStyle(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF667085),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const Spacer(),
-                          OutlinedButton(
-                            onPressed: () {
-                              onTap();
-                            },
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
-                              ),
-                              minimumSize: const Size(0, 42),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              side: const BorderSide(
-                                color: Color(0xFF5C46E8),
-                                width: 1.5,
-                              ),
-                            ),
-                            child: const Text(
-                              'View Details',
-                              style: TextStyle(
-                                color: Color(0xFF5C46E8),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Container(
-                            height: 42,
-                            width: 42,
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: const Color(0xFF039855),
-                                width: 1.5,
-                              ),
-                              borderRadius: BorderRadius.circular(10),
-                              color: const Color(0xFFECFDF3),
-                            ),
-                            child: IconButton(
-                              padding: EdgeInsets.zero,
-                              icon: const Icon(
-                                Icons.wechat_rounded, // fallback for whatsapp
-                                color: Color(0xFF039855),
-                                size: 24,
-                              ),
-                              tooltip: 'WhatsApp',
-                              onPressed: () async {
-                                final phone = property.ownerPhone?.trim() ?? '';
-                                if (phone.isEmpty) return;
-                                String cleanPhone = phone.replaceAll(
-                                  RegExp(r'[^\d+]'),
-                                  '',
-                                );
-                                if (!cleanPhone.startsWith('+') &&
-                                    cleanPhone.length == 10) {
-                                  cleanPhone = '91$cleanPhone';
-                                }
-                                final url = Uri.parse(
-                                  'https://wa.me/$cleanPhone',
-                                );
-                                try {
-                                  await launchUrl(
-                                    url,
-                                    mode: LaunchMode
-                                        .externalNonBrowserApplication,
-                                  );
-                                } catch (_) {
-                                  launchUrl(
-                                    url,
-                                    mode: LaunchMode.externalApplication,
-                                  );
-                                }
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Container(
-                            height: 42,
-                            width: 42,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF5C46E8),
-                              borderRadius: BorderRadius.circular(10),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(
-                                    0xFF5C46E8,
-                                  ).withValues(alpha: 0.25),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: IconButton(
-                              padding: EdgeInsets.zero,
-                              icon: const Icon(
-                                Icons.call_rounded,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                              tooltip: 'Call',
-                              onPressed: () async {
-                                final phone = property.ownerPhone?.trim() ?? '';
-                                if (phone.isEmpty) return;
-                                final url = Uri.parse('tel:$phone');
-                                try {
-                                  await launchUrl(url);
-                                } catch (_) {}
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                    //   // Bottom Action Row
+                    //   // Row(
+                    //   //   children: [
+                    //   //     OutlinedButton(
+                    //   //       onPressed: () {
+                    //   //         onTap();
+                    //   //       },
+                    //   //       style: OutlinedButton.styleFrom(
+                    //   //         padding: const EdgeInsets.symmetric(
+                    //   //           horizontal: 20,
+                    //   //           vertical: 20,
+                    //   //         ),
+                    //   //         minimumSize: const Size(0, 42),
+                    //   //         shape: RoundedRectangleBorder(
+                    //   //           borderRadius: BorderRadius.circular(10),
+                    //   //         ),
+                    //   //         side: const BorderSide(
+                    //   //           color: Color(0xFF5C46E8),
+                    //   //           width: 1.5,
+                    //   //         ),
+                    //   //       ),
+                    //   //       child: const Text(
+                    //   //         'View Details',
+                    //   //         style: TextStyle(
+                    //   //           color: Color(0xFF5C46E8),
+                    //   //           fontSize: 13,
+                    //   //           fontWeight: FontWeight.w800,
+                    //   //         ),
+                    //   //       ),
+                    //   //     ),
+                    //   //     const SizedBox(width: 80),
+                    //   //     Container(
+                    //   //       height: 42,
+                    //   //       width: 42,
+                    //   //       decoration: BoxDecoration(
+                    //   //         border: Border.all(
+                    //   //           color: const Color(0xFF039855),
+                    //   //           width: 1.5,
+                    //   //         ),
+                    //   //         borderRadius: BorderRadius.circular(10),
+                    //   //         color: const Color(0xFFECFDF3),
+                    //   //       ),
+                    //   //       child: IconButton(
+                    //   //         padding: EdgeInsets.zero,
+                    //   //         icon: const Icon(
+                    //   //           Icons.wechat_rounded, // fallback for whatsapp
+                    //   //           color: Color(0xFF039855),
+                    //   //           size: 24,
+                    //   //         ),
+                    //   //         tooltip: 'WhatsApp',
+                    //   //         onPressed: () async {
+                    //   //           final phone = property.ownerPhone?.trim() ?? '';
+                    //   //           if (phone.isEmpty) return;
+                    //   //           String cleanPhone = phone.replaceAll(
+                    //   //             RegExp(r'[^\d+]'),
+                    //   //             '',
+                    //   //           );
+                    //   //           if (!cleanPhone.startsWith('+') &&
+                    //   //               cleanPhone.length == 10) {
+                    //   //             cleanPhone = '91$cleanPhone';
+                    //   //           }
+                    //   //           final url = Uri.parse(
+                    //   //             'https://wa.me/$cleanPhone',
+                    //   //           );
+                    //   //           try {
+                    //   //             await launchUrl(
+                    //   //               url,
+                    //   //               mode: LaunchMode
+                    //   //                   .externalNonBrowserApplication,
+                    //   //             );
+                    //   //           } catch (_) {
+                    //   //             launchUrl(
+                    //   //               url,
+                    //   //               mode: LaunchMode.externalApplication,
+                    //   //             );
+                    //   //           }
+                    //   //         },
+                    //   //       ),
+                    //   //     ),
+                    //   //     const SizedBox(width: 20),
+                    //   //     Container(
+                    //   //       height: 42,
+                    //   //       width: 42,
+                    //   //       decoration: BoxDecoration(
+                    //   //         color: const Color(0xFF5C46E8),
+                    //   //         borderRadius: BorderRadius.circular(10),
+                    //   //         boxShadow: [
+                    //   //           BoxShadow(
+                    //   //             color: const Color(
+                    //   //               0xFF5C46E8,
+                    //   //             ).withValues(alpha: 0.25),
+                    //   //             blurRadius: 8,
+                    //   //             offset: const Offset(0, 4),
+                    //   //           ),
+                    //   //         ],
+                    //   //       ),
+                    //   //       child: IconButton(
+                    //   //         padding: EdgeInsets.zero,
+                    //   //         icon: const Icon(
+                    //   //           Icons.call_rounded,
+                    //   //           color: Colors.white,
+                    //   //           size: 20,
+                    //   //         ),
+                    //   //         tooltip: 'Call',
+                    //   //         onPressed: () async {
+                    //   //           final phone = property.ownerPhone?.trim() ?? '';
+                    //   //           if (phone.isEmpty) return;
+                    //   //           final url = Uri.parse('tel:$phone');
+                    //   //           try {
+                    //   //             await launchUrl(url);
+                    //   //           } catch (_) {}
+                    //   //         },
+                    //   //       ),
+                    //   //     ),
+                    //   //   ],
+                    //   // ),
+                    // ],
                   ],
                 ),
               ),

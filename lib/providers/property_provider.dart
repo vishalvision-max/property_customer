@@ -90,13 +90,29 @@ class PropertyNotifier extends _$PropertyNotifier {
     required String type,
     String? token,
     String? city,
+    String? stateLoc,
   }) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final repo = ref.read(propertyRepositoryProvider);
 
+      String? finalCity = city;
+      String? finalState = stateLoc;
+      
+      if (finalCity == 'Set location' || finalCity == 'Unknown Location') {
+        finalCity = null;
+      }
+      
+      if (finalCity != null && finalCity.contains(',') && stateLoc == null) {
+        final parts = finalCity.split(',');
+        finalCity = parts.first.trim();
+        if (parts.length > 1) {
+          finalState = parts[1].trim();
+        }
+      }
+
       // Fetch using the global filters method
-      final filtered = await repo.fetchWithFilters(type: type, city: city);
+      final filtered = await repo.fetchWithFilters(type: type, city: finalCity, state: finalState);
       state = state.copyWith(
         isLoading: false,
         all: filtered,
@@ -159,6 +175,7 @@ class PropertyNotifier extends _$PropertyNotifier {
     List<String> furnishing = const [],
     List<int> bhk = const [],
     String? city,
+    String? state,
     List<String> amenities = const [],
     int? bathrooms,
     double? minArea,
@@ -176,6 +193,7 @@ class PropertyNotifier extends _$PropertyNotifier {
       furnishing: furnishing,
       bhk: bhk,
       city: city,
+      state: state,
       amenities: amenities,
       bathrooms: bathrooms,
       minArea: minArea,
@@ -193,9 +211,10 @@ class PropertyNotifier extends _$PropertyNotifier {
     required String mode,
     String? propertyType,
     String? city,
+    String? state,
   }) async {
     final repo = ref.read(propertyRepositoryProvider);
-    final all = await repo.fetchWithFilters(type: mode, city: city);
+    final all = await repo.fetchWithFilters(type: mode, city: city, state: state);
 
     return all
         .where((p) {

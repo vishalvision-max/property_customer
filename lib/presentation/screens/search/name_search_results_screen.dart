@@ -9,6 +9,7 @@ import '../../widgets/empty_state.dart';
 import '../../widgets/property_card.dart';
 import '../../widgets/shimmer_list.dart';
 import '../property/property_name_search_args.dart';
+import '../../../providers/location_provider.dart';
 
 // New Premium filter components
 import '../../widgets/filter_chip.dart';
@@ -93,8 +94,9 @@ class _NameSearchResultsScreenState
   }
 
   String _parseQueryAndGetKeyword(String query) {
-    // Replace commas with spaces first
-    final clean = query.replaceAll(',', ' ').trim();
+    // If it contains a comma, only take the first part (the city/locality name)
+    final cityPart = query.contains(',') ? query.split(',').first : query;
+    final clean = cityPart.replaceAll(',', ' ').trim();
     final words = clean
         .split(RegExp(r'\s+'))
         .where((w) => w.isNotEmpty)
@@ -660,6 +662,13 @@ class _NameSearchResultsScreenState
   Widget build(BuildContext context) {
     final filters = ref.watch(propertyFilterProvider);
     final notifier = ref.read(propertyFilterProvider.notifier);
+    
+    // Watch for location changes to reload properties globally
+    ref.listen(locationProvider, (previous, next) {
+      if (previous?.currentLabel != next.currentLabel) {
+        _loadBaseItems();
+      }
+    });
     final category = ref.watch(searchCategoryTabProvider);
 
     final filteredList = _getFilteredItems(filters, category);
@@ -784,74 +793,6 @@ class _NameSearchResultsScreenState
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildCategoryTabs(String activeTab) {
-    final categories = [
-      {'name': 'All', 'icon': Icons.home_work_rounded},
-      {'name': 'New Launches', 'icon': Icons.rocket_launch_rounded},
-      {'name': 'Owner', 'icon': Icons.person_pin_rounded},
-      {'name': 'Top Picks', 'icon': Icons.star_rounded},
-      {'name': 'Ready to Move', 'icon': Icons.vpn_key_rounded},
-      {'name': 'Verified', 'icon': Icons.verified_user_rounded},
-    ];
-
-    return Container(
-      color: Colors.white,
-      height: 76,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: categories.length,
-        itemBuilder: (context, i) {
-          final cat = categories[i];
-          final name = cat['name'] as String;
-          final icon = cat['icon'] as IconData;
-          final isSelected = activeTab == name;
-
-          return GestureDetector(
-            onTap: () {
-              ref.read(searchCategoryTabProvider.notifier).state = name;
-            },
-            child: Container(
-              margin: const EdgeInsets.only(right: 20),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    icon,
-                    color: isSelected ? _kPrimary : _kTextMid,
-                    size: 20,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    name,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: isSelected
-                          ? FontWeight.w800
-                          : FontWeight.w600,
-                      color: isSelected ? _kPrimary : _kTextMid,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    height: 2.5,
-                    width: 32,
-                    decoration: BoxDecoration(
-                      color: isSelected ? _kPrimary : Colors.transparent,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
       ),
     );
   }

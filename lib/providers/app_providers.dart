@@ -12,6 +12,7 @@ import '../data/services/local_storage_service.dart';
 import '../data/services/owner_service.dart';
 import '../data/services/property_service.dart';
 import 'auth_provider.dart';
+import 'location_provider.dart';
 
 part 'app_providers.g.dart';
 
@@ -27,7 +28,15 @@ AuthService authService(AuthServiceRef ref) {
 
 @riverpod
 PropertyService propertyService(PropertyServiceRef ref) {
-  return PropertyService();
+  return PropertyService(
+    getCity: () {
+      final loc = ref.read(locationProvider).currentLabel;
+      if (loc.isNotEmpty && loc != 'Unknown Location' && loc != 'Set location') {
+        return loc.split(',').first.trim();
+      }
+      return null;
+    },
+  );
 }
 
 @riverpod

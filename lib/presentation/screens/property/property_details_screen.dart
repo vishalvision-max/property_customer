@@ -550,10 +550,11 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
       return const SizedBox.shrink();
     }
 
-    // Third width minus spacing
-    final cardWidth = (MediaQuery.of(context).size.width - 32 - 24) / 3;
+    // Third width minus spacing and padding, using .floorToDouble() to prevent floating point wrap
+    final cardWidth = ((MediaQuery.of(context).size.width - 32 - 24) / 3).floorToDouble();
 
     return Container(
+      // height: 100,
       width: cardWidth,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
@@ -575,7 +576,7 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
               Expanded(
                 child: Text(
                   title,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 10.5,
@@ -990,14 +991,16 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
 
   Widget _buildRelatedProperties(BuildContext context, Property currentProp) {
     return FutureBuilder<List<Property>>(
-      future: ref.read(propertyNotifierProvider.notifier).fetchRelatedProperties(currentProp.id),
+      future: ref
+          .read(propertyNotifierProvider.notifier)
+          .fetchRelatedProperties(currentProp.id),
       builder: (context, snapshot) {
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const SizedBox.shrink();
         }
 
         final related = snapshot.data!;
-        
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1019,7 +1022,10 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
             SizedBox(
               height: 240,
               child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 scrollDirection: Axis.horizontal,
                 itemCount: related.length,
                 separatorBuilder: (context, index) => const SizedBox(width: 16),
