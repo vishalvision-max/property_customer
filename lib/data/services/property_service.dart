@@ -109,6 +109,7 @@ class PropertyService {
     int? minPrice,
     int? maxPrice,
     List<int> categoryIds = const [], // property types as backend category_id[]
+    List<String> propertyKinds = const [],
   }) async {
     if (kIsWeb) {
       throw Exception('Properties API is not supported on web in this build');
@@ -136,6 +137,10 @@ class PropertyService {
     // category_id: array representation → category_id[]=2&category_id[]=34
     for (final cid in categoryIds) {
       params.add(('category_id[]', cid.toString()));
+    }
+    // property_kind: plain repeated keys → property_kind=residential
+    for (final pk in propertyKinds) {
+      params.add(('property_kind', pk.toLowerCase()));
     }
     // BHK: plain repeated keys → bhk=1&bhk=2
     for (final b in bhk) {
@@ -242,8 +247,12 @@ class PropertyService {
     String? city,
     int? minPrice,
     int? maxPrice,
+    int? price,
     String? type, // rent | buy
     String? sortBy,
+    String? availability,
+    String? furnishing,
+    String? propertyKind,
   }) async {
     final apiType = type == 'buy' ? 'sale' : type;
     return _fetchFromApi(
@@ -253,6 +262,13 @@ class PropertyService {
         if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
         if (minPrice != null) 'min_price': minPrice.toString(),
         if (maxPrice != null) 'max_price': maxPrice.toString(),
+        if (price != null) 'price': price.toString(),
+        if (availability != null && availability.isNotEmpty)
+          'availabilty': availability,
+        if (furnishing != null && furnishing.isNotEmpty)
+          'furnishing': furnishing,
+        if (propertyKind != null && propertyKind.isNotEmpty)
+          'property_kind': propertyKind.toLowerCase(),
         if (apiType != null && apiType.trim().isNotEmpty)
           'type': apiType.trim(),
         if (sortBy != null && sortBy.trim().isNotEmpty)
@@ -266,7 +282,7 @@ class PropertyService {
   /// the thumbnail when the list endpoint returns images: null.
   Future<List<String>> fetchPropertyImages(String id, {String? token}) async {
     if (kIsWeb) return const [];
-    final uri = _baseUri.replace(path: '/api/v1/properties/$id');
+    final uri = _baseUri.replace(path: '/api/v1/property/$id');
     final client = HttpClient();
     try {
       final req = await client.getUrl(uri);
@@ -1033,14 +1049,25 @@ class PropertyService {
     List<String> amenities = const [],
     String? locationQuery,
     String? sortBy,
+    String? availability,
+    List<String> furnishing = const [],
   }) async {
     // Use backend filtering where possible (price, city text, type).
     final all = await fetchFiltered(
       type: mode,
-      minPrice: budgetRange?.start.toInt(),
-      maxPrice: budgetRange?.end.toInt(),
+      minPrice: budgetRange?.start.toInt() == 0
+          ? null
+          : budgetRange?.start.toInt(),
+      maxPrice:
+          null, // User specifically requested to use `price` for the budget cap
+      price: budgetRange?.end.toInt() == 200000000
+          ? null
+          : budgetRange?.end.toInt(),
       city: locationQuery,
       sortBy: sortBy,
+      availability: availability,
+      furnishing: furnishing.isNotEmpty ? furnishing.first : null,
+      propertyKind: propertyType != 'Any' ? propertyType : null,
     );
 
     return all.where((p) {
@@ -1413,8 +1440,11 @@ class PropertyService {
       location: location,
       price: price,
       type: normalizedType,
-      propertyKind:
-          categoryName ?? pickString(['property_kind', 'propertyKind']),
+      propertyKind: (() {
+        final pk = pickString(['property_kind', 'propertyKind']);
+        if (pk.isNotEmpty) return pk;
+        return categoryName ?? '';
+      })(),
       amenities: parseAmenities(),
       images: images,
       videos: videos,

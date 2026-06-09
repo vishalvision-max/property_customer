@@ -156,6 +156,8 @@ class PropertyNotifier extends _$PropertyNotifier {
     List<String> amenities = const [],
     String? locationQuery,
     String? sortBy,
+    String? availability,
+    List<String> furnishing = const [],
   }) {
     final repo = ref.read(propertyRepositoryProvider);
     return repo.search(
@@ -165,6 +167,8 @@ class PropertyNotifier extends _$PropertyNotifier {
       amenities: amenities,
       locationQuery: locationQuery,
       sortBy: sortBy,
+      availability: availability,
+      furnishing: furnishing,
     );
   }
 
@@ -186,6 +190,7 @@ class PropertyNotifier extends _$PropertyNotifier {
     int? minPrice,
     int? maxPrice,
     List<int> categoryIds = const [],
+    List<String> propertyKinds = const [],
   }) {
     final repo = ref.read(propertyRepositoryProvider);
     return repo.fetchWithFilters(
@@ -204,6 +209,7 @@ class PropertyNotifier extends _$PropertyNotifier {
       minPrice: minPrice,
       maxPrice: maxPrice,
       categoryIds: categoryIds,
+      propertyKinds: propertyKinds,
     );
   }
 

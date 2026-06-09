@@ -95,35 +95,6 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
               ],
             ),
           ),
-
-          // Searching in city banner
-          // Padding(
-          //   padding: const EdgeInsets.symmetric(horizontal: 16),
-          //   child: Row(
-          //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          //     children: [
-          //       Text(
-          //         'Searching in ${filters.selectedCity}',
-          //         style: const TextStyle(
-          //           fontSize: 13,
-          //           fontWeight: FontWeight.w600,
-          //           color: Color(0xFF6B7280),
-          //         ),
-          //       ),
-          //       GestureDetector(
-          //         onTap: () => _showChangeCityDialog(context),
-          //         child: const Text(
-          //           'Change City >',
-          //           style: TextStyle(
-          //             fontSize: 13,
-          //             fontWeight: FontWeight.w700,
-          //             color: activeColor,
-          //           ),
-          //         ),
-          //       ),
-          //     ],
-          //   ),
-          // ),
           const SizedBox(height: 12),
           const Divider(color: borderColor, height: 1),
 

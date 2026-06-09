@@ -231,6 +231,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             mode: _mode,
                           ),
                         );
+                      case 'Lease':
+                        context.push(
+                          '/name-search-results',
+                          extra: PropertyNameSearchArgs(
+                            query: 'Lease',
+                            mode: _mode,
+                          ),
+                        );
+                      case 'Residential':
+                        context.push(
+                          '/name-search-results',
+                          extra: PropertyNameSearchArgs(
+                            query: 'Residential',
+                            mode: _mode,
+                          ),
+                        );
 
                       default: // More — show all properties
                         context.push(
@@ -1247,6 +1263,16 @@ class _QuickActions extends StatelessWidget {
         onTap: () => onItemTap('Rent'),
       ),
       _QAItem(
+        asset: 'assets/icons/for-rent.png',
+        label: 'Lease',
+        onTap: () => onItemTap('Lease'),
+      ),
+      _QAItem(
+        asset: 'assets/icons/buy-home.png',
+        label: 'Residential',
+        onTap: () => onItemTap('Residential'),
+      ),
+      _QAItem(
         asset: 'assets/icons/pg.png',
         label: 'PG / Living',
         onTap: () => onItemTap('PG / Living'),
@@ -1261,7 +1287,6 @@ class _QuickActions extends StatelessWidget {
         label: 'Land/Plot',
         onTap: () => onItemTap('Land/Plot'),
       ),
-
       _QAItem(
         asset: 'assets/icons/more.png',
         label: 'More',
@@ -1288,14 +1313,14 @@ class _QuickActions extends StatelessWidget {
         children: [
           Row(
             children: items
-                .take(3)
+                .take(4)
                 .map((i) => Expanded(child: _QACell(item: i)))
                 .toList(),
           ),
           const SizedBox(height: 16),
           Row(
             children: items
-                .skip(3)
+                .skip(4)
                 .map((i) => Expanded(child: _QACell(item: i)))
                 .toList(),
           ),

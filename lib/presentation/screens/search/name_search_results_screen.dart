@@ -130,8 +130,8 @@ class _NameSearchResultsScreenState
         i++;
         continue;
       }
-      if (word == 'commercial') {
-        matchedIntent = 'Commercial';
+      if (word == 'lease') {
+        matchedIntent = 'Lease';
         i++;
         continue;
       }
@@ -180,10 +180,77 @@ class _NameSearchResultsScreenState
         i++;
         continue;
       }
+      if (word == 'commercial') {
+        matchedTypes.add('Commercial');
+        i++;
+        continue;
+      }
+      if (word == 'residential') {
+        matchedTypes.add('Residential');
+        i++;
+        continue;
+      }
+      if (word == 'pg') {
+        matchedTypes.add('PG');
+        i++;
+        continue;
+      }
       if (word == 'office' || word == 'shop' || word == 'shops') {
         matchedTypes.add('Office');
         i++;
         continue;
+      }
+
+      // Check for "ready to move"
+      if (word == 'ready' && i + 2 < words.length && words[i + 1] == 'to' && words[i + 2] == 'move') {
+        ref.read(propertyFilterProvider.notifier).toggleAvailable('Ready to Move');
+        i += 3;
+        continue;
+      }
+
+      // Check for furnishing
+      if (word == 'furnished') {
+        ref.read(propertyFilterProvider.notifier).toggleFurnishing('Furnished');
+        i++;
+        continue;
+      }
+      if (word == 'unfurnished') {
+        ref.read(propertyFilterProvider.notifier).toggleFurnishing('Unfurnished');
+        i++;
+        continue;
+      }
+      if (word == 'semi-furnished') {
+        ref.read(propertyFilterProvider.notifier).toggleFurnishing('Semi-Furnished');
+        i++;
+        continue;
+      }
+
+      // Check for price ranges like "under 50l"
+      if (word == 'under' && i + 1 < words.length) {
+        final nextWord = words[i + 1];
+        final match = RegExp(r'^(\d+)(l|lakh|lakhs|cr|crore|crores)$').firstMatch(nextWord);
+        if (match != null) {
+          final val = double.tryParse(match.group(1)!);
+          if (val != null) {
+            final isCr = match.group(2)!.startsWith('c');
+            final maxCr = isCr ? val : val / 100.0;
+            ref.read(propertyFilterProvider.notifier).updateBudget(0.0, maxCr);
+          }
+          i += 2;
+          continue;
+        } else if (RegExp(r'^\d+$').hasMatch(nextWord) && i + 2 < words.length) {
+          final unit = words[i + 2];
+          if (unit.startsWith('l') || unit.startsWith('c')) {
+             final val = double.tryParse(nextWord);
+             if (val != null) {
+                final isCr = unit.startsWith('c');
+                final maxCr = isCr ? val : val / 100.0;
+                ref.read(propertyFilterProvider.notifier).updateBudget(0.0, maxCr);
+             }
+             i += 3;
+             continue;
+          }
+        }
       }
 
       // Stopwords to ignore
@@ -247,10 +314,17 @@ class _NameSearchResultsScreenState
           ? filters.selectedIntent.toLowerCase()
           : null;
 
+      final availabilityFilter = filters.selectedAvailable.isNotEmpty
+          ? filters.selectedAvailable.first.toLowerCase().replaceAll(' ', '_')
+          : null;
+
       final items = await ref.read(propertyNotifierProvider.notifier).search(
             mode: intentMode ?? '',   // search() accepts empty string = show all
             budgetRange: BudgetRange(filters.minBudget * 10000000, filters.maxBudget * 10000000),
             locationQuery: searchKeyword,
+            availability: availabilityFilter,
+            furnishing: filters.selectedFurnishing,
+            propertyType: filters.selectedPropertyTypes.isNotEmpty ? filters.selectedPropertyTypes.first : null,
           );
       if (mounted) {
         setState(() => _baseItems = items);
@@ -377,11 +451,8 @@ class _NameSearchResultsScreenState
           .whereType<String>()
           .toList();
 
-      // ── 4. category_id from selected property types ────────────────────────
-      final categoryIds = filters.selectedPropertyTypes
-          .map((name) => PropertyTypeSection.categoryIdMap[name])
-          .whereType<int>()
-          .toList();
+      // ── 4. propertyKinds from selected property types ──────────────────────
+      final propertyKinds = filters.selectedPropertyTypes.toList();
 
       // ── 5. Bathrooms → plain int ───────────────────────────────────────────
       // UI: '1+', '2+', '3+', '4+' → send the numeric value
@@ -461,7 +532,7 @@ class _NameSearchResultsScreenState
             availability: availabilityApi,
             minPrice: minPriceApi,
             maxPrice: maxPriceApi,
-            categoryIds: categoryIds,
+            propertyKinds: propertyKinds,
           );
 
       if (mounted) {

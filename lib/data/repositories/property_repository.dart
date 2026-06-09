@@ -43,6 +43,7 @@ class PropertyRepository {
     int? minPrice,
     int? maxPrice,
     List<int> categoryIds = const [],
+    List<String> propertyKinds = const [],
   }) => _service.fetchWithFilters(
     type: type,
     furnishing: furnishing,
@@ -59,6 +60,7 @@ class PropertyRepository {
     minPrice: minPrice,
     maxPrice: maxPrice,
     categoryIds: categoryIds,
+    propertyKinds: propertyKinds,
   );
 
   Future<Property> fetchDetails(String id, {String? token}) => 
@@ -220,6 +222,8 @@ class PropertyRepository {
     List<String> amenities = const [],
     String? locationQuery,
     String? sortBy,
+    String? availability,
+    List<String> furnishing = const [],
   }) => _service.search(
     mode: mode,
     budgetRange: budgetRange,
@@ -227,6 +231,8 @@ class PropertyRepository {
     amenities: amenities,
     locationQuery: locationQuery,
     sortBy: sortBy,
+    availability: availability,
+    furnishing: furnishing,
   );
 
   Future<List<Property>> searchByKeyword({

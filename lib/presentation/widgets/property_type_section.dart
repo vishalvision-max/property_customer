@@ -11,6 +11,9 @@ class PropertyTypeSection extends StatelessWidget {
   });
 
   static const _options = [
+    'Residential',
+    'Commercial',
+    'PG',
     'Apartments',
     'Independent House',
     'Builder Floor',
@@ -26,6 +29,9 @@ class PropertyTypeSection extends StatelessWidget {
   /// Maps property type display name → backend category_id.
   /// Source: GET /api/v1/categories
   static const Map<String, int> categoryIdMap = {
+    'Residential': 1,          // Root Residential
+    'Commercial': 7,           // Root Commercial
+    'PG': 10,                  // PG category (assumption, based on typical IDs)
     'Apartments': 2,           // Flat / Apartment (parent: Residential)
     'Independent House': 4,    // Independent House (parent: Residential)
     'Builder Floor': 3,        // Builder Floor (parent: Residential)
