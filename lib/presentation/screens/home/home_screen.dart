@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/app_snackbar.dart';
 import '../../../data/models/property.dart';
@@ -55,18 +57,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Load saved location label; try to fetch GPS location automatically
-    // so nearby/recommendations can work without manual tap.
+    // Load saved location immediately
     Future<void>.microtask(() async {
       await ref.read(locationProvider.notifier).load();
-      final loc = ref.read(locationProvider);
-      if (loc.currentLabel.isEmpty || loc.currentLabel == 'Unknown Location') {
-        await ref.read(locationProvider.notifier).fetchCurrent();
-      }
-
       final ready = ref.read(locationProvider);
       if (ready.currentLabel.isNotEmpty &&
-          ready.currentLabel != 'Unknown Location') {
+          ready.currentLabel != 'Unknown Location' &&
+          ready.currentLabel != 'Set location') {
         if (!mounted) return;
         final token = ref.read(authProvider).user?.token;
         ref
@@ -83,7 +80,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       final changed = prev?.currentLabel != next.currentLabel;
       if (changed &&
           next.currentLabel.isNotEmpty &&
-          next.currentLabel != 'Unknown Location') {
+          next.currentLabel != 'Unknown Location' &&
+          next.currentLabel != 'Set location') {
         Future<void>.microtask(() {
           if (!mounted) return;
           final token = ref.read(authProvider).user?.token;
@@ -97,14 +95,75 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         });
       }
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      
+      final prefs = await SharedPreferences.getInstance();
+      final hasPrompted = prefs.getBool('has_prompted_location_v6') ?? false;
+
+      if (!hasPrompted) {
+        await prefs.setBool('has_prompted_location_v6', true);
+
+        try {
+          LocationPermission permission = await Geolocator.checkPermission();
+          if (permission == LocationPermission.denied) {
+            permission = await Geolocator.requestPermission();
+          }
+
+          if (permission == LocationPermission.denied) {
+            if (mounted) {
+              AppSnackbar.showError(context, 'Location helps us show nearby properties. You can still set it manually.');
+            }
+          } else if (permission == LocationPermission.deniedForever) {
+            if (mounted) {
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Location Permission Needed'),
+                  content: const Text('Please enable location permissions in app settings to automatically discover nearby properties.'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Geolocator.openAppSettings();
+                        Navigator.pop(ctx);
+                      },
+                      child: const Text('Open Settings'),
+                    ),
+                  ],
+                ),
+              );
+            }
+          }
+
+          if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
+            bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+            if (!serviceEnabled) {
+              if (mounted) {
+                AppSnackbar.showError(context, 'Please turn on your device GPS (Location) to find nearby properties.');
+              }
+            } else {
+              await ref.read(locationProvider.notifier).fetchCurrent();
+            }
+          }
+        } catch (e) {
+          debugPrint('Location Error: $e');
+        }
+      }
+
       if (!mounted) return;
       final token = ref.read(authProvider).user?.token;
       final loc = ref.read(locationProvider);
-      // Load with the default mode ('rent') so the initial view is already filtered.
-      ref
-          .read(propertyNotifierProvider.notifier)
-          .loadHomeForMode(type: _mode, token: token, city: loc.currentLabel);
+      
+      if (loc.currentLabel.isEmpty || loc.currentLabel == 'Unknown Location' || loc.currentLabel == 'Set location') {
+        ref
+            .read(propertyNotifierProvider.notifier)
+            .loadHomeForMode(type: _mode, token: token, city: loc.currentLabel);
+      }
       if (token != null && token.trim().isNotEmpty) {
         ref
             .read(ownerProfileNotifierProvider.notifier)
