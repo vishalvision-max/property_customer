@@ -14,6 +14,8 @@ import '../widgets/apply_button.dart';
 import '../../../providers/property_provider.dart';
 import '../../../data/models/property.dart';
 import '../../../data/models/property_filter_model.dart';
+import '../../../providers/app_providers.dart';
+import 'dart:async';
 
 class FilterBottomSheet extends ConsumerStatefulWidget {
   /// Optional: pass the current visible property list so the Apply button
@@ -29,6 +31,48 @@ class FilterBottomSheet extends ConsumerStatefulWidget {
 
 class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
   bool _isAdvancedExpanded = false;
+  Timer? _debounce;
+  int? _remoteCount;
+  PropertyFilterState? _lastFilters;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _fetchRemoteCount(PropertyFilterState filters) {
+    if (_lastFilters == filters) return;
+    _lastFilters = filters;
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () async {
+      try {
+        final ps = ref.read(propertyServiceProvider);
+        String? mappedType;
+        if (filters.selectedIntent == 'Buy') mappedType = 'sale';
+        else if (filters.selectedIntent == 'Rent') mappedType = 'rent';
+        
+        final c = await ps.fetchPropertyCount(
+          type: mappedType,
+          bhk: filters.selectedBhk,
+          propertyKinds: filters.selectedPropertyTypes,
+          bathrooms: filters.selectedBathrooms.isNotEmpty ? int.tryParse(filters.selectedBathrooms.first.replaceAll('+', '')) : null,
+          minArea: filters.minArea > 0 ? filters.minArea : null,
+          maxArea: filters.maxArea < 5000 ? filters.maxArea : null,
+          minPrice: filters.minBudget > 0 ? filters.minBudget * 10000000 : null,
+          maxPrice: filters.maxBudget < 20 ? filters.maxBudget * 10000000 : null,
+          amenities: filters.selectedAmenities,
+          furnishing: filters.selectedFurnishing,
+        );
+        if (!mounted) return;
+        setState(() {
+          _remoteCount = c;
+        });
+      } catch (e) {
+        // Fallback handled via UI
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +83,8 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
     final allProperties =
         widget.properties ?? ref.watch(propertyNotifierProvider).all;
 
-    final int propertyCount = _calculateCount(filters, allProperties);
+    final int propertyCount = _remoteCount ?? _calculateCount(filters, allProperties);
+    _fetchRemoteCount(filters);
 
     const activeColor = Color(0xFF7B2FF7);
     const borderColor = Color(0xFFE5E7EB);

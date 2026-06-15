@@ -242,6 +242,82 @@ class PropertyService {
     }
   }
 
+  Future<int> fetchPropertyCount({
+    String? type,
+    String? city,
+    String? state,
+    List<int> categoryIds = const [],
+    List<String> propertyKinds = const [],
+    List<String> bhk = const [],
+    int? bathrooms,
+    double? minArea,
+    double? maxArea,
+    double? minPrice,
+    double? maxPrice,
+    String? added,
+    int? propertyAgeYears,
+    String? availability,
+    List<String> furnishing = const [],
+    List<String> amenities = const [],
+  }) async {
+    final List<(String, String)> params = [];
+
+    if (type != null && type.trim().isNotEmpty) params.add(('type', type.trim()));
+    final resolvedCity = city != null && city.trim().isNotEmpty ? city.trim() : getCity?.call();
+    if (resolvedCity != null && resolvedCity.trim().isNotEmpty) {
+      params.add(('city', resolvedCity.trim()));
+    }
+    if (state != null && state.trim().isNotEmpty) params.add(('state', state.trim()));
+
+    for (final cid in categoryIds) {
+      params.add(('category_id[]', cid.toString()));
+    }
+    for (final pk in propertyKinds) {
+      params.add(('property_kind', pk.toLowerCase()));
+    }
+    for (final b in bhk) {
+      // The API format expects bedrooms[]=4+
+      params.add(('bedrooms[]', b.toString()));
+    }
+    if (bathrooms != null) params.add(('bathrooms', bathrooms.toString()));
+    if (minArea != null) params.add(('built_up_area', minArea.toInt().toString()));
+    // API uses 'monthly_rent' or 'price', we map basic budget if possible.
+    if (minPrice != null && type == 'rent') params.add(('monthly_rent', minPrice.toString()));
+
+    final queryString = params
+        .map((p) => '${Uri.encodeQueryComponent(p.$1)}=${Uri.encodeQueryComponent(p.$2)}')
+        .join('&');
+
+    final uriStr = '${_baseUri.toString()}/api/v1/owner/count/properties/filter' +
+        (queryString.isNotEmpty ? '?$queryString' : '');
+
+    final uri = Uri.parse(uriStr);
+    debugPrint('[PropertyService] fetchPropertyCount GET $uri');
+
+    final client = HttpClient()..autoUncompress = true;
+    try {
+      final req = await client.getUrl(uri);
+      req.headers.set('Accept', 'application/json');
+
+      final res = await req.close();
+      final body = await res.transform(utf8.decoder).join();
+      final status = res.statusCode;
+
+      if (status >= 200 && status < 300) {
+        final decoded = jsonDecode(body);
+        if (decoded['status'] == true) {
+          return decoded['total'] ?? 0;
+        }
+      }
+      return 0;
+    } catch (e) {
+      debugPrint('[PropertyService] fetchPropertyCount unexpected error: $e');
+      return 0;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
   Future<List<Property>> fetchFiltered({
     int? categoryId,
     String? city,

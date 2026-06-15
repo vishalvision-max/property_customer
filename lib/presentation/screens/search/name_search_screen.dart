@@ -6,7 +6,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../data/models/property.dart';
 import '../../../data/models/search_history_item.dart';
+import '../../../providers/app_providers.dart';
 import '../../../providers/property_provider.dart';
+import '../../../providers/location_provider.dart';
 import '../../providers/search_history_provider.dart';
 import '../../widgets/property_card.dart';
 import '../../widgets/recent_searches_section.dart';
@@ -28,7 +30,9 @@ class _NameSearchScreenState extends ConsumerState<NameSearchScreen> {
   final TextEditingController _maxAreaCtrl = TextEditingController();
 
   Timer? _debounce;
+  Timer? _debounceCount;
   Future<List<Property>>? _future;
+  int? _remoteCount;
   String _mode = 'rent';
   bool _showAdvanceFilters = false;
   bool _isLocationSelected = false;
@@ -69,6 +73,19 @@ class _NameSearchScreenState extends ConsumerState<NameSearchScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _minBudgetCtrl.addListener(_triggerCountUpdate);
+    _maxBudgetCtrl.addListener(_triggerCountUpdate);
+    _minAreaCtrl.addListener(_triggerCountUpdate);
+    _maxAreaCtrl.addListener(_triggerCountUpdate);
+    _ctrl.addListener(_triggerCountUpdate);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _triggerCountUpdate();
+    });
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final extra = GoRouterState.of(context).extra;
@@ -77,9 +94,35 @@ class _NameSearchScreenState extends ConsumerState<NameSearchScreen> {
     }
   }
 
+  void _triggerCountUpdate() {
+    _debounceCount?.cancel();
+    _debounceCount = Timer(const Duration(milliseconds: 300), () async {
+      try {
+        final ps = ref.read(propertyServiceProvider);
+        
+        final c = await ps.fetchPropertyCount(
+          type: _mode == 'buy' ? 'sale' : (_mode == 'rent' ? 'rent' : _mode),
+          city: _ctrl.text.isNotEmpty ? _ctrl.text : null,
+          bhk: _selectedBedrooms,
+          propertyKinds: _selectedPropTypes,
+          minArea: double.tryParse(_minAreaCtrl.text),
+          maxArea: double.tryParse(_maxAreaCtrl.text),
+          minPrice: double.tryParse(_minBudgetCtrl.text),
+          maxPrice: double.tryParse(_maxBudgetCtrl.text),
+          amenities: _selectedAmenities,
+        );
+        if (!mounted) return;
+        setState(() {
+          _remoteCount = c;
+        });
+      } catch (_) {}
+    });
+  }
+
   @override
   void dispose() {
     _debounce?.cancel();
+    _debounceCount?.cancel();
     _ctrl.dispose();
     _minBudgetCtrl.dispose();
     _maxBudgetCtrl.dispose();
@@ -104,7 +147,9 @@ class _NameSearchScreenState extends ConsumerState<NameSearchScreen> {
       _future = null;
       _showAdvanceFilters = false;
       _isLocationSelected = false;
+      _remoteCount = null;
     });
+    _triggerCountUpdate();
   }
 
   void _run(String q) {
@@ -164,6 +209,7 @@ class _NameSearchScreenState extends ConsumerState<NameSearchScreen> {
           setState(() {
             _mode = value;
           });
+          _triggerCountUpdate();
           if (_ctrl.text.isNotEmpty) {
             _run(_ctrl.text);
           }
@@ -294,6 +340,7 @@ class _NameSearchScreenState extends ConsumerState<NameSearchScreen> {
                       _selectedPropTypes.remove(type);
                     }
                   });
+                  _triggerCountUpdate();
                 },
               );
             }).toList(),
@@ -315,6 +362,7 @@ class _NameSearchScreenState extends ConsumerState<NameSearchScreen> {
                       _selectedBedrooms.remove(type);
                     }
                   });
+                  _triggerCountUpdate();
                 },
               );
             }).toList(),
@@ -332,6 +380,7 @@ class _NameSearchScreenState extends ConsumerState<NameSearchScreen> {
                   setState(() {
                     _selectedConstStatus = val ? type : null;
                   });
+                  _triggerCountUpdate();
                 },
               );
             }).toList(),
@@ -387,6 +436,7 @@ class _NameSearchScreenState extends ConsumerState<NameSearchScreen> {
                         _selectedPostedBy.remove(type);
                       }
                     });
+                    _triggerCountUpdate();
                   },
                 );
               }).toList(),
@@ -447,7 +497,10 @@ class _NameSearchScreenState extends ConsumerState<NameSearchScreen> {
                           color: Colors.blue,
                           size: 20,
                         ),
-                        onPressed: () => setState(() => _minBedroomsCount--),
+                        onPressed: () {
+                          setState(() => _minBedroomsCount--);
+                          _triggerCountUpdate();
+                        },
                       ),
                     Text(
                       '$_minBedroomsCount',
@@ -462,7 +515,10 @@ class _NameSearchScreenState extends ConsumerState<NameSearchScreen> {
                         color: Colors.blue,
                         size: 20,
                       ),
-                      onPressed: () => setState(() => _minBedroomsCount++),
+                      onPressed: () {
+                        setState(() => _minBedroomsCount++);
+                        _triggerCountUpdate();
+                      },
                     ),
                   ],
                 ),
@@ -485,6 +541,7 @@ class _NameSearchScreenState extends ConsumerState<NameSearchScreen> {
                         _selectedAmenities.remove(type);
                       }
                     });
+                    _triggerCountUpdate();
                   },
                 );
               }).toList(),
@@ -562,10 +619,25 @@ class _NameSearchScreenState extends ConsumerState<NameSearchScreen> {
                 hintStyle: const TextStyle(fontSize: 14),
                 prefixIcon: IconButton(
                   icon: const Icon(Icons.my_location, size: 20),
-                  onPressed: () {
+                  onPressed: () async {
+                    final locNotifier = ref.read(locationProvider.notifier);
+                    String locLabel = ref.read(locationProvider).currentLabel;
+                    
+                    if (locLabel == 'Set location' || locLabel == 'Unknown Location' || locLabel.isEmpty) {
+                      await locNotifier.fetchCurrent();
+                      locLabel = ref.read(locationProvider).currentLabel;
+                    }
+
+                    if (locLabel == 'Set location' || locLabel == 'Unknown Location') {
+                      locLabel = '';
+                    } else if (locLabel.contains(',')) {
+                      locLabel = locLabel.split(',').first.trim();
+                    }
+
+                    if (!mounted) return;
                     setState(() {
                       _isLocationSelected = true;
-                      _ctrl.text = 'Current Location';
+                      _ctrl.text = locLabel;
                     });
                   },
                 ),
@@ -623,9 +695,9 @@ class _NameSearchScreenState extends ConsumerState<NameSearchScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text(
-                      'See All 124 Properties',
-                      style: TextStyle(color: Colors.white, fontSize: 14),
+                    child: Text(
+                      _remoteCount == null ? 'Loading...' : 'See All $_remoteCount Properties',
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
                     ),
                   ),
                 ],
