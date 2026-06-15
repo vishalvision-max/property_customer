@@ -17,7 +17,10 @@ class OwnerService {
         'Owner profile API is not supported on web in this build',
       );
     }
-    final uri = _baseUri.replace(path: '/api/v1/owner/profile');
+    final uri = _baseUri.replace(
+      path: '/api/v1/owner/profile',
+      queryParameters: {'_cb': DateTime.now().millisecondsSinceEpoch.toString()},
+    );
     final client = HttpClient();
     try {
       final req = await client.getUrl(uri);

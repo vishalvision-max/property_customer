@@ -5,6 +5,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../data/models/owner_profile.dart';
 import 'app_providers.dart';
+import 'auth_provider.dart';
 
 part 'owner_profile_provider.freezed.dart';
 part 'owner_profile_provider.g.dart';
@@ -52,14 +53,30 @@ class OwnerProfileNotifier extends _$OwnerProfileNotifier {
     try {
       final repo = ref.read(ownerRepositoryProvider);
       final updated = await repo.updateProfile(token: token, name: name, email: email, imageFile: imageFile);
-      try {
-        final fresh = await repo.fetchProfile(token: token);
-        state = state.copyWith(isLoading: false, profile: fresh, error: null);
-        return fresh;
-      } catch (_) {
-        state = state.copyWith(isLoading: false, profile: updated, error: null);
-        return updated;
+      OwnerProfile finalProfile;
+      if (updated.name.trim().isNotEmpty && updated.email.trim().isNotEmpty) {
+        finalProfile = updated;
+      } else if (state.profile != null) {
+        finalProfile = OwnerProfile(
+          id: state.profile!.id,
+          name: name.trim(),
+          email: email.trim(),
+          phone: state.profile!.phone,
+          imageUrl: updated.imageUrl.isNotEmpty ? updated.imageUrl : state.profile!.imageUrl,
+        );
+      } else {
+        finalProfile = OwnerProfile(
+          id: '',
+          name: name.trim(),
+          email: email.trim(),
+          phone: '',
+          imageUrl: updated.imageUrl,
+        );
       }
+
+      state = state.copyWith(isLoading: false, profile: finalProfile, error: null);
+      ref.read(authProvider.notifier).syncProfileUpdate(name: finalProfile.name, email: finalProfile.email);
+      return finalProfile;
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
       return null;

@@ -11,7 +11,6 @@ import '../../widgets/keep_alive_page.dart';
 import '../home/home_screen.dart';
 import '../home/favorites_screen.dart';
 import '../profile/profile_screen.dart';
-import '../property/properties_tab_screen.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  NAV ITEMS
@@ -21,11 +20,6 @@ const _navItems = [
     icon: Icons.home_outlined,
     activeIcon: Icons.home_rounded,
     label: 'Home',
-  ),
-  NavItem(
-    icon: Icons.apartment_outlined,
-    activeIcon: Icons.apartment_rounded,
-    label: 'Properties',
   ),
   NavItem(
     icon: Icons.favorite_border_rounded,
@@ -61,7 +55,7 @@ class _MainShellState extends ConsumerState<MainShell> {
   int? _pendingIndex;
 
   // Auth-gated tab indices (0-based)
-  static const _authGated = {2, 3}; // Saved, Profile
+  static const _authGated = {1, 2}; // Saved, Profile
 
   @override
   void initState() {
@@ -86,7 +80,7 @@ class _MainShellState extends ConsumerState<MainShell> {
     final isAuthed = ref.read(authProvider).user != null;
 
     if (_authGated.contains(index) && !isAuthed) {
-      final labels = ['', '', 'saved', 'profile'];
+      final labels = ['', 'saved', 'profile'];
       AppSnackbar.showError(context, 'Please login to view ${labels[index]}');
       _pendingIndex = index;
       context.push('/login?from=${Uri.encodeComponent('/home')}');
@@ -119,7 +113,7 @@ class _MainShellState extends ConsumerState<MainShell> {
         duration: const Duration(milliseconds: 260),
         curve: Curves.easeOutCubic,
       );
-      final labels = ['', '', 'saved', 'profile'];
+      final labels = ['', 'saved', 'profile'];
       AppSnackbar.showError(context, 'Please login to view ${labels[index]}');
       _pendingIndex = index;
       context.push('/login?from=${Uri.encodeComponent('/home')}');
@@ -172,7 +166,6 @@ class _MainShellState extends ConsumerState<MainShell> {
         physics: const BouncingScrollPhysics(),
         children: const [
           KeepAlivePage(child: HomeScreen()),
-          KeepAlivePage(child: PropertiesTabScreen()),
           KeepAlivePage(child: FavoritesScreen()),
           KeepAlivePage(child: ProfileScreen()),
         ],

@@ -63,6 +63,20 @@ class Auth extends _$Auth {
     state = state.copyWith(seenOnboarding: true);
   }
 
+  Future<void> syncProfileUpdate({required String name, required String email}) async {
+    final currentUser = state.user;
+    if (currentUser == null) return;
+    final updatedUser = User(
+      id: currentUser.id,
+      name: name,
+      email: email,
+      token: currentUser.token,
+    );
+    state = state.copyWith(user: updatedUser);
+    final repo = ref.read(authRepositoryProvider);
+    await repo.updateCachedUser(updatedUser);
+  }
+
   Future<String?> sendOtp({required String phone}) async {
     state = state.copyWith(isLoading: true, error: null, message: null);
     try {

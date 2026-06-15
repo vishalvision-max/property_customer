@@ -22,9 +22,51 @@ class NameSearchScreen extends ConsumerStatefulWidget {
 
 class _NameSearchScreenState extends ConsumerState<NameSearchScreen> {
   final TextEditingController _ctrl = TextEditingController();
+  final TextEditingController _minBudgetCtrl = TextEditingController();
+  final TextEditingController _maxBudgetCtrl = TextEditingController();
+  final TextEditingController _minAreaCtrl = TextEditingController();
+  final TextEditingController _maxAreaCtrl = TextEditingController();
+
   Timer? _debounce;
   Future<List<Property>>? _future;
   String _mode = 'rent';
+  bool _showAdvanceFilters = false;
+  bool _isLocationSelected = false;
+
+  final List<String> _selectedPropTypes = [];
+  final List<String> _selectedBedrooms = [];
+  String? _selectedConstStatus;
+  final List<String> _selectedPostedBy = [];
+  int _minBedroomsCount = 0;
+  final List<String> _selectedAmenities = [];
+
+  final _propTypes = [
+    'Flat/Apartment',
+    'House/Villa',
+    'Service Apartment',
+    'Farm House',
+    'Plot/Land',
+    'Builder Floor',
+    '1RK/Studio Apartment',
+  ];
+  final _bedroomsList = ['1', '2', '3', '4', '4+'];
+  final _constStatusList = [
+
+    'New Launch',
+    'Under Construction',
+    'Ready to Move',
+  ];
+  final _postedByList = ['Owner', 'Builder', 'Dealer'];
+  final _amenitiesList = [
+    'Parking',
+    'Gym',
+    'Pool',
+    'Security',
+    'Club House',
+    'Power Backup',
+    'Lift',
+    'Park',
+  ];
 
   @override
   void didChangeDependencies() {
@@ -39,7 +81,30 @@ class _NameSearchScreenState extends ConsumerState<NameSearchScreen> {
   void dispose() {
     _debounce?.cancel();
     _ctrl.dispose();
+    _minBudgetCtrl.dispose();
+    _maxBudgetCtrl.dispose();
+    _minAreaCtrl.dispose();
+    _maxAreaCtrl.dispose();
     super.dispose();
+  }
+
+  void _clearAll() {
+    setState(() {
+      _ctrl.clear();
+      _minBudgetCtrl.clear();
+      _maxBudgetCtrl.clear();
+      _minAreaCtrl.clear();
+      _maxAreaCtrl.clear();
+      _selectedPropTypes.clear();
+      _selectedBedrooms.clear();
+      _selectedConstStatus = null;
+      _selectedPostedBy.clear();
+      _minBedroomsCount = 0;
+      _selectedAmenities.clear();
+      _future = null;
+      _showAdvanceFilters = false;
+      _isLocationSelected = false;
+    });
   }
 
   void _run(String q) {
@@ -62,17 +127,16 @@ class _NameSearchScreenState extends ConsumerState<NameSearchScreen> {
 
   void _executeSearch(String queryText) {
     final q = queryText.trim();
-    if (q.isEmpty) return;
+    
+    if (q.isNotEmpty) {
+      final item = SearchHistoryItem(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        searchText: q,
+        createdAt: DateTime.now(),
+      );
+      ref.read(searchHistoryProvider.notifier).saveSearch(item);
+    }
 
-    // Save to history
-    final item = SearchHistoryItem(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      searchText: q,
-      createdAt: DateTime.now(),
-    );
-    ref.read(searchHistoryProvider.notifier).saveSearch(item);
-
-    // Push to name search results screen
     context.push(
       '/name-search-results',
       extra: PropertyNameSearchArgs(query: q, mode: _mode),
@@ -82,7 +146,6 @@ class _NameSearchScreenState extends ConsumerState<NameSearchScreen> {
   void _onRecentSearchTap(SearchHistoryItem item) {
     setState(() {
       _ctrl.text = item.searchText;
-      // Triggers dynamic search listing as well, in case we return
       _run(item.searchText);
     });
     _executeSearch(item.searchText);
@@ -90,15 +153,399 @@ class _NameSearchScreenState extends ConsumerState<NameSearchScreen> {
 
   void _submit() {
     final q = _ctrl.text.trim();
-    if (q.isEmpty) return;
     _executeSearch(q);
+  }
+
+  Widget _buildTab(String label, String value) {
+    final isSelected = _mode == value;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _mode = value;
+          });
+          if (_ctrl.text.isNotEmpty) {
+            _run(_ctrl.text);
+          }
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? Theme.of(context).primaryColor
+                : Colors.grey[200],
+            borderRadius: BorderRadius.circular(20),
+          ),
+          alignment: Alignment.center,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: isSelected ? Colors.white : Colors.black87,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 8),
+      child: Text(
+        title,
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _buildFilterUI() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Consumer(
+            builder: (context, ref, child) {
+              final historyAsync = ref.watch(searchHistoryProvider);
+              return historyAsync.when(
+                data: (items) {
+                  if (items.isEmpty) return const SizedBox.shrink();
+                  return Column(
+                    children: [
+                      RecentSearchesSection(
+                        items: items,
+                        onRecentSearchTap: _onRecentSearchTap,
+                        onClearAll: () {
+                          ref
+                              .read(searchHistoryProvider.notifier)
+                              .clearHistory();
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      const Divider(thickness: 1),
+                    ],
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
+              );
+            },
+          ),
+          if (_isLocationSelected) ...[
+            _buildSectionTitle('Budget'),
+            Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _minBudgetCtrl,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(fontSize: 12),
+                  decoration: InputDecoration(
+                    labelText: 'Min (₹)',
+                    labelStyle: const TextStyle(fontSize: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: TextField(
+                  controller: _maxBudgetCtrl,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(fontSize: 12),
+                  decoration: InputDecoration(
+                    labelText: 'Max (₹)',
+                    labelStyle: const TextStyle(fontSize: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          _buildSectionTitle('Property Types'),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: _propTypes.map((type) {
+              final isSelected = _selectedPropTypes.contains(type);
+              return ChoiceChip(
+                label: Text(type, style: const TextStyle(fontSize: 12)),
+                selected: isSelected,
+                onSelected: (val) {
+                  setState(() {
+                    if (val) {
+                      _selectedPropTypes.add(type);
+                    } else {
+                      _selectedPropTypes.remove(type);
+                    }
+                  });
+                },
+              );
+            }).toList(),
+          ),
+          _buildSectionTitle('No. of Bedrooms'),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: _bedroomsList.map((type) {
+              final isSelected = _selectedBedrooms.contains(type);
+              return ChoiceChip(
+                label: Text(type, style: const TextStyle(fontSize: 12)),
+                selected: isSelected,
+                onSelected: (val) {
+                  setState(() {
+                    if (val) {
+                      _selectedBedrooms.add(type);
+                    } else {
+                      _selectedBedrooms.remove(type);
+                    }
+                  });
+                },
+              );
+            }).toList(),
+          ),
+          _buildSectionTitle('Construction Status'),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: _constStatusList.map((type) {
+              final isSelected = _selectedConstStatus == type;
+              return ChoiceChip(
+                label: Text(type, style: const TextStyle(fontSize: 12)),
+                selected: isSelected,
+                onSelected: (val) {
+                  setState(() {
+                    _selectedConstStatus = val ? type : null;
+                  });
+                },
+              );
+            }).toList(),
+          ),
+          const Padding(
+            padding: EdgeInsets.only(top: 16, bottom: 8),
+            child: Divider(thickness: 1),
+          ),
+          InkWell(
+            onTap: () {
+              setState(() {
+                _showAdvanceFilters = !_showAdvanceFilters;
+              });
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  const Text(
+                    'Advance Filters',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    _showAdvanceFilters
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    color: Colors.blue,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_showAdvanceFilters) ...[
+            _buildSectionTitle('Posted By'),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: _postedByList.map((type) {
+                final isSelected = _selectedPostedBy.contains(type);
+                return ChoiceChip(
+                  label: Text(type, style: const TextStyle(fontSize: 12)),
+                  selected: isSelected,
+                  onSelected: (val) {
+                    setState(() {
+                      if (val) {
+                        _selectedPostedBy.add(type);
+                      } else {
+                        _selectedPostedBy.remove(type);
+                      }
+                    });
+                  },
+                );
+              }).toList(),
+            ),
+            _buildSectionTitle('Area (sq.ft)'),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _minAreaCtrl,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(fontSize: 12),
+                    decoration: InputDecoration(
+                      labelText: 'Min Area',
+                      labelStyle: const TextStyle(fontSize: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: TextField(
+                    controller: _maxAreaCtrl,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(fontSize: 12),
+                    decoration: InputDecoration(
+                      labelText: 'Max Area',
+                      labelStyle: const TextStyle(fontSize: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            _buildSectionTitle('Minimum no. of bedrooms'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Bedrooms', style: TextStyle(fontSize: 14)),
+                Row(
+                  children: [
+                    if (_minBedroomsCount > 0)
+                      IconButton(
+                        icon: const Icon(
+                          Icons.remove_circle_outline,
+                          color: Colors.blue,
+                          size: 20,
+                        ),
+                        onPressed: () => setState(() => _minBedroomsCount--),
+                      ),
+                    Text(
+                      '$_minBedroomsCount',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.add_circle_outline,
+                        color: Colors.blue,
+                        size: 20,
+                      ),
+                      onPressed: () => setState(() => _minBedroomsCount++),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            _buildSectionTitle('Amenities'),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: _amenitiesList.map((type) {
+                final isSelected = _selectedAmenities.contains(type);
+                return ChoiceChip(
+                  label: Text(type, style: const TextStyle(fontSize: 12)),
+                  selected: isSelected,
+                  onSelected: (val) {
+                    setState(() {
+                      if (val) {
+                        _selectedAmenities.add(type);
+                      } else {
+                        _selectedAmenities.remove(type);
+                      }
+                    });
+                  },
+                );
+              }).toList(),
+            ),
+          ],
+          ], // Closes if (_isLocationSelected) ...[
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchResults() {
+    return FutureBuilder<List<Property>>(
+      future: _future,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final items = snap.data ?? const <Property>[];
+        if (items.isEmpty) {
+          return const Center(child: Text('No matches'));
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          itemCount: items.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 12),
+          itemBuilder: (context, i) {
+            final p = items[i];
+            return PropertyCard(
+              property: p,
+              onTap: () => context.push('/property/${p.id}'),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final f = _future;
     return Scaffold(
-      appBar: AppBar(centerTitle: true, title: const Text('Search by name')),
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).primaryColor,
+        centerTitle: true,
+        // title: const Text('Search Properties', style: TextStyle(fontSize: 16)),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Row(
+              children: [
+                _buildTab('Buy', 'buy'),
+                _buildTab('Rent', 'rent'),
+                _buildTab('PG', 'pg'),
+              ],
+            ),
+          ),
+        ),
+      ),
       body: Column(
         children: [
           Padding(
@@ -109,15 +556,29 @@ class _NameSearchScreenState extends ConsumerState<NameSearchScreen> {
               textInputAction: TextInputAction.search,
               onChanged: _onChanged,
               onSubmitted: (_) => _submit(),
+              style: const TextStyle(fontSize: 14),
               decoration: InputDecoration(
-                hintText: 'Type property name…',
-                prefixIcon: const Icon(Icons.search_rounded),
+                hintText: 'Search location or property name…',
+                hintStyle: const TextStyle(fontSize: 14),
+                prefixIcon: IconButton(
+                  icon: const Icon(Icons.my_location, size: 20),
+                  onPressed: () {
+                    setState(() {
+                      _isLocationSelected = true;
+                      _ctrl.text = 'Current Location';
+                    });
+                  },
+                ),
                 suffixIcon: IconButton(
                   onPressed: () {
                     _ctrl.clear();
                     _run('');
                   },
-                  icon: const Icon(Icons.close_rounded),
+                  icon: const Icon(Icons.close_rounded, size: 20),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
@@ -125,94 +586,52 @@ class _NameSearchScreenState extends ConsumerState<NameSearchScreen> {
               ),
             ),
           ),
-          Expanded(
-            child: f == null
-                ? Consumer(
-                    builder: (context, ref, child) {
-                      final historyAsync = ref.watch(searchHistoryProvider);
-                      return historyAsync.when(
-                        data: (items) {
-                          if (items.isEmpty) {
-                            return const Center(
-                              child: Text(
-                                'Start typing to search',
-                                style: TextStyle(
-                                  color: Color(0xFF6B7280),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            );
-                          }
-                          return SingleChildScrollView(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                RecentSearchesSection(
-                                  items: items,
-                                  onRecentSearchTap: _onRecentSearchTap,
-                                  onClearAll: () {
-                                    ref
-                                        .read(searchHistoryProvider.notifier)
-                                        .clearHistory();
-                                  },
-                                ),
-                                const SizedBox(height: 60),
-                                const Center(
-                                  child: Text(
-                                    'Start typing to search',
-                                    style: TextStyle(
-                                      color: Color(0xFF6B7280),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                        loading: () =>
-                            const Center(child: CircularProgressIndicator()),
-                        error: (_, _) => const Center(
-                          child: Text(
-                            'Start typing to search',
-                            style: TextStyle(
-                              color: Color(0xFF6B7280),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  )
-                : FutureBuilder<List<Property>>(
-                    future: f,
-                    builder: (context, snap) {
-                      if (snap.connectionState != ConnectionState.done) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      final items = snap.data ?? const <Property>[];
-                      if (items.isEmpty) {
-                        return const Center(child: Text('No matches'));
-                      }
-                      return ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                        itemCount: items.length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(height: 12),
-                        itemBuilder: (context, i) {
-                          final p = items[i];
-                          return PropertyCard(
-                            property: p,
-                            onTap: () => context.push('/property/${p.id}'),
-                          );
-                        },
-                      );
-                    },
+          Expanded(child: f == null ? _buildFilterUI() : _buildSearchResults()),
+          if (_isLocationSelected)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 4,
+                  offset: Offset(0, -2),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: _clearAll,
+                    child: const Text(
+                      'Clear All',
+                      style: TextStyle(color: Colors.red, fontSize: 14),
+                    ),
                   ),
-          ),
+                  ElevatedButton(
+                    onPressed: _submit,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).primaryColor,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'See All 124 Properties',
+                      style: TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ) else const SizedBox.shrink(),
         ],
       ),
     );

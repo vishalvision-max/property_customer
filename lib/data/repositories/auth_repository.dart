@@ -16,6 +16,10 @@ class AuthRepository {
     return user;
   }
 
+  Future<void> updateCachedUser(User user) async {
+    await _storage.saveUser(user);
+  }
+
   Future<String> sendOtp({required String phone}) async {
     return _service.sendOtp(phone: phone);
   }
