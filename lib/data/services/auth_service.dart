@@ -7,7 +7,9 @@ import 'package:http/http.dart' as http;
 import '../models/user.dart';
 
 class AuthService {
-  static final Uri _baseUri = Uri.parse('https://propertysearch.visionvivante.in');
+  static final Uri _baseUri = Uri.parse(
+    'https://propertysearch.visionvivante.in',
+  );
 
   Future<User> login({required String email, required String password}) async {
     if (kIsWeb) {
@@ -22,48 +24,46 @@ class AuthService {
           'content-type': 'application/x-www-form-urlencoded',
           'accept': 'application/json',
         },
-        body: {
-          'email': email,
-          'password': password,
-        },
+        body: {'email': email, 'password': password},
       );
-
       final body = response.body;
       final status = response.statusCode;
-
       Map<String, dynamic>? json;
       if (body.trim().isNotEmpty) {
         final decoded = jsonDecode(body);
         if (decoded is Map<String, dynamic>) json = decoded;
       }
-
       if (status < 200 || status >= 300) {
         final msg = _extractError(json) ?? 'Login failed ($status)';
         throw Exception(msg);
       }
-
-      // Check if API returned status false but status code is 2xx
       if (json != null && json['status'] == false) {
         final msg = _extractError(json) ?? 'Login failed';
         throw Exception(msg);
       }
-
-      final userJson = (json?['user'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
+      final userJson =
+          (json?['user'] as Map?)?.cast<String, dynamic>() ??
+          const <String, dynamic>{};
       final user = User.fromJson(userJson);
       final token = (json?['token'] ?? user.token).toString();
-
       if (user.id.isEmpty || user.email.isEmpty || token.isEmpty) {
         throw Exception('Login succeeded but response was unexpected');
       }
-
       // Save token into the User model so LocalStorageService can persist it.
-      return User(id: user.id, name: user.name, email: user.email, token: token);
+      return User(
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        token: token,
+      );
     } on SocketException {
       throw Exception('Network error. Please check your internet connection.');
     }
   }
 
-  Future<String> sendOtp({required String phone}) async {
+  Future<({String message, String? otp})> sendOtp({
+    required String phone,
+  }) async {
     if (kIsWeb) {
       throw Exception('OTP sending is not supported on web');
     }
@@ -75,9 +75,7 @@ class AuthService {
           'content-type': 'application/x-www-form-urlencoded',
           'accept': 'application/json',
         },
-        body: {
-          'phone': phone,
-        },
+        body: {'phone': phone},
       );
 
       final body = response.body;
@@ -93,18 +91,16 @@ class AuthService {
         final msg = _extractError(json) ?? 'Failed to send OTP ($status)';
         throw Exception(msg);
       }
-
       if (json != null && json['status'] == false) {
         final msg = _extractError(json) ?? 'Failed to send OTP';
         throw Exception(msg);
       }
-
-      final otpVal = json?['otp']?.toString() ?? '';
+      final otpVal = json?['otp']?.toString();
       final msg = json?['message']?.toString() ?? 'Otp Sent Successfully';
-      if (otpVal.isNotEmpty) {
-        return '$msg: $otpVal';
-      }
-      return msg;
+      return (
+        message: msg,
+        otp: (otpVal != null && otpVal.isNotEmpty) ? otpVal : null,
+      );
     } on SocketException {
       throw Exception('Network error. Please check your internet connection.');
     }
@@ -122,39 +118,31 @@ class AuthService {
           'content-type': 'application/x-www-form-urlencoded',
           'accept': 'application/json',
         },
-        body: {
-          'phone': phone,
-          'otp': otp,
-        },
+        body: {'phone': phone, 'otp': otp},
       );
-
       final body = response.body;
       final status = response.statusCode;
-
       Map<String, dynamic>? json;
       if (body.trim().isNotEmpty) {
         final decoded = jsonDecode(body);
         if (decoded is Map<String, dynamic>) json = decoded;
       }
-
       if (status < 200 || status >= 300) {
         final msg = _extractError(json) ?? 'OTP verification failed ($status)';
         throw Exception(msg);
       }
-
       if (json != null && json['status'] == false) {
         final msg = _extractError(json) ?? 'OTP verification failed';
         throw Exception(msg);
       }
-
-      final userJson = (json?['user'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
+      final userJson =
+          (json?['user'] as Map?)?.cast<String, dynamic>() ??
+          const <String, dynamic>{};
       final user = User.fromJson(userJson);
       final token = (json?['token'] ?? user.token).toString();
-
       if (user.id.isEmpty || token.isEmpty) {
         throw Exception('Verification succeeded but response was unexpected');
       }
-
       return User(
         id: user.id,
         name: user.name.isNotEmpty ? user.name : 'User ${user.id}',
@@ -165,7 +153,6 @@ class AuthService {
       throw Exception('Network error. Please check your internet connection.');
     }
   }
-
 
   Future<User> signup({
     required String name,
@@ -225,7 +212,12 @@ class AuthService {
         throw Exception('Signup succeeded but response was unexpected');
       }
 
-      return User(id: user.id, name: user.name, email: user.email, token: token);
+      return User(
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        token: token,
+      );
     } on SocketException {
       throw Exception('Network error. Please check your internet connection.');
     }
@@ -233,30 +225,27 @@ class AuthService {
 
   Future<String> forgotPassword({required String email}) async {
     if (kIsWeb) {
-      throw Exception('Forgot password API is not supported on web in this build');
+      throw Exception(
+        'Forgot password API is not supported on web in this build',
+      );
     }
-
     final uri = _baseUri.replace(path: '/api/v1/forget/password');
     try {
       final req = http.MultipartRequest('POST', uri);
       req.headers['accept'] = 'application/json';
       req.fields['email'] = email;
-
       final streamed = await req.send();
       final body = await streamed.stream.bytesToString();
       final status = streamed.statusCode;
-
       Map<String, dynamic>? json;
       if (body.trim().isNotEmpty) {
         final decoded = jsonDecode(body);
         if (decoded is Map<String, dynamic>) json = decoded;
       }
-
       if (status < 200 || status >= 300) {
         final msg = _extractError(json) ?? 'Request failed ($status)';
         throw Exception(msg);
       }
-
       final message = (json?['message'] ?? '').toString().trim();
       return message.isNotEmpty ? message : 'Reset link sent successfully';
     } on SocketException {

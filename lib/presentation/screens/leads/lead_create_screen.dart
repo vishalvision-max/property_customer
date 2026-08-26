@@ -2,25 +2,33 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/app_snackbar.dart';
 import '../../../core/validators/validators.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/lead_provider.dart';
-import '../../widgets/primary_button.dart';
+import '../../widgets/app_location_header.dart';
+import '../../widgets/white_pill_button.dart';
 
-// Styling close to HomeScreen design tokens with a premium touch
-const _kPrimary = Color(0xFF6C5CE7);
-const _kBg = Color(0xFFF6F7FB);
+const _kPrimary = Color(0xFFFF8000);
 const _kTextDark = Color(0xFF1A1A2E);
 const _kTextMid = Color(0xFF6B7280);
 const _kBorder = Color(0xFFE5E7EB);
+const _kFieldFill = Color(0xFFF2F3F5);
 
 class LeadCreateScreen extends ConsumerStatefulWidget {
   final String? propertyId;
   final String? type;
 
-  const LeadCreateScreen({super.key, this.propertyId, this.type});
+  /// False when embedded as a persistent bottom-nav tab (Listing) — there's
+  /// nothing to pop back to from a tab, so the back button is hidden.
+  final bool showBackButton;
+
+  const LeadCreateScreen({
+    super.key,
+    this.propertyId,
+    this.type,
+    this.showBackButton = true,
+  });
 
   @override
   ConsumerState<LeadCreateScreen> createState() => _LeadCreateScreenState();
@@ -42,13 +50,10 @@ class _LeadCreateScreenState extends ConsumerState<LeadCreateScreen> {
     ('Sale', 'sale'),
     ('Rent', 'rent'),
     ('Lease', 'lease'),
-    // ('Land/Plot', 'land_plot'),
-    // ('Commercial', 'commercial'),
     ('PG', 'pg'),
     ('Co-Living', 'co-living'),
     ('Industrial Shed', 'industrial_shed'),
     ('Agricultural Land', 'agricultural_land'),
-    // ('New Project', 'new_project'),
   ];
 
   @override
@@ -119,300 +124,287 @@ class _LeadCreateScreenState extends ConsumerState<LeadCreateScreen> {
     }
 
     return Scaffold(
-      backgroundColor: _kBg,
+      backgroundColor: Colors.white,
       bottomNavigationBar: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-          child: PrimaryButton(
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+          child: WhitePillButton(
             label: 'Submit Lead',
-            isLoading: busy,
-            onPressed: busy ? null : submit,
-            leading: const Icon(Icons.send_rounded, color: Colors.white),
+            loading: busy,
+            onTap: busy ? () {} : submit,
           ),
         ),
       ),
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
-            centerTitle: true,
-            pinned: true,
-            backgroundColor: Colors.white,
-            surfaceTintColor: Colors.white,
-            elevation: 0,
-            title: const Text(
-              'Property Inquiry',
-              style: TextStyle(fontWeight: FontWeight.w900, color: _kTextDark),
-            ),
-          ),
+          const SliverToBoxAdapter(child: AppLocationHeader()),
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(18),
-                child: SizedBox(
-                  height: 120,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Image.asset(
-                        'assets/leadBanner.jpeg',
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Color(0xFF8E2DE2), Color(0xFF4A00E0)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                          ),
+            child: SizedBox(
+              height: 260,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.asset(
+                    'assets/icons/submit_lead_banner.jpg',
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [_kPrimary, Color(0xFFFFB366)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
                       ),
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.black.withValues(alpha: 0.10),
-                              Colors.black.withValues(alpha: 0.65),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            const Text(
-                              'Inquire About Property',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 16,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              isAuthed
-                                  ? 'Enter your buyer inquiry details below.'
-                                  : 'Login is required before submitting.',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.85),
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.05),
+                          Colors.black.withValues(alpha: 0.70),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (widget.showBackButton)
+                    Positioned(
+                      top: 16,
+                      left: 16,
+                      child: GestureDetector(
+                        onTap: () {
+                          if (context.canPop()) {
+                            context.pop();
+                          } else {
+                            context.go('/home');
+                          }
+                        },
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.28),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.arrow_back_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 14, 24, 22),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        const Text(
+                          'List Your Property',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 24,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          isAuthed
+                              ? 'Share your property details and connect with interested buyers and Seller.'
+                              : 'Login is required before submitting.',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            fontWeight: FontWeight.w500,
+                            fontSize: 13.5,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: AppSpacing.pagePadding,
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: _kBorder),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 18,
-                      offset: const Offset(0, 10),
+              padding: const EdgeInsets.fromLTRB(24, 22, 24, 0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Property Details',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 19,
+                        color: _kTextDark,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // ── Selectable Type Chips ──────────────────────────
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.widgets_outlined,
+                          size: 18,
+                          color: _kPrimary,
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Listing Type',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: _kTextMid,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    StatefulBuilder(
+                      builder: (context, setChipState) {
+                        return Wrap(
+                          spacing: 10,
+                          runSpacing: 8,
+                          children: _typeOptions.map((option) {
+                            final label = option.$1;
+                            final value = option.$2;
+                            final isSelected = _selectedType == value;
+                            return GestureDetector(
+                              onTap: () {
+                                setChipState(() => _selectedType = value);
+                                setState(() {});
+                              },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 180),
+                                curve: Curves.easeInOut,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  gradient: isSelected
+                                      ? const LinearGradient(
+                                          colors: [
+                                            Color(0xFFFF8000),
+                                            Color(0xFFFFB366),
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        )
+                                      : null,
+                                  color: isSelected ? null : Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? Colors.transparent
+                                        : _kBorder,
+                                    width: 1.5,
+                                  ),
+                                  boxShadow: isSelected
+                                      ? [
+                                          BoxShadow(
+                                            color: const Color(
+                                              0xFFFF8000,
+                                            ).withValues(alpha: 0.30),
+                                            blurRadius: 10,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ]
+                                      : [],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (isSelected) ...[
+                                      const Icon(
+                                        Icons.check_circle_rounded,
+                                        size: 15,
+                                        color: Colors.white,
+                                      ),
+                                      const SizedBox(width: 6),
+                                    ],
+                                    Text(
+                                      label,
+                                      style: TextStyle(
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : _kTextMid,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Select the listing type for this inquiry.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: _kTextMid,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Divider(color: _kBorder, height: 1),
+                    const SizedBox(height: 24),
+                    _Field(
+                      controller: _name,
+                      label: 'Name',
+                      hint: 'Enter your name',
+                      validator: Validators.name,
+                      textInputAction: TextInputAction.next,
+                      enabled: !busy,
+                    ),
+                    const SizedBox(height: 16),
+                    _Field(
+                      controller: _phone,
+                      label: 'Phone',
+                      hint: 'Enter your phone number',
+                      validator: (v) => _required(v, 'Phone number'),
+                      keyboardType: TextInputType.phone,
+                      textInputAction: TextInputAction.next,
+                      enabled: !busy,
+                      maxLength: 10,
+                    ),
+                    const SizedBox(height: 16),
+                    _Field(
+                      controller: _email,
+                      label: 'Email Address',
+                      hint: 'Enter your email address',
+                      validator: Validators.email,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      enabled: !busy,
+                    ),
+                    const SizedBox(height: 16),
+                    _Field(
+                      controller: _message,
+                      label: 'Message',
+                      hint: 'Enter your message',
+                      validator: (v) => _required(v, 'Message'),
+                      textInputAction: TextInputAction.newline,
+                      enabled: !busy,
+                      minLines: 3,
+                      maxLines: 5,
                     ),
                   ],
                 ),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Buyer Inquiry Details',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 15,
-                          color: _kTextDark,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      _Field(
-                        controller: _name,
-                        label: 'Name',
-                        icon: Icons.person_outline_rounded,
-                        validator: Validators.name,
-                        textInputAction: TextInputAction.next,
-                        enabled: !busy,
-                      ),
-                      const SizedBox(height: 16),
-                      _Field(
-                        controller: _phone,
-                        label: 'Phone Number',
-                        icon: Icons.phone_outlined,
-                        validator: (v) => _required(v, 'Phone number'),
-                        keyboardType: TextInputType.phone,
-                        textInputAction: TextInputAction.next,
-                        enabled: !busy,
-                        maxLength: 10,
-                      ),
-                      const SizedBox(height: 16),
-                      _Field(
-                        controller: _email,
-                        label: 'Email Address',
-                        icon: Icons.mail_outline_rounded,
-                        validator: Validators.email,
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.next,
-                        enabled: !busy,
-                      ),
-                      const SizedBox(height: 16),
-                      _Field(
-                        controller: _message,
-                        label: 'Message',
-                        icon: Icons.notes_outlined,
-                        validator: (v) => _required(v, 'Message'),
-                        textInputAction: TextInputAction.newline,
-                        enabled: !busy,
-                        minLines: 3,
-                        maxLines: 5,
-                      ),
-                      const SizedBox(height: 24),
-                      const Divider(color: _kBorder, height: 1),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Linked Property Details',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 14,
-                          color: _kTextDark,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      // ── Selectable Type Chips ──────────────────────────
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.category_outlined,
-                            size: 18,
-                            color: _kPrimary,
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'Listing Type',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: _kTextDark,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      StatefulBuilder(
-                        builder: (context, setChipState) {
-                          return Wrap(
-                            spacing: 10,
-                            runSpacing: 8,
-                            children: _typeOptions.map((option) {
-                              final label = option.$1;
-                              final value = option.$2;
-                              final isSelected = _selectedType == value;
-                              return GestureDetector(
-                                onTap: () {
-                                  setChipState(() => _selectedType = value);
-                                  setState(() {});
-                                },
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 180),
-                                  curve: Curves.easeInOut,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: 10,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    gradient: isSelected
-                                        ? const LinearGradient(
-                                            colors: [
-                                              Color(0xFF6C5CE7),
-                                              Color(0xFF9B8DF8),
-                                            ],
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                          )
-                                        : null,
-                                    color: isSelected ? null : Colors.white,
-                                    borderRadius: BorderRadius.circular(30),
-                                    border: Border.all(
-                                      color: isSelected
-                                          ? Colors.transparent
-                                          : _kBorder,
-                                      width: 1.5,
-                                    ),
-                                    boxShadow: isSelected
-                                        ? [
-                                            BoxShadow(
-                                              color: const Color(
-                                                0xFF6C5CE7,
-                                              ).withValues(alpha: 0.30),
-                                              blurRadius: 10,
-                                              offset: const Offset(0, 4),
-                                            ),
-                                          ]
-                                        : [],
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      if (isSelected) ...[
-                                        const Icon(
-                                          Icons.check_circle_rounded,
-                                          size: 15,
-                                          color: Colors.white,
-                                        ),
-                                        const SizedBox(width: 6),
-                                      ],
-                                      Text(
-                                        label,
-                                        style: TextStyle(
-                                          fontSize: 13.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: isSelected
-                                              ? Colors.white
-                                              : _kTextMid,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Select the listing type for this inquiry.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: _kTextMid,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ),
             ),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 20)),
+          const SliverToBoxAdapter(child: SizedBox(height: 24)),
         ],
       ),
     );
@@ -422,24 +414,23 @@ class _LeadCreateScreenState extends ConsumerState<LeadCreateScreen> {
 class _Field extends StatelessWidget {
   final TextEditingController controller;
   final String label;
-  final IconData icon;
+  final String hint;
   final String? Function(String?)? validator;
   final TextInputType? keyboardType;
   final TextInputAction? textInputAction;
   final bool enabled;
-  final bool readOnly;
   final int? minLines;
   final int? maxLines;
   final int? maxLength;
+
   const _Field({
     required this.controller,
     required this.label,
-    required this.icon,
+    required this.hint,
     this.validator,
     this.keyboardType,
     this.textInputAction,
     this.enabled = true,
-    this.readOnly = false,
     this.minLines,
     this.maxLines,
     this.maxLength,
@@ -447,47 +438,54 @@ class _Field extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      enabled: enabled,
-      readOnly: readOnly,
-      validator: validator,
-      keyboardType: keyboardType,
-      textInputAction: textInputAction,
-      minLines: minLines,
-      maxLines: maxLines ?? 1,
-      maxLength: maxLength,
-      style: TextStyle(
-        color: readOnly ? _kTextMid : _kTextDark,
-        fontWeight: readOnly ? FontWeight.w600 : FontWeight.normal,
-      ),
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(
-          icon,
-          color: readOnly ? _kTextMid.withValues(alpha: 0.7) : _kPrimary,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: _kTextMid,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
         ),
-        filled: readOnly,
-        fillColor: readOnly
-            ? Colors.grey.withValues(alpha: 0.1)
-            : Colors.transparent,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _kBorder),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: _kFieldFill,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: TextFormField(
+            controller: controller,
+            enabled: enabled,
+            validator: validator,
+            keyboardType: keyboardType,
+            textInputAction: textInputAction,
+            minLines: minLines,
+            maxLines: maxLines ?? 1,
+            maxLength: maxLength,
+            style: const TextStyle(
+              color: _kTextDark,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: const TextStyle(
+                color: _kTextMid,
+                fontWeight: FontWeight.w500,
+              ),
+              filled: false,
+              counterText: '',
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+            ),
+          ),
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _kBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _kPrimary, width: 1.5),
-        ),
-        disabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _kBorder),
-        ),
-      ),
+      ],
     );
   }
 }

@@ -10,8 +10,9 @@ class FavoritesToggleResult {
 }
 
 class FavoritesService {
-  static final Uri _baseUri =
-      Uri.parse('https://propertysearch.visionvivante.in');
+  static final Uri _baseUri = Uri.parse(
+    'https://propertysearch.visionvivante.in',
+  );
 
   // ─────────────────────────────────────────────────────────────
   //  GET /api/v1/favorites/index
@@ -30,9 +31,13 @@ class FavoritesService {
           'Authorization': 'Bearer $token',
         },
       );
-      debugPrint('[FavoritesService] fetchFavoriteIds → ${response.statusCode}');
+      debugPrint(
+        '[FavoritesService] fetchFavoriteIds → ${response.statusCode}',
+      );
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        debugPrint('[FavoritesService] fetchFavoriteIds error: ${response.body}');
+        debugPrint(
+          '[FavoritesService] fetchFavoriteIds error: ${response.body}',
+        );
         return const <String>{};
       }
       final decoded = response.body.trim().isEmpty
@@ -73,9 +78,7 @@ class FavoritesService {
       debugPrint('[FavoritesService] toggle body: ${response.body}');
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception(
-          'Failed to toggle favorite (${response.statusCode})',
-        );
+        throw Exception('Failed to toggle favorite (${response.statusCode})');
       }
 
       final decoded = response.body.trim().isEmpty
@@ -139,7 +142,7 @@ class FavoritesService {
     final root = unwrap(decoded);
     if (root is Map) {
       final map = root.cast<String, dynamic>();
-      
+
       // First, check the message field to explicitly handle toggle events.
       final msg = map['message']?.toString().toLowerCase() ?? '';
       if (msg.contains('added')) return true;
@@ -169,7 +172,9 @@ class FavoritesService {
     return null;
   }
 
-  Future<List<Map<String, dynamic>>> fetchFavoriteProperties({required String token}) async {
+  Future<List<Map<String, dynamic>>> fetchFavoriteProperties({
+    required String token,
+  }) async {
     if (kIsWeb) return const [];
 
     final uri = _baseUri.replace(path: '/api/v1/favorites/index');
@@ -185,9 +190,15 @@ class FavoritesService {
       if (response.statusCode < 200 || response.statusCode >= 300) {
         return const [];
       }
-      final decoded = response.body.trim().isEmpty ? null : jsonDecode(response.body);
+      final decoded = response.body.trim().isEmpty
+          ? null
+          : jsonDecode(response.body);
       if (decoded is Map<String, dynamic>) {
-        final data = decoded['data'] ?? decoded['favorites'] ?? decoded['result'] ?? decoded;
+        final data =
+            decoded['data'] ??
+            decoded['favorites'] ??
+            decoded['result'] ??
+            decoded;
         if (data is List) {
           final out = <Map<String, dynamic>>[];
           for (final item in data) {

@@ -23,7 +23,7 @@ class BhkSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const activeColor = Color(0xFF7B2FF7);
+    const activeColor = Color(0xFFFF8000);
     const borderColor = Color(0xFFE5E7EB);
 
     return Column(
@@ -32,12 +32,12 @@ class BhkSection extends StatelessWidget {
         const Text(
           'BHK Type',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.w700,
             color: Color(0xFF1D2939),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -47,9 +47,12 @@ class BhkSection extends StatelessWidget {
               onTap: () => onBhkToggled(option),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 11,
+                  vertical: 7,
+                ),
                 decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFFF9F5FF) : Colors.white,
+                  color: isSelected ? const Color(0xFFFFF1E0) : Colors.white,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: isSelected ? activeColor : borderColor,
@@ -63,16 +66,20 @@ class BhkSection extends StatelessWidget {
                       const Icon(
                         Icons.check_circle_rounded,
                         color: activeColor,
-                        size: 16,
+                        size: 14,
                       ),
                       const SizedBox(width: 6),
                     ],
                     Text(
                       option,
                       style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                        color: isSelected ? activeColor : const Color(0xFF344054),
+                        fontSize: 12,
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w600,
+                        color: isSelected
+                            ? activeColor
+                            : const Color(0xFF344054),
                       ),
                     ),
                   ],

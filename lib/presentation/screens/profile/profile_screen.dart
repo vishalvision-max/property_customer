@@ -2,18 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../providers/auth_provider.dart';
 import '../../../providers/owner_profile_provider.dart';
-import '../../../providers/favorites_provider.dart';
-import '../../../providers/scheduled_visits_provider.dart';
-import '../../../providers/enquiries_provider.dart';
 
-const _kPrimary = Color(0xFF6C5CE7);
-const _kBg = Color(0xFFF9FAFB);
-const _kTextDark = Color(0xFF1A1A2E);
-const _kTextMid = Color(0xFF6B7280);
-const _kBorder = Color(0xFFE5E7EB);
+const _navy = Color(0xFF191D31);
+const _grey = Color(0xFF666876);
+const _orange = Color(0xFFFF8000);
+const _fieldFill = Color(0xFFF2F3F5);
+const _red = Color(0xFFE0245E);
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -32,29 +30,115 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     ).resolve('/storage/$v').toString();
   }
 
-  Widget _buildStat(String count, String label) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          count,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: _kTextDark,
+  void _comingSoon(String feature) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$feature is coming soon')));
+  }
+
+  Future<void> _confirmLogout() async {
+    final router = GoRouter.of(context);
+    final confirm = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 50,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: _fieldFill,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _red.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.logout_rounded, color: _red, size: 32),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Logout',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: _navy,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Are you sure you want to log out of your account?',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 15, color: _grey),
+              ),
+              const SizedBox(height: 32),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        backgroundColor: _fieldFill,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: _navy,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        backgroundColor: _red,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text(
+                        'Yes, Logout',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: _kTextMid,
-          ),
-        ),
-      ],
+      ),
     );
+
+    if (confirm != true) return;
+    await ref.read(authProvider.notifier).logout();
+    if (!mounted) return;
+    router.go('/login');
   }
 
   @override
@@ -65,487 +149,201 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final rawName = (owner?.name.trim().isNotEmpty ?? false)
         ? owner!.name.trim()
         : (user?.name.trim() ?? '');
-    final isAutoName = rawName.toLowerCase().startsWith('user') && RegExp(r'^user[\s_]*\d*$').hasMatch(rawName.toLowerCase());
-    final displayName = isAutoName ? '' : rawName;
-    final rawEmail = (owner?.email.trim().isNotEmpty ?? false)
-        ? owner!.email.trim()
-        : ((user == null || user.email.trim().isEmpty)
-            ? ''
-            : user.email.trim());
-    // Hide dummy emails generated by the backend (e.g. 92372173@gmail.com)
-    final isAutoEmail = RegExp(r'^\d+@.*').hasMatch(rawEmail);
-    final displayEmail = isAutoEmail ? '' : rawEmail;
-
-    final savedCount = ref.watch(favoritesProvider).length;
-    final scheduledCount = ref.watch(scheduledVisitsNotifierProvider).maybeWhen(
-      data: (list) => list.length,
-      orElse: () => 0,
-    );
-    final enquiriesCount = ref.watch(enquiriesNotifierProvider).maybeWhen(
-      data: (list) => list.length,
-      orElse: () => 0,
-    );
-
-    final isProfileIncomplete =
-        (owner?.name.trim().isEmpty ?? true) ||
-        (owner?.email.trim().isEmpty ?? true) ||
-        (owner?.email.endsWith('@example.com') ?? false);
+    final isAutoName =
+        rawName.toLowerCase().startsWith('user') &&
+        RegExp(r'^user[\s_]*\d*$').hasMatch(rawName.toLowerCase());
+    final displayName = isAutoName || rawName.isEmpty ? 'Guest' : rawName;
 
     return Scaffold(
-      backgroundColor: _kBg,
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top Section with overlapping Stats Card
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                // Purple Header
-                Container(
-                  padding: EdgeInsets.only(
-                    top: MediaQuery.of(context).padding.top + 16,
-                    bottom: 60,
-                    left: 20,
-                    right: 20,
-                  ),
-                  decoration: const BoxDecoration(
-                    color: _kPrimary,
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(24),
-                      bottomRight: Radius.circular(24),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          IconButton(
-                            onPressed: () {
-                              if (context.canPop()) context.pop();
-                            },
-                            icon: const Icon(Icons.arrow_back, color: Colors.white),
-                          ),
-                          const Text(
-                            'Profile',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () {},
-                            icon: const Icon(Icons.settings_outlined, color: Colors.white),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
-                        children: [
-                          Container(
-                            width: 80,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white.withValues(alpha: 0.2),
-                              border: Border.all(
-                                color: Colors.white,
-                                width: 2,
-                              ),
-                            ),
-                            clipBehavior: Clip.antiAlias,
-                            child: ownerImage.isEmpty
-                                ? const Icon(
-                                    Icons.person_rounded,
-                                    color: Colors.white,
-                                    size: 40,
-                                  )
-                                : CachedNetworkImage(
-                                    imageUrl: ownerImage,
-                                    fit: BoxFit.cover,
-                                    errorWidget: (context, url, error) =>
-                                        const Icon(
-                                      Icons.person_rounded,
-                                      color: Colors.white,
-                                      size: 40,
-                                    ),
-                                  ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (displayName.isNotEmpty) ...[
-                                  Text(
-                                    displayName,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                ],
-                                if (displayEmail.isNotEmpty) ...[
-                                  Text(
-                                    displayEmail,
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.85),
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                ],
-                                Text(
-                                  '+91 95924 91222', // Mocked as in design
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.85),
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                // Overlapping Stats Card
-                Positioned(
-                  bottom: -30,
-                  left: 24,
-                  right: 24,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.04),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(child: _buildStat('$savedCount', 'Saved')),
-                        Container(width: 1, height: 30, color: _kBorder),
-                        Expanded(child: _buildStat('$scheduledCount', 'Scheduled')),
-                        Container(width: 1, height: 30, color: _kBorder),
-                        Expanded(child: _buildStat('$enquiriesCount', 'Enquiries')),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 50),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  // Complete Profile Banner
-                  if (isProfileIncomplete)
-                    GestureDetector(
-                      onTap: () => context.push('/profile/edit'),
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 24),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.red, Colors.red.shade600],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
+                  const Text(
+                    'Profile',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      color: _navy,
+                    ),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => context.push('/notifications'),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: const BoxDecoration(
+                        color: _fieldFill,
+                        shape: BoxShape.circle,
                       ),
-                      child: Row(
+                      child: Stack(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                            ),
+                          const Center(
                             child: Icon(
-                              Icons.priority_high_rounded,
-                              color: Colors.red,
+                              Icons.notifications_none_rounded,
+                              color: _navy,
                               size: 20,
                             ),
                           ),
-                          const SizedBox(width: 16),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Complete Profile',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                SizedBox(height: 2),
-                                Text(
-                                  'Update your name and email to continue.',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ],
+                          Positioned(
+                            top: 9,
+                            right: 10,
+                            child: Container(
+                              width: 7,
+                              height: 7,
+                              decoration: const BoxDecoration(
+                                color: _orange,
+                                shape: BoxShape.circle,
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
-
-                  const Text(
-                    'General',
-                    style: TextStyle(
-                      color: _kTextDark,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.02),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Column(
-                      children: [
-                        _SettingsTile(
-                          icon: Icons.person_outline_rounded,
-                          title: 'Edit Profile',
-                          onTap: user == null
-                              ? null
-                              : () => context.push('/profile/edit'),
-                        ),
-                        _SettingsTile(
-                          icon: Icons.support_agent_rounded,
-                          title: 'Property Enquiries',
-                          onTap: () => context.push('/leads'),
-                        ),
-                        _SettingsTile(
-                          icon: Icons.favorite_border_rounded,
-                          title: 'Saved Properties',
-                          onTap: () => context.push('/favorites'),
-                        ),
-                        _SettingsTile(
-                          icon: Icons.calendar_month_outlined,
-                          title: 'My Scheduled Visits',
-                          onTap: () => context.push('/scheduled-visits'),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
-                  const Text(
-                    'Security',
-                    style: TextStyle(
-                      color: _kTextDark,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.02),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Column(
-                      children: [
-                        _SettingsTile(
-                          icon: Icons.shield_outlined,
-                          title: 'Change Password',
-                          onTap: user == null
-                              ? null
-                              : () => context.push('/profile/change-password'),
-                        ),
-                        _SettingsTile(
-                          icon: Icons.logout_rounded,
-                          title: 'Logout',
-                          isDestructive: true,
-                          onTap: () async {
-                            final router = GoRouter.of(context);
-                            final confirm = await showModalBottomSheet<bool>(
-                              context: context,
-                              backgroundColor: Colors.white,
-                              shape: const RoundedRectangleBorder(
-                                borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(24),
-                                ),
-                              ),
-                              builder: (ctx) => SafeArea(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(24.0),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        width: 50,
-                                        height: 5,
-                                        decoration: BoxDecoration(
-                                          color: _kBorder,
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 24),
-                                      Container(
-                                        padding: const EdgeInsets.all(16),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red.shade50,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Icon(
-                                          Icons.logout_rounded,
-                                          color: Colors.red.shade400,
-                                          size: 32,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      const Text(
-                                        'Logout',
-                                        style: TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold,
-                                          color: _kTextDark,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      const Text(
-                                        'Are you sure you want to log out of your account?',
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          color: _kTextMid,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 32),
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: TextButton(
-                                              onPressed: () =>
-                                                  Navigator.of(ctx).pop(false),
-                                              style: TextButton.styleFrom(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      vertical: 16,
-                                                    ),
-                                                backgroundColor: _kBg,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(14),
-                                                ),
-                                              ),
-                                              child: const Text(
-                                                'Cancel',
-                                                style: TextStyle(
-                                                  color: _kTextDark,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 16,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 16),
-                                          Expanded(
-                                            child: ElevatedButton(
-                                              onPressed: () =>
-                                                  Navigator.of(ctx).pop(true),
-                                              style: ElevatedButton.styleFrom(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      vertical: 16,
-                                                    ),
-                                                backgroundColor:
-                                                    Colors.red.shade500,
-                                                elevation: 0,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(14),
-                                                ),
-                                              ),
-                                              child: const Text(
-                                                'Yes, Logout',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 16,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            );
-
-                            if (confirm != true) return;
-
-                            await ref.read(authProvider.notifier).logout();
-                            if (!mounted) return;
-                            router.go('/login');
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 40),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 24),
+              Center(
+                child: Stack(
+                  children: [
+                    Container(
+                      width: 130,
+                      height: 130,
+                      decoration: const BoxDecoration(
+                        color: _fieldFill,
+                        shape: BoxShape.circle,
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: ownerImage.isEmpty
+                          ? const Icon(
+                              Icons.person_rounded,
+                              color: _grey,
+                              size: 60,
+                            )
+                          : CachedNetworkImage(
+                              imageUrl: ownerImage,
+                              fit: BoxFit.cover,
+                              errorWidget: (context, url, error) => const Icon(
+                                Icons.person_rounded,
+                                color: _grey,
+                                size: 60,
+                              ),
+                            ),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: GestureDetector(
+                        onTap: user == null
+                            ? null
+                            : () => context.push('/profile/edit'),
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: _orange,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child: const Icon(
+                            Icons.edit_rounded,
+                            color: Colors.white,
+                            size: 17,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              Center(
+                child: Text(
+                  displayName,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: _navy,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Divider(height: 1, color: Color(0xFFF2F4F7)),
+              _ProfileTile(
+                icon: Icons.calendar_month_outlined,
+                title: 'My Booking',
+                onTap: () => context.push('/scheduled-visits'),
+              ),
+              _ProfileTile(
+                icon: Icons.support_agent_rounded,
+                title: 'Property Enquiries',
+                onTap: () => context.push('/leads'),
+              ),
+              const Divider(height: 1, color: Color(0xFFF2F4F7)),
+              _ProfileTile(
+                icon: Icons.person_outline_rounded,
+                title: 'Profile',
+                onTap: user == null
+                    ? null
+                    : () => context.push('/profile/edit'),
+              ),
+              _ProfileTile(
+                icon: Icons.notifications_none_rounded,
+                title: 'Notification',
+                onTap: () => context.push('/notifications'),
+              ),
+              _ProfileTile(
+                icon: Icons.verified_user_outlined,
+                title: 'Security',
+                onTap: user == null
+                    ? null
+                    : () => context.push('/profile/change-password'),
+              ),
+              _ProfileTile(
+                icon: Icons.language_rounded,
+                title: 'Language',
+                onTap: () => _comingSoon('Language selection'),
+              ),
+              _ProfileTile(
+                icon: Icons.info_outline_rounded,
+                title: 'Help Center',
+                onTap: () => _comingSoon('Help Center'),
+              ),
+              _ProfileTile(
+                icon: Icons.group_outlined,
+                title: 'Invite Friends',
+                onTap: () => Share.share(
+                  'Check out Nestora — find your ideal home! Download the app now.',
+                ),
+              ),
+              _ProfileTile(
+                icon: Icons.logout_rounded,
+                title: 'Logout',
+                isDestructive: true,
+                onTap: _confirmLogout,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _SettingsTile extends StatelessWidget {
+class _ProfileTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final VoidCallback? onTap;
   final bool isDestructive;
 
-  const _SettingsTile({
+  const _ProfileTile({
     required this.icon,
     required this.title,
     this.onTap,
@@ -554,45 +352,29 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isDestructive ? Colors.red.shade400 : _kTextDark;
-    final iconBg = isDestructive
-        ? Colors.red.shade50
-        : _kPrimary.withValues(alpha: 0.08);
-    final iconColor = isDestructive ? Colors.red.shade400 : _kPrimary;
-
+    final color = isDestructive ? _red : _navy;
     return Material(
       color: Colors.white,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          padding: const EdgeInsets.symmetric(vertical: 16),
           child: Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: iconBg,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: iconColor, size: 20),
-              ),
+              Icon(icon, color: color, size: 22),
               const SizedBox(width: 16),
               Expanded(
                 child: Text(
                   title,
                   style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15.5,
                     color: color,
                   ),
                 ),
               ),
-              if (onTap != null)
-                Icon(
-                  Icons.chevron_right_rounded,
-                  color: _kTextMid.withValues(alpha: 0.5),
-                  size: 20,
-                ),
+              if (!isDestructive)
+                const Icon(Icons.chevron_right_rounded, color: _navy, size: 20),
             ],
           ),
         ),

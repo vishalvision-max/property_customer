@@ -15,7 +15,7 @@ import '../../widgets/shimmer_list.dart';
 import '../../../providers/nav_provider.dart';
 import '../home/map_location_screen.dart';
 
-const _kPrimary = Color(0xFF5C46E8);
+const _kPrimary = Color(0xFFFF8000);
 const _kBg = Color(0xFFF9FAFB);
 const _kTextDark = Color(0xFF1D2939);
 const _kTextMid = Color(0xFF667085);
@@ -461,9 +461,9 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
   void _load() => _loadPage(1, replace: true);
 
   void _showLocationPickerDialog() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const MapLocationScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const MapLocationScreen()));
   }
 
   void _showModePicker() {
@@ -517,11 +517,11 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                           vertical: 10,
                         ),
                         decoration: BoxDecoration(
-                          color: isSel ? const Color(0xFFF2EFFF) : Colors.white,
+                          color: isSel ? const Color(0xFFFFF1E0) : Colors.white,
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: isSel
-                                ? const Color(0xFF5C46E8)
+                                ? const Color(0xFFFF8000)
                                 : const Color(0xFFD0D5DD),
                             width: 1.5,
                           ),
@@ -532,7 +532,7 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
                             color: isSel
-                                ? const Color(0xFF5C46E8)
+                                ? const Color(0xFFFF8000)
                                 : const Color(0xFF344054),
                           ),
                         ),
@@ -610,11 +610,11 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                           vertical: 10,
                         ),
                         decoration: BoxDecoration(
-                          color: isSel ? const Color(0xFFF2EFFF) : Colors.white,
+                          color: isSel ? const Color(0xFFFFF1E0) : Colors.white,
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: isSel
-                                ? const Color(0xFF5C46E8)
+                                ? const Color(0xFFFF8000)
                                 : const Color(0xFFD0D5DD),
                             width: 1.5,
                           ),
@@ -625,7 +625,7 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
                             color: isSel
-                                ? const Color(0xFF5C46E8)
+                                ? const Color(0xFFFF8000)
                                 : const Color(0xFF344054),
                           ),
                         ),
@@ -683,7 +683,7 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF5C46E8),
+                      color: Color(0xFFFF8000),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -692,7 +692,7 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                     min: 0,
                     max: 10000000,
                     divisions: 50,
-                    activeColor: const Color(0xFF5C46E8),
+                    activeColor: const Color(0xFFFF8000),
                     inactiveColor: const Color(0xFFF2F4F7),
                     labels: RangeLabels(
                       formatVal(current.start),
@@ -736,7 +736,7 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                             Navigator.pop(context);
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF5C46E8),
+                            backgroundColor: const Color(0xFFFF8000),
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
@@ -806,12 +806,12 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                           ),
                           decoration: BoxDecoration(
                             color: isSel
-                                ? const Color(0xFFF2EFFF)
+                                ? const Color(0xFFFFF1E0)
                                 : Colors.white,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
                               color: isSel
-                                  ? const Color(0xFF5C46E8)
+                                  ? const Color(0xFFFF8000)
                                   : const Color(0xFFD0D5DD),
                               width: 1.5,
                             ),
@@ -822,7 +822,7 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
                               color: isSel
-                                  ? const Color(0xFF5C46E8)
+                                  ? const Color(0xFFFF8000)
                                   : const Color(0xFF344054),
                             ),
                           ),
@@ -866,7 +866,7 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                             Navigator.pop(context);
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF5C46E8),
+                            backgroundColor: const Color(0xFFFF8000),
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
@@ -1069,12 +1069,12 @@ class _PropertiesTabScreenState extends ConsumerState<PropertiesTabScreen> {
                                   alignment: Alignment.center,
                                   decoration: BoxDecoration(
                                     color: isSel
-                                        ? const Color(0xFF5C46E8)
+                                        ? const Color(0xFFFF8000)
                                         : const Color(0xFFF3F4F6),
                                     borderRadius: BorderRadius.circular(20),
                                     border: Border.all(
                                       color: isSel
-                                          ? const Color(0xFF5C46E8)
+                                          ? const Color(0xFFFF8000)
                                           : Colors.transparent,
                                     ),
                                   ),
@@ -1302,11 +1302,11 @@ class _FilterChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFF2EFFF) : Colors.white,
+          color: isSelected ? const Color(0xFFFFF1E0) : Colors.white,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected
-                ? const Color(0xFF5C46E8).withValues(alpha: 0.3)
+                ? const Color(0xFFFF8000).withValues(alpha: 0.3)
                 : const Color(0xFFE4E7EC),
             width: 1,
           ),
@@ -1320,7 +1320,7 @@ class _FilterChip extends StatelessWidget {
                 fontSize: 11.5,
                 fontWeight: FontWeight.w700,
                 color: isSelected
-                    ? const Color(0xFF5C46E8)
+                    ? const Color(0xFFFF8000)
                     : const Color(0xFF344054),
               ),
             ),
@@ -1330,7 +1330,7 @@ class _FilterChip extends StatelessWidget {
                 icon,
                 size: 14,
                 color: isSelected
-                    ? const Color(0xFF5C46E8)
+                    ? const Color(0xFFFF8000)
                     : const Color(0xFF667085),
               ),
             ],

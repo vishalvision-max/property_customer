@@ -16,7 +16,8 @@ class PropertyCustomerApp extends ConsumerStatefulWidget {
   const PropertyCustomerApp({super.key});
 
   @override
-  ConsumerState<PropertyCustomerApp> createState() => _PropertyCustomerAppState();
+  ConsumerState<PropertyCustomerApp> createState() =>
+      _PropertyCustomerAppState();
 }
 
 class _PropertyCustomerAppState extends ConsumerState<PropertyCustomerApp> {
@@ -52,3 +53,5 @@ class _PropertyCustomerAppState extends ConsumerState<PropertyCustomerApp> {
     );
   }
 }
+
+// Anuj holiday for customer app

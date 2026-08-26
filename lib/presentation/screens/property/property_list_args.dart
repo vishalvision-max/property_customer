@@ -4,9 +4,5 @@ class PropertyListArgs {
   final String title;
   final List<Property> items;
 
-  const PropertyListArgs({
-    required this.title,
-    required this.items,
-  });
+  const PropertyListArgs({required this.title, required this.items});
 }
-

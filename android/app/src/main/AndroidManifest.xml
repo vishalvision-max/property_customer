@@ -40,7 +40,7 @@
             android:value="2" />
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyB9zroafCQGFNKoU1g5-ScptQBJo2FgpKw"/>
+            android:value="AIzaSyC2b3HZ_VQ5982zIqvnglbqxn6kmWHNv2E"/>
     </application>
     <queries>
         <!-- Support URL links like WhatsApp https://wa.me -->

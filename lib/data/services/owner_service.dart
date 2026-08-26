@@ -19,7 +19,9 @@ class OwnerService {
     }
     final uri = _baseUri.replace(
       path: '/api/v1/owner/profile',
-      queryParameters: {'_cb': DateTime.now().millisecondsSinceEpoch.toString()},
+      queryParameters: {
+        '_cb': DateTime.now().millisecondsSinceEpoch.toString(),
+      },
     );
     final client = HttpClient();
     try {

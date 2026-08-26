@@ -60,7 +60,7 @@ class AmenitiesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const activeColor = Color(0xFF7B2FF7);
+    const activeColor = Color(0xFFFF8000);
     const borderColor = Color(0xFFE5E7EB);
 
     return Column(
@@ -69,15 +69,15 @@ class AmenitiesSection extends StatelessWidget {
         const Text(
           'Amenities',
           style: TextStyle(
-            fontSize: 14,
+            fontSize: 13,
             fontWeight: FontWeight.w700,
             color: Color(0xFF1D2939),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Wrap(
-          spacing: 12,
-          runSpacing: 12,
+          spacing: 8,
+          runSpacing: 8,
           children: _options.map((option) {
             final title = option.$1;
             final icon = option.$2;
@@ -87,11 +87,11 @@ class AmenitiesSection extends StatelessWidget {
               onTap: () => onAmenityToggled(title),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
-                width: 100,
-                height: 100,
+                width: 76,
+                height: 76,
                 decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFFF9F5FF) : Colors.white,
-                  borderRadius: BorderRadius.circular(12),
+                  color: isSelected ? const Color(0xFFFFF1E0) : Colors.white,
+                  borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: isSelected ? activeColor : borderColor,
                     width: isSelected ? 1.5 : 1,
@@ -101,19 +101,26 @@ class AmenitiesSection extends StatelessWidget {
                   children: [
                     if (isSelected)
                       const Positioned(
-                        top: 8,
-                        left: 8,
-                        child: Icon(Icons.check_box_rounded, color: activeColor, size: 20),
+                        top: 6,
+                        left: 6,
+                        child: Icon(
+                          Icons.check_box_rounded,
+                          color: activeColor,
+                          size: 16,
+                        ),
                       )
                     else
                       Positioned(
-                        top: 8,
-                        left: 8,
+                        top: 6,
+                        left: 6,
                         child: Container(
-                          width: 20,
-                          height: 20,
+                          width: 16,
+                          height: 16,
                           decoration: BoxDecoration(
-                            border: Border.all(color: const Color(0xFFD0D5DD), width: 1.5),
+                            border: Border.all(
+                              color: const Color(0xFFD0D5DD),
+                              width: 1.5,
+                            ),
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -122,16 +129,26 @@ class AmenitiesSection extends StatelessWidget {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const SizedBox(height: 12),
-                          Icon(icon, size: 28, color: isSelected ? activeColor : const Color(0xFF667085)),
                           const SizedBox(height: 8),
+                          Icon(
+                            icon,
+                            size: 20,
+                            color: isSelected
+                                ? activeColor
+                                : const Color(0xFF667085),
+                          ),
+                          const SizedBox(height: 5),
                           Text(
                             title,
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                              color: isSelected ? activeColor : const Color(0xFF344054),
+                              fontSize: 9.5,
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              color: isSelected
+                                  ? activeColor
+                                  : const Color(0xFF344054),
                             ),
                           ),
                         ],

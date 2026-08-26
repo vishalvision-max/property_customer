@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 
-/// A premium, highly responsive grid widget that dynamically calculates how many 
+/// A premium, highly responsive grid widget that dynamically calculates how many
 /// columns can fit in a single row based on the available width and a minimum item width.
-/// 
-/// Unlike a standard GridView, it uses a Wrap layout with calculated equal-width 
+///
+/// Unlike a standard GridView, it uses a Wrap layout with calculated equal-width
 /// children to prevent nested scrolling issues, making it perfect for lists of:
 /// * Amenities
 /// * Highlights
 /// * Facilities / Tags
 /// * Property Specs
-/// 
-/// Supports an optional collapsible state, showing exactly one row of items 
+///
+/// Supports an optional collapsible state, showing exactly one row of items
 /// initially when collapsed, with a dynamic "Show More/Less" toggle link.
 /// Automatically handles mobile, tablet, and desktop viewports seamlessly.
 class ResponsiveItemGrid<T> extends StatelessWidget {
@@ -20,7 +20,7 @@ class ResponsiveItemGrid<T> extends StatelessWidget {
   /// Builder function called to construct a widget for each item in [items].
   final Widget Function(BuildContext context, T item) itemBuilder;
 
-  /// The minimum width allowed for each item. Columns are dynamically computed 
+  /// The minimum width allowed for each item. Columns are dynamically computed
   /// by dividing the parent's width by this value.
   final double minItemWidth;
 
@@ -121,12 +121,14 @@ class ResponsiveItemGrid<T> extends StatelessWidget {
                           isExpanded
                               ? lessLabel
                               : (moreLabel != null
-                                  ? moreLabel!(items.length - visibleItems.length)
-                                  : '+ ${items.length - visibleItems.length} More'),
+                                    ? moreLabel!(
+                                        items.length - visibleItems.length,
+                                      )
+                                    : '+ ${items.length - visibleItems.length} More'),
                           style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFF5C46E8),
+                            color: Color(0xFFFF8000),
                           ),
                         ),
                         const SizedBox(width: 4),
@@ -135,7 +137,7 @@ class ResponsiveItemGrid<T> extends StatelessWidget {
                               ? Icons.keyboard_arrow_up_rounded
                               : Icons.keyboard_arrow_down_rounded,
                           size: 16,
-                          color: const Color(0xFF5C46E8),
+                          color: const Color(0xFFFF8000),
                         ),
                       ],
                     ),

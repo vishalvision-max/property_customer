@@ -27,7 +27,9 @@ class ScheduledVisit {
       scheduledDate: (json['scheduled_date'] ?? '').toString(),
       scheduledTime: (json['scheduled_time'] ?? '').toString(),
       status: (json['status'] ?? '').toString(),
-      property: json['property'] != null ? Property.fromJson(json['property']) : null,
+      property: json['property'] != null
+          ? Property.fromJson(json['property'])
+          : null,
     );
   }
 }

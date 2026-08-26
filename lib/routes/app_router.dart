@@ -20,24 +20,38 @@ import '../presentation/screens/property/property_details_screen.dart';
 import '../presentation/screens/property/property_list_screen.dart';
 import '../presentation/screens/property/property_name_search_args.dart';
 import '../presentation/screens/property/schedule_visit_screen.dart';
+import '../presentation/screens/search/location_search_screen.dart';
 import '../presentation/screens/search/name_search_results_screen.dart';
-import '../presentation/screens/search/name_search_screen.dart';
-import '../presentation/screens/search/search_screen.dart';
 import '../presentation/screens/shell/main_shell.dart';
 import '../providers/auth_provider.dart';
 
 class GoRouterRefreshListenable extends ChangeNotifier {
   GoRouterRefreshListenable(Ref ref) {
-    ref.listen<AuthState>(authProvider, (_, __) {
-      notifyListeners();
+    ref.listen<AuthState>(authProvider, (previous, next) {
+      // Only refresh routing when something the redirect logic actually
+      // depends on changes. Otherwise every error/message update (e.g. from
+      // sendOtp/verifyOtp) would make go_router rebuild the current page,
+      // tearing down whatever screen is mid-request.
+      final relevantChange =
+          previous == null ||
+          previous.isLoading != next.isLoading ||
+          previous.seenOnboarding != next.seenOnboarding ||
+          (previous.user != null) != (next.user != null);
+      if (relevantChange) {
+        notifyListeners();
+      }
     });
   }
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final auth = ref.watch(authProvider);
-
+  // IMPORTANT: do NOT ref.watch(authProvider) here — that would rebuild this
+  // entire provider (and thus create a brand-new GoRouter instance) on every
+  // auth state change, tearing down the whole navigator/current screen.
+  // Instead, read the latest state fresh inside redirect(), and rely on
+  // GoRouterRefreshListenable to tell go_router when to re-run redirect.
   String? redirect(BuildContext context, GoRouterState state) {
+    final auth = ref.read(authProvider);
     final path = state.uri.path;
     final loggingIn =
         state.matchedLocation == '/login' ||
@@ -45,7 +59,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         state.matchedLocation == '/forgot';
     final onboarding = state.matchedLocation == '/onboarding';
     final splash = state.matchedLocation == '/splash';
-
     final isAuthed = auth.user != null;
 
     // --- Splash ---
@@ -94,8 +107,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/verify-otp',
         builder: (context, state) {
-          final phone = state.extra as String? ?? '';
-          return OtpScreen(phone: phone);
+          final args = state.extra as VerifyOtpArgs?;
+          return OtpScreen(
+            phone: args?.phone ?? '',
+            autoFillOtp: args?.autoFillOtp,
+          );
         },
       ),
       // GoRoute(
@@ -108,12 +124,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: '/home', builder: (context, state) => const MainShell()),
       GoRoute(
-        path: '/search',
-        builder: (context, state) => const SearchScreen(),
-      ),
-      GoRoute(
-        path: '/name-search',
-        builder: (context, state) => const NameSearchScreen(),
+        path: '/location-search',
+        builder: (context, state) => const LocationSearchScreen(),
       ),
       GoRoute(
         path: '/name-search-results',

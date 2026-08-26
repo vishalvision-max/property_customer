@@ -17,7 +17,12 @@ class OwnerRepository {
     required String email,
     File? imageFile,
   }) {
-    return _service.updateProfile(token: token, name: name, email: email, imageFile: imageFile);
+    return _service.updateProfile(
+      token: token,
+      name: name,
+      email: email,
+      imageFile: imageFile,
+    );
   }
 
   Future<String> updatePassword({

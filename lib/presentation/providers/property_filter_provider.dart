@@ -2,9 +2,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../data/models/property_filter_model.dart';
 
-final propertyFilterProvider = StateNotifierProvider.autoDispose<PropertyFilterNotifier, PropertyFilterState>((ref) {
-  return PropertyFilterNotifier();
-});
+final propertyFilterProvider =
+    StateNotifierProvider.autoDispose<
+      PropertyFilterNotifier,
+      PropertyFilterState
+    >((ref) {
+      return PropertyFilterNotifier();
+    });
 
 class PropertyFilterNotifier extends StateNotifier<PropertyFilterState> {
   static const _prefKey = 'property_filters_state';
@@ -82,14 +86,18 @@ class PropertyFilterNotifier extends StateNotifier<PropertyFilterState> {
 
   void addLocality(String value) {
     if (!state.selectedLocalities.contains(value)) {
-      state = state.copyWith(selectedLocalities: [...state.selectedLocalities, value]);
+      state = state.copyWith(
+        selectedLocalities: [...state.selectedLocalities, value],
+      );
       _saveFilters();
     }
   }
 
   void removeLocality(String value) {
     state = state.copyWith(
-      selectedLocalities: state.selectedLocalities.where((l) => l != value).toList(),
+      selectedLocalities: state.selectedLocalities
+          .where((l) => l != value)
+          .toList(),
     );
     _saveFilters();
   }
@@ -116,8 +124,10 @@ class PropertyFilterNotifier extends StateNotifier<PropertyFilterState> {
 
   void toggleFurnishing(String value) {
     final list = [...state.selectedFurnishing];
-    if (list.contains(value)) list.remove(value);
-    else list.add(value);
+    if (list.contains(value))
+      list.remove(value);
+    else
+      list.add(value);
     state = state.copyWith(selectedFurnishing: list);
     _saveFilters();
   }
@@ -139,57 +149,81 @@ class PropertyFilterNotifier extends StateNotifier<PropertyFilterState> {
 
   void toggleLeaseType(String value) {
     final list = [...state.selectedLeaseTypes];
-    if (list.contains(value)) list.remove(value);
-    else list.add(value);
+    if (list.contains(value))
+      list.remove(value);
+    else
+      list.add(value);
     state = state.copyWith(selectedLeaseTypes: list);
     _saveFilters();
   }
 
   void toggleBathroom(String value) {
     final list = [...state.selectedBathrooms];
-    if (list.contains(value)) list.remove(value);
-    else list.add(value);
+    if (list.contains(value))
+      list.remove(value);
+    else
+      list.add(value);
     state = state.copyWith(selectedBathrooms: list);
     _saveFilters();
   }
 
   void toggleAge(String value) {
     final list = [...state.selectedAge];
-    if (list.contains(value)) list.remove(value);
-    else list.add(value);
+    if (list.contains(value))
+      list.remove(value);
+    else
+      list.add(value);
     state = state.copyWith(selectedAge: list);
     _saveFilters();
   }
 
   void toggleAdded(String value) {
     final list = [...state.selectedAdded];
-    if (list.contains(value)) list.remove(value);
-    else list.add(value);
+    if (list.contains(value))
+      list.remove(value);
+    else
+      list.add(value);
     state = state.copyWith(selectedAdded: list);
     _saveFilters();
   }
 
   void toggleAvailable(String value) {
     final list = [...state.selectedAvailable];
-    if (list.contains(value)) list.remove(value);
-    else list.add(value);
+    if (list.contains(value))
+      list.remove(value);
+    else
+      list.add(value);
     state = state.copyWith(selectedAvailable: list);
     _saveFilters();
   }
 
   void togglePowerBackup(String value) {
     final list = [...state.selectedPowerBackup];
-    if (list.contains(value)) list.remove(value);
-    else list.add(value);
+    if (list.contains(value))
+      list.remove(value);
+    else
+      list.add(value);
     state = state.copyWith(selectedPowerBackup: list);
     _saveFilters();
   }
 
   void toggleAmenity(String value) {
     final list = [...state.selectedAmenities];
-    if (list.contains(value)) list.remove(value);
-    else list.add(value);
+    if (list.contains(value))
+      list.remove(value);
+    else
+      list.add(value);
     state = state.copyWith(selectedAmenities: list);
+    _saveFilters();
+  }
+
+  void setMinBedrooms(int value) {
+    state = state.copyWith(minBedrooms: value < 0 ? 0 : value);
+    _saveFilters();
+  }
+
+  void setMinBathrooms(int value) {
+    state = state.copyWith(minBathroomsCount: value < 0 ? 0 : value);
     _saveFilters();
   }
 
@@ -214,6 +248,8 @@ class PropertyFilterNotifier extends StateNotifier<PropertyFilterState> {
     if (state.selectedAvailable.isNotEmpty) count += 1;
     if (state.selectedPowerBackup.isNotEmpty) count += 1;
     if (state.selectedAmenities.isNotEmpty) count += 1;
+    if (state.minBedrooms > 0) count += 1;
+    if (state.minBathroomsCount > 0) count += 1;
     return count;
   }
 }

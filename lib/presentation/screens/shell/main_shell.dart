@@ -9,8 +9,9 @@ import '../../../providers/nav_provider.dart';
 import '../../widgets/animated_bottom_nav.dart';
 import '../../widgets/keep_alive_page.dart';
 import '../home/home_screen.dart';
-import '../home/favorites_screen.dart';
+import '../leads/lead_create_screen.dart';
 import '../profile/profile_screen.dart';
+import '../search/location_search_screen.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  NAV ITEMS
@@ -22,9 +23,14 @@ const _navItems = [
     label: 'Home',
   ),
   NavItem(
-    icon: Icons.favorite_border_rounded,
-    activeIcon: Icons.favorite_rounded,
-    label: 'Saved',
+    icon: Icons.list_alt_outlined,
+    activeIcon: Icons.list_alt_rounded,
+    label: 'Listing',
+  ),
+  NavItem(
+    icon: Icons.search_rounded,
+    activeIcon: Icons.search_rounded,
+    label: 'Explore',
   ),
   NavItem(
     icon: Icons.person_outline_rounded,
@@ -55,7 +61,8 @@ class _MainShellState extends ConsumerState<MainShell> {
   int? _pendingIndex;
 
   // Auth-gated tab indices (0-based)
-  static const _authGated = {1, 2}; // Saved, Profile
+  static const _authGated = {1, 3}; // Listing, Profile
+  static const _gatedLabels = ['', 'listing', '', 'profile'];
 
   @override
   void initState() {
@@ -80,8 +87,10 @@ class _MainShellState extends ConsumerState<MainShell> {
     final isAuthed = ref.read(authProvider).user != null;
 
     if (_authGated.contains(index) && !isAuthed) {
-      final labels = ['', 'saved', 'profile'];
-      AppSnackbar.showError(context, 'Please login to view ${labels[index]}');
+      AppSnackbar.showError(
+        context,
+        'Please login to view ${_gatedLabels[index]}',
+      );
       _pendingIndex = index;
       context.push('/login?from=${Uri.encodeComponent('/home')}');
       return;
@@ -113,8 +122,10 @@ class _MainShellState extends ConsumerState<MainShell> {
         duration: const Duration(milliseconds: 260),
         curve: Curves.easeOutCubic,
       );
-      final labels = ['', 'saved', 'profile'];
-      AppSnackbar.showError(context, 'Please login to view ${labels[index]}');
+      AppSnackbar.showError(
+        context,
+        'Please login to view ${_gatedLabels[index]}',
+      );
       _pendingIndex = index;
       context.push('/login?from=${Uri.encodeComponent('/home')}');
       return;
@@ -166,7 +177,8 @@ class _MainShellState extends ConsumerState<MainShell> {
         physics: const BouncingScrollPhysics(),
         children: const [
           KeepAlivePage(child: HomeScreen()),
-          KeepAlivePage(child: FavoritesScreen()),
+          KeepAlivePage(child: LeadCreateScreen(showBackButton: false)),
+          KeepAlivePage(child: LocationSearchScreen(showCloseButton: false)),
           KeepAlivePage(child: ProfileScreen()),
         ],
       ),

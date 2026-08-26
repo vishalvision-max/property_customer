@@ -34,7 +34,10 @@ class PrimaryButton extends StatelessWidget {
                   key: const ValueKey('content'),
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    if (leading != null) ...[leading!, const SizedBox(width: 10)],
+                    if (leading != null) ...[
+                      leading!,
+                      const SizedBox(width: 10),
+                    ],
                     Text(label),
                   ],
                 ),

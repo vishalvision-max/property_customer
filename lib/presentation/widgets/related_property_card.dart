@@ -21,7 +21,11 @@ class RelatedPropertyCard extends ConsumerWidget {
 
   String _formatIndianPrice(int price, String type) {
     final t = type.toLowerCase();
-    if (t == 'rent' || t == 'lease' || t == 'pg' || t == 'co-living' || t == 'co-livin') {
+    if (t == 'rent' ||
+        t == 'lease' ||
+        t == 'pg' ||
+        t == 'co-living' ||
+        t == 'co-livin') {
       if (price >= 100000) {
         double lakhs = price / 100000.0;
         return '₹${lakhs.toStringAsFixed(lakhs % 1 == 0 ? 0 : 1)} L/mo';
@@ -54,7 +58,7 @@ class RelatedPropertyCard extends ConsumerWidget {
     );
 
     final displayPrice = _formatIndianPrice(property.price, property.type);
-    
+
     // Determine Type string (simplified)
     String typeStr = 'Property';
     if (property.categoryName != null && property.categoryName!.isNotEmpty) {
@@ -64,7 +68,7 @@ class RelatedPropertyCard extends ConsumerWidget {
     } else if (property.name.toLowerCase().contains('villa')) {
       typeStr = 'Villa';
     }
-    
+
     String bhkPrefix = '';
     if (property.bhk != null && property.bhk! > 0) {
       bhkPrefix = '${property.bhk} BHK ';
@@ -79,13 +83,17 @@ class RelatedPropertyCard extends ConsumerWidget {
         bhkPrefix = '${int.tryParse(bhkMatch.group(1) ?? '') ?? ''} BHK ';
       }
     }
-    
+
     typeStr = '$bhkPrefix$typeStr';
 
     String _getSectorAndState(String fullLocation) {
       final loc = fullLocation.trim();
       if (loc.isEmpty) return 'Panchkula';
-      final parts = loc.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+      final parts = loc
+          .split(',')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
 
       if (parts.isNotEmpty && parts.last.toLowerCase() == 'india') {
         parts.removeLast();
@@ -112,7 +120,7 @@ class RelatedPropertyCard extends ConsumerWidget {
       }
 
       if (parts.isEmpty) return 'Panchkula';
-      
+
       if (parts.length >= 2) {
         // Return Locality/Sector and State
         return '${parts.first}, ${parts.last}';
@@ -122,7 +130,8 @@ class RelatedPropertyCard extends ConsumerWidget {
 
     final subAddress = _getSectorAndState(property.location);
 
-    String imageUrl = 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=900&q=80&auto=format&fit=crop';
+    String imageUrl =
+        'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=900&q=80&auto=format&fit=crop';
     if (property.images.isNotEmpty) {
       imageUrl = property.images.first;
     } else {
@@ -160,10 +169,14 @@ class RelatedPropertyCard extends ConsumerWidget {
                   CachedNetworkImage(
                     imageUrl: imageUrl,
                     fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(color: const Color(0xFFF2F4F7)),
+                    placeholder: (context, url) =>
+                        Container(color: const Color(0xFFF2F4F7)),
                     errorWidget: (context, url, error) => Container(
                       color: const Color(0xFFF2F4F7),
-                      child: const Icon(Icons.image_not_supported_outlined, color: Colors.grey),
+                      child: const Icon(
+                        Icons.image_not_supported_outlined,
+                        color: Colors.grey,
+                      ),
                     ),
                   ),
                   Positioned(
@@ -172,17 +185,25 @@ class RelatedPropertyCard extends ConsumerWidget {
                     child: GestureDetector(
                       onTap: () {
                         if (!isAuthed) {
-                          AppSnackbar.showError(context, 'Please login to add favorites');
-                          context.push('/login?from=${Uri.encodeComponent('/property/${property.id}')}');
+                          AppSnackbar.showError(
+                            context,
+                            'Please login to add favorites',
+                          );
+                          context.push(
+                            '/login?from=${Uri.encodeComponent('/property/${property.id}')}',
+                          );
                           return;
                         }
                         ref
                             .read(favoritesProvider.notifier)
                             .toggleRemote(type: 'property', id: property.id)
                             .catchError((_) {
-                          if (!context.mounted) return;
-                          AppSnackbar.showError(context, 'Failed to update wishlist. Please try again.');
-                        });
+                              if (!context.mounted) return;
+                              AppSnackbar.showError(
+                                context,
+                                'Failed to update wishlist. Please try again.',
+                              );
+                            });
                       },
                       child: Container(
                         padding: const EdgeInsets.all(6),
@@ -191,8 +212,12 @@ class RelatedPropertyCard extends ConsumerWidget {
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
-                          isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                          color: isFav ? const Color(0xFFD92D20) : const Color(0xFF475467),
+                          isFav
+                              ? Icons.favorite_rounded
+                              : Icons.favorite_border_rounded,
+                          color: isFav
+                              ? const Color(0xFFD92D20)
+                              : const Color(0xFF475467),
                           size: 16,
                         ),
                       ),
@@ -202,7 +227,10 @@ class RelatedPropertyCard extends ConsumerWidget {
                     top: 8,
                     left: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.6),
                         borderRadius: BorderRadius.circular(4),
@@ -213,7 +241,8 @@ class RelatedPropertyCard extends ConsumerWidget {
                           if (t == 'sale' || t == 'buy') return 'FOR SALE';
                           if (t == 'lease') return 'FOR LEASE';
                           if (t == 'pg') return 'PG';
-                          if (t == 'co-living' || t == 'co-livin') return 'CO-LIVING';
+                          if (t == 'co-living' || t == 'co-livin')
+                            return 'CO-LIVING';
                           return 'FOR RENT';
                         })(),
                         style: const TextStyle(
@@ -258,7 +287,11 @@ class RelatedPropertyCard extends ConsumerWidget {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      const Icon(Icons.location_on_outlined, size: 12, color: Color(0xFF98A2B3)),
+                      const Icon(
+                        Icons.location_on_outlined,
+                        size: 12,
+                        color: Color(0xFF98A2B3),
+                      ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(

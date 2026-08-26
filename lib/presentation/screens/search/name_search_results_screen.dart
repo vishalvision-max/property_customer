@@ -1,26 +1,51 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/utils/app_snackbar.dart';
 import '../../../data/models/property.dart';
 import '../../../data/services/property_service.dart';
+import '../../../providers/auth_provider.dart';
+import '../../../providers/favorites_provider.dart';
 import '../../../providers/property_provider.dart';
 import '../../widgets/empty_state.dart';
-import '../../widgets/property_card.dart';
 import '../../widgets/shimmer_list.dart';
 import '../property/property_name_search_args.dart';
 import '../../../providers/location_provider.dart';
 
 // New Premium filter components
-import '../../widgets/filter_chip.dart';
 import '../../widgets/amenities_section.dart';
-import '../../widgets/property_type_section.dart';
 import '../../sheets/filter_bottom_sheet.dart';
-import '../../sheets/budget_bottom_sheet.dart';
-import '../../sheets/property_type_bottom_sheet.dart';
-import '../../sheets/bhk_bottom_sheet.dart';
 import '../../providers/property_filter_provider.dart';
 import '../../../data/models/property_filter_model.dart';
+
+const _navy = Color(0xFF191D31);
+const _grey = Color(0xFF666876);
+const _orange = Color(0xFFFF8000);
+const _fieldFill = Color(0xFFF2F3F5);
+const _border = Color(0xFFECEDF0);
+
+const _kCategories = ['All', 'House', 'Villa', 'Apartments', 'Other'];
+
+bool _matchesCategory(Property p, String category) {
+  if (category == 'All') return true;
+  final haystack = '${p.categoryName ?? ''} ${p.propertyKind} ${p.name}'
+      .toLowerCase();
+  switch (category) {
+    case 'House':
+      return haystack.contains('house');
+    case 'Villa':
+      return haystack.contains('villa');
+    case 'Apartments':
+      return haystack.contains('apartment') || haystack.contains('flat');
+    case 'Other':
+      return !_matchesCategory(p, 'House') &&
+          !_matchesCategory(p, 'Villa') &&
+          !_matchesCategory(p, 'Apartments');
+  }
+  return true;
+}
 
 // Category tab provider
 final searchCategoryTabProvider = StateProvider<String>((ref) => 'All');
@@ -50,12 +75,6 @@ class _NameSearchResultsScreenState
   int _visibleCount = _pageSize;
   final ScrollController _scrollController = ScrollController();
 
-  static const _kPrimary = Color(0xFF7B2FF7);
-  static const _kBg = Color(0xFFF6F7FB);
-  static const _kTextDark = Color(0xFF1A1A2E);
-  static const _kTextMid = Color(0xFF6B7280);
-  static const _kBorder = Color(0xFFE5E7EB);
-
   @override
   void initState() {
     super.initState();
@@ -63,7 +82,13 @@ class _NameSearchResultsScreenState
     // Defer provider mutations to after the first frame to avoid
     // "Tried to modify a provider while the widget tree was building" error.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _loadBaseItems();
+      if (!mounted) return;
+      // Filters are persisted globally. Without this, arriving here from a new
+      // entry point (e.g. the "Lease" quick action after "Residential") keeps
+      // the previous screen's filters and every entry point resolves to the
+      // same result set.
+      ref.read(propertyFilterProvider.notifier).clearFilters();
+      _loadBaseItems();
     });
 
     _scrollController.addListener(() {
@@ -91,6 +116,18 @@ class _NameSearchResultsScreenState
     _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _selectFurnishing(String value) {
+    if (!ref.read(propertyFilterProvider).selectedFurnishing.contains(value)) {
+      ref.read(propertyFilterProvider.notifier).toggleFurnishing(value);
+    }
+  }
+
+  void _selectAvailable(String value) {
+    if (!ref.read(propertyFilterProvider).selectedAvailable.contains(value)) {
+      ref.read(propertyFilterProvider.notifier).toggleAvailable(value);
+    }
   }
 
   String _parseQueryAndGetKeyword(String query) {
@@ -202,25 +239,28 @@ class _NameSearchResultsScreenState
       }
 
       // Check for "ready to move"
-      if (word == 'ready' && i + 2 < words.length && words[i + 1] == 'to' && words[i + 2] == 'move') {
-        ref.read(propertyFilterProvider.notifier).toggleAvailable('Ready to Move');
+      if (word == 'ready' &&
+          i + 2 < words.length &&
+          words[i + 1] == 'to' &&
+          words[i + 2] == 'move') {
+        _selectAvailable('Ready to Move');
         i += 3;
         continue;
       }
 
       // Check for furnishing
       if (word == 'furnished') {
-        ref.read(propertyFilterProvider.notifier).toggleFurnishing('Furnished');
+        _selectFurnishing('Furnished');
         i++;
         continue;
       }
       if (word == 'unfurnished') {
-        ref.read(propertyFilterProvider.notifier).toggleFurnishing('Unfurnished');
+        _selectFurnishing('Unfurnished');
         i++;
         continue;
       }
       if (word == 'semi-furnished') {
-        ref.read(propertyFilterProvider.notifier).toggleFurnishing('Semi-Furnished');
+        _selectFurnishing('Semi-Furnished');
         i++;
         continue;
       }
@@ -228,7 +268,9 @@ class _NameSearchResultsScreenState
       // Check for price ranges like "under 50l"
       if (word == 'under' && i + 1 < words.length) {
         final nextWord = words[i + 1];
-        final match = RegExp(r'^(\d+)(l|lakh|lakhs|cr|crore|crores)$').firstMatch(nextWord);
+        final match = RegExp(
+          r'^(\d+)(l|lakh|lakhs|cr|crore|crores)$',
+        ).firstMatch(nextWord);
         if (match != null) {
           final val = double.tryParse(match.group(1)!);
           if (val != null) {
@@ -238,17 +280,20 @@ class _NameSearchResultsScreenState
           }
           i += 2;
           continue;
-        } else if (RegExp(r'^\d+$').hasMatch(nextWord) && i + 2 < words.length) {
+        } else if (RegExp(r'^\d+$').hasMatch(nextWord) &&
+            i + 2 < words.length) {
           final unit = words[i + 2];
           if (unit.startsWith('l') || unit.startsWith('c')) {
-             final val = double.tryParse(nextWord);
-             if (val != null) {
-                final isCr = unit.startsWith('c');
-                final maxCr = isCr ? val : val / 100.0;
-                ref.read(propertyFilterProvider.notifier).updateBudget(0.0, maxCr);
-             }
-             i += 3;
-             continue;
+            final val = double.tryParse(nextWord);
+            if (val != null) {
+              final isCr = unit.startsWith('c');
+              final maxCr = isCr ? val : val / 100.0;
+              ref
+                  .read(propertyFilterProvider.notifier)
+                  .updateBudget(0.0, maxCr);
+            }
+            i += 3;
+            continue;
           }
         }
       }
@@ -279,11 +324,20 @@ class _NameSearchResultsScreenState
     // NOTE: We intentionally do NOT fall back to widget.args.mode here.
     // An empty intent means "show all property types" in _getFilteredItems.
 
+    // toggle* flips the value, so only call it when the filter isn't already
+    // on — otherwise re-running the same query switches the filter back off.
     for (final bhk in matchedBhk) {
-      ref.read(propertyFilterProvider.notifier).toggleBhk(bhk);
+      if (!ref.read(propertyFilterProvider).selectedBhk.contains(bhk)) {
+        ref.read(propertyFilterProvider.notifier).toggleBhk(bhk);
+      }
     }
     for (final type in matchedTypes) {
-      ref.read(propertyFilterProvider.notifier).togglePropertyType(type);
+      if (!ref
+          .read(propertyFilterProvider)
+          .selectedPropertyTypes
+          .contains(type)) {
+        ref.read(propertyFilterProvider.notifier).togglePropertyType(type);
+      }
     }
 
     if (locationWords.isEmpty) {
@@ -318,13 +372,20 @@ class _NameSearchResultsScreenState
           ? filters.selectedAvailable.first.toLowerCase().replaceAll(' ', '_')
           : null;
 
-      final items = await ref.read(propertyNotifierProvider.notifier).search(
-            mode: intentMode ?? '',   // search() accepts empty string = show all
-            budgetRange: BudgetRange(filters.minBudget * 10000000, filters.maxBudget * 10000000),
+      final items = await ref
+          .read(propertyNotifierProvider.notifier)
+          .search(
+            mode: intentMode ?? '', // search() accepts empty string = show all
+            budgetRange: BudgetRange(
+              filters.minBudget * 10000000,
+              filters.maxBudget * 10000000,
+            ),
             locationQuery: searchKeyword,
             availability: availabilityFilter,
             furnishing: filters.selectedFurnishing,
-            propertyType: filters.selectedPropertyTypes.isNotEmpty ? filters.selectedPropertyTypes.first : null,
+            propertyType: filters.selectedPropertyTypes.isNotEmpty
+                ? filters.selectedPropertyTypes.first
+                : null,
           );
       if (mounted) {
         setState(() => _baseItems = items);
@@ -353,61 +414,13 @@ class _NameSearchResultsScreenState
     }
   }
 
-  void _openBudgetBottomSheet() async {
-    final applied = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      enableDrag: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => const BudgetBottomSheet(),
-    );
-    if (applied == true && mounted) {
-      _applyFiltersAndReload();
-    }
-  }
-
-  void _openPropertyTypeBottomSheet() async {
-    final applied = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      enableDrag: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => const PropertyTypeBottomSheet(),
-    );
-    if (applied == true && mounted) {
-      _applyFiltersAndReload();
-    }
-  }
-
-  void _openBhkBottomSheet() async {
-    final applied = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      enableDrag: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => const BhkBottomSheet(),
-    );
-    if (applied == true && mounted) {
-      _applyFiltersAndReload();
-    }
-  }
-
   /// Fetches fresh results from the API using the current [propertyFilterProvider]
   /// state, mapping all UI filter values to their corresponding API query params.
   Future<void> _applyFiltersAndReload() async {
     final filters = ref.read(propertyFilterProvider);
 
     setState(() {
-      _baseItems = null;     // show shimmer while loading
+      _baseItems = null; // show shimmer while loading
       _visibleCount = _pageSize;
     });
 
@@ -469,10 +482,14 @@ class _NameSearchResultsScreenState
       String? addedApi;
       if (filters.selectedAdded.isNotEmpty) {
         final raw = filters.selectedAdded.first.toLowerCase();
-        if (raw.contains('yesterday'))      addedApi = 'yesterday';
-        else if (raw.contains('3'))         addedApi = 'last_3_days';
-        else if (raw.contains('week'))      addedApi = 'last_week';
-        else if (raw.contains('month'))     addedApi = 'last_month';
+        if (raw.contains('yesterday'))
+          addedApi = 'yesterday';
+        else if (raw.contains('3'))
+          addedApi = 'last_3_days';
+        else if (raw.contains('week'))
+          addedApi = 'last_week';
+        else if (raw.contains('month'))
+          addedApi = 'last_month';
       }
 
       // ── 7. Age of property → property_age_years as int ───────────────────
@@ -480,22 +497,32 @@ class _NameSearchResultsScreenState
       int? propertyAgeYears;
       if (filters.selectedAge.isNotEmpty) {
         final raw = filters.selectedAge.first.toLowerCase();
-        if (raw.contains('1 year'))       propertyAgeYears = 1;
-        else if (raw.contains('3 year')) propertyAgeYears = 3;
-        else if (raw.contains('5 year')) propertyAgeYears = 5;
-        else if (raw.contains('10'))     propertyAgeYears = 10;
-        else                             propertyAgeYears = 5000; // more than 10
+        if (raw.contains('1 year'))
+          propertyAgeYears = 1;
+        else if (raw.contains('3 year'))
+          propertyAgeYears = 3;
+        else if (raw.contains('5 year'))
+          propertyAgeYears = 5;
+        else if (raw.contains('10'))
+          propertyAgeYears = 10;
+        else
+          propertyAgeYears = 5000; // more than 10
       }
 
       // ── 8. Availability ───────────────────────────────────────────────────
       String? availabilityApi;
       if (filters.selectedAvailable.isNotEmpty) {
         final raw = filters.selectedAvailable.first.toLowerCase();
-        if (raw.contains('ready'))                                  availabilityApi = 'ready_to_move';
-        else if (raw.contains('week'))                              availabilityApi = 'within_a_week';
-        else if (raw.contains('15'))                                availabilityApi = 'within_15_days';
-        else if (raw.contains('month') && !raw.contains('after'))  availabilityApi = 'within_a_month';
-        else if (raw.contains('after'))                             availabilityApi = 'after_a_month';
+        if (raw.contains('ready'))
+          availabilityApi = 'ready_to_move';
+        else if (raw.contains('week'))
+          availabilityApi = 'within_a_week';
+        else if (raw.contains('15'))
+          availabilityApi = 'within_15_days';
+        else if (raw.contains('month') && !raw.contains('after'))
+          availabilityApi = 'within_a_month';
+        else if (raw.contains('after'))
+          availabilityApi = 'after_a_month';
       }
 
       // ── 9. Budget: convert Cr → rupees ────────────────────────────────────
@@ -511,7 +538,9 @@ class _NameSearchResultsScreenState
       double? maxAreaApi = filters.maxArea < 5000.0 ? filters.maxArea : null;
 
       // ── 11. City ─────────────────────────────────────────────────────────
-      final cityApi = filters.selectedCity.isNotEmpty ? filters.selectedCity : null;
+      final cityApi = filters.selectedCity.isNotEmpty
+          ? filters.selectedCity
+          : null;
 
       // ── 12. Amenities → numeric IDs ───────────────────────────────────────
       final amenityIds = AmenitiesSection.toApiIds(filters.selectedAmenities);
@@ -556,7 +585,9 @@ class _NameSearchResultsScreenState
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: const Text(
             'Sort By',
             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
@@ -570,11 +601,11 @@ class _NameSearchResultsScreenState
                   _sortLabels[i],
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color: isSelected ? _kPrimary : _kTextDark,
+                    color: isSelected ? _orange : _navy,
                   ),
                 ),
                 trailing: isSelected
-                    ? const Icon(Icons.check_rounded, color: _kPrimary)
+                    ? const Icon(Icons.check_rounded, color: _orange)
                     : null,
                 onTap: () {
                   Navigator.pop(ctx, i);
@@ -605,21 +636,55 @@ class _NameSearchResultsScreenState
       if (filters.selectedIntent.isNotEmpty) {
         final pt = p.type.toLowerCase();
         final intentStr = filters.selectedIntent.toLowerCase();
-        
+
         // Base API type check
-        if ((intentStr == 'rent' || intentStr == 'lease' || intentStr == 'pg/co-living') && pt != 'rent' && pt != 'lease' && pt != 'pg' && pt != 'co-living' && pt != 'co-livin') return false;
-        if ((intentStr == 'buy' || intentStr == 'villas' || intentStr == 'bungalows' || intentStr == 'land/plots' || intentStr == 'commercial lands') && pt != 'buy' && pt != 'sale') return false;
+        if ((intentStr == 'rent' ||
+                intentStr == 'lease' ||
+                intentStr == 'pg/co-living') &&
+            pt != 'rent' &&
+            pt != 'lease' &&
+            pt != 'pg' &&
+            pt != 'co-living' &&
+            pt != 'co-livin')
+          return false;
+        if ((intentStr == 'buy' ||
+                intentStr == 'villas' ||
+                intentStr == 'bungalows' ||
+                intentStr == 'land/plots' ||
+                intentStr == 'commercial lands') &&
+            pt != 'buy' &&
+            pt != 'sale')
+          return false;
 
         // Specific property kind checks for the new intent modes
         final kindClean = p.propertyKind.toLowerCase();
         final nameClean = p.name.toLowerCase();
-        
-        if (intentStr == 'commercial' && !kindClean.contains('commercial') && !nameClean.contains('office')) return false;
-        if (intentStr == 'commercial lands' && !kindClean.contains('commercial') && !kindClean.contains('land') && !kindClean.contains('plot')) return false;
-        if ((intentStr == 'land/plots' || intentStr == 'lands/plots') && !kindClean.contains('land') && !kindClean.contains('plot')) return false;
-        if (intentStr == 'pg/co-living' && !kindClean.contains('pg') && !kindClean.contains('living')) return false;
-        if (intentStr == 'villas' && !kindClean.contains('villa') && !nameClean.contains('villa')) return false;
-        if (intentStr == 'bungalows' && !kindClean.contains('bungalow') && !nameClean.contains('bungalow')) return false;
+
+        if (intentStr == 'commercial' &&
+            !kindClean.contains('commercial') &&
+            !nameClean.contains('office'))
+          return false;
+        if (intentStr == 'commercial lands' &&
+            !kindClean.contains('commercial') &&
+            !kindClean.contains('land') &&
+            !kindClean.contains('plot'))
+          return false;
+        if ((intentStr == 'land/plots' || intentStr == 'lands/plots') &&
+            !kindClean.contains('land') &&
+            !kindClean.contains('plot'))
+          return false;
+        if (intentStr == 'pg/co-living' &&
+            !kindClean.contains('pg') &&
+            !kindClean.contains('living'))
+          return false;
+        if (intentStr == 'villas' &&
+            !kindClean.contains('villa') &&
+            !nameClean.contains('villa'))
+          return false;
+        if (intentStr == 'bungalows' &&
+            !kindClean.contains('bungalow') &&
+            !nameClean.contains('bungalow'))
+          return false;
       }
 
       // 2. Localities Match
@@ -638,7 +703,7 @@ class _NameSearchResultsScreenState
       if (filters.selectedBhk.isNotEmpty) {
         bool bhkMatch = false;
         final int propertyBhk = p.bhk ?? 0;
-        
+
         for (final bhkString in filters.selectedBhk) {
           final digitsMatch = RegExp(r'(\d+)').firstMatch(bhkString);
           if (digitsMatch != null) {
@@ -669,17 +734,23 @@ class _NameSearchResultsScreenState
         for (final type in filters.selectedPropertyTypes) {
           // Handle plurals (e.g., "Apartments" -> "apartment")
           final t = type.toLowerCase().replaceAll(RegExp(r's$'), '');
-          
-          if (t == 'industrial shed' && (kindClean.contains('industrial') || catClean.contains('industrial'))) {
+
+          if (t == 'industrial shed' &&
+              (kindClean.contains('industrial') ||
+                  catClean.contains('industrial'))) {
             typeMatch = true;
             break;
           }
-          if (t == 'agricultural land' && (kindClean.contains('agricultur') || catClean.contains('agricultur'))) {
+          if (t == 'agricultural land' &&
+              (kindClean.contains('agricultur') ||
+                  catClean.contains('agricultur'))) {
             typeMatch = true;
             break;
           }
-          
-          if (kindClean.contains(t) || catClean.contains(t) || nameClean.contains(t)) {
+
+          if (kindClean.contains(t) ||
+              catClean.contains(t) ||
+              nameClean.contains(t)) {
             typeMatch = true;
             break;
           }
@@ -688,29 +759,21 @@ class _NameSearchResultsScreenState
       }
 
       // 5. Category Tab Match
-      if (category == 'New Launches' &&
-          !p.description.toLowerCase().contains('launch'))
-        return false;
-      if (category == 'Owner' && !p.description.toLowerCase().contains('owner'))
-        return false;
-      if (category == 'Top Picks' && p.amenities.length < 3) return false;
-      if (category == 'Ready to Move' &&
-          !p.description.toLowerCase().contains('ready'))
-        return false;
-      if (category == 'Verified' &&
-          !p.description.toLowerCase().contains('verified'))
-        return false;
+      if (!_matchesCategory(p, category)) return false;
 
       // 6. (API handles Budget Match - removed local filter)
 
       // 7. Advanced Filters Match (Local-only filters)
-      if (filters.verifiedOnly && !p.description.toLowerCase().contains('verified')) return false;
+      if (filters.verifiedOnly &&
+          !p.description.toLowerCase().contains('verified'))
+        return false;
       if (filters.imagesOnly && p.images.isEmpty) return false;
 
       if (filters.selectedLeaseTypes.isNotEmpty && p.description.isNotEmpty) {
         bool leaseMatch = false;
         for (final l in filters.selectedLeaseTypes) {
-          if (p.description.toLowerCase().contains(l.toLowerCase())) leaseMatch = true;
+          if (p.description.toLowerCase().contains(l.toLowerCase()))
+            leaseMatch = true;
         }
         if (!leaseMatch) return false;
       }
@@ -733,7 +796,7 @@ class _NameSearchResultsScreenState
   Widget build(BuildContext context) {
     final filters = ref.watch(propertyFilterProvider);
     final notifier = ref.read(propertyFilterProvider.notifier);
-    
+
     // Watch for location changes to reload properties globally
     ref.listen(locationProvider, (previous, next) {
       if (previous?.currentLabel != next.currentLabel) {
@@ -743,7 +806,6 @@ class _NameSearchResultsScreenState
     final category = ref.watch(searchCategoryTabProvider);
 
     final filteredList = _getFilteredItems(filters, category);
-    final activeFilterCount = notifier.getActiveFilterCount();
     // Clamp visible count to total available
     final visibleList = filteredList.take(_visibleCount).toList();
     final hasMore = _visibleCount < filteredList.length;
@@ -754,30 +816,22 @@ class _NameSearchResultsScreenState
     }
 
     return Scaffold(
-      backgroundColor: _kBg,
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
-            // Top Search Bar Section
-            _buildTopSearchBar(filters, notifier),
-
-            // Category Tab Section
-            // _buildCategoryTabs(category),
-
-            // Sticky Filter Chips Row
-            _buildFilterChipsRow(filters, notifier, activeFilterCount),
-
-            // Applied Filters Chips Row (Inline)
-            _buildAppliedFilterChips(filters, notifier),
-
-            // Results count banner
-            _buildResultsHeader(filteredList.length),
-
-            // Results list or loader
+            _buildHeader(),
+            _buildSearchBar(filters, notifier),
+            _buildCategoryTabs(category),
+            _buildResultsHeader(filteredList.length, category),
             Expanded(
               child: _baseItems == null
                   ? const ShimmerList()
-                  : _buildResultsList(visibleList, filteredList.length, hasMore),
+                  : _buildResultsList(
+                      visibleList,
+                      filteredList.length,
+                      hasMore,
+                    ),
             ),
           ],
         ),
@@ -785,80 +839,68 @@ class _NameSearchResultsScreenState
     );
   }
 
-  Widget _buildTopSearchBar(
-    PropertyFilterState filters,
-    PropertyFilterNotifier notifier,
-  ) {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       child: Row(
         children: [
-          IconButton(
-            icon: const Icon(
-              Icons.arrow_back_ios_new_rounded,
-              color: _kTextDark,
-            ),
-            onPressed: () => context.pop(),
-          ),
-          const SizedBox(width: 4),
-          Expanded(
+          GestureDetector(
+            onTap: () => context.pop(),
             child: Container(
-              height: 48,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _kBorder),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.03),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                color: _orange.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Row(
+              child: const Icon(
+                Icons.arrow_back_rounded,
+                color: _navy,
+                size: 20,
+              ),
+            ),
+          ),
+          const Expanded(
+            child: Text(
+              'Search for Your Ideal Home',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16.5,
+                fontWeight: FontWeight.w800,
+                color: _navy,
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => context.push('/notifications'),
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: const BoxDecoration(
+                color: _fieldFill,
+                shape: BoxShape.circle,
+              ),
+              child: Stack(
                 children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _searchController,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: _kTextDark,
-                      ),
-                      onSubmitted: (val) {
-                        setState(() {
-                          _currentQuery = val;
-                          _baseItems = null; // display shimmer
-                        });
-                        notifier.updateCity(val);
-                        _loadBaseItems();
-                      },
-                      decoration: const InputDecoration(
-                        hintText: 'Search sectors/areas...',
-                        hintStyle: TextStyle(
-                          fontSize: 14,
-                          color: _kTextMid,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        border: InputBorder.none,
+                  const Center(
+                    child: Icon(
+                      Icons.notifications_none_rounded,
+                      color: _navy,
+                      size: 20,
+                    ),
+                  ),
+                  Positioned(
+                    top: 9,
+                    right: 10,
+                    child: Container(
+                      width: 7,
+                      height: 7,
+                      decoration: const BoxDecoration(
+                        color: _orange,
+                        shape: BoxShape.circle,
                       ),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.search_rounded, color: _kTextMid),
-                    onPressed: () {
-                      final val = _searchController.text;
-                      setState(() {
-                        _currentQuery = val;
-                        _baseItems = null;
-                      });
-                      notifier.updateCity(val);
-                      _loadBaseItems();
-                    },
-                  ),
                 ],
               ),
             ),
@@ -868,66 +910,54 @@ class _NameSearchResultsScreenState
     );
   }
 
-  Widget _buildFilterChipsRow(
+  Widget _buildSearchBar(
     PropertyFilterState filters,
     PropertyFilterNotifier notifier,
-    int activeFilterCount,
   ) {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+      child: Container(
+        height: 52,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: _fieldFill,
+          borderRadius: BorderRadius.circular(14),
+        ),
         child: Row(
           children: [
-            CustomFilterChip(
-              label: '',
-              isSelected: false,
-              leading: const Icon(Icons.swap_vert, size: 20, color: _kTextDark),
-              onTap: _showSortDialog,
-            ),
-            const SizedBox(width: 8),
-            CustomFilterChip(
-              label: activeFilterCount > 0
-                  ? 'Filters ($activeFilterCount)'
-                  : 'Filters',
-              isSelected: activeFilterCount > 0,
-              onTap: _openFilterBottomSheet,
-            ),
-            const SizedBox(width: 8),
-            CustomFilterChip(
-              label: 'Budget',
-              isSelected: filters.minBudget > 0.0 || filters.maxBudget < 20.0,
-              onTap: _openBudgetBottomSheet,
-            ),
-            const SizedBox(width: 8),
-            CustomFilterChip(
-              label: filters.selectedBhk.isNotEmpty
-                  ? 'BHK (${filters.selectedBhk.length})'
-                  : 'BHK Type',
-              isSelected: filters.selectedBhk.isNotEmpty,
-              onTap: _openBhkBottomSheet,
-            ),
-            const SizedBox(width: 8),
-            CustomFilterChip(
-              label: 'Property Type',
-              isSelected: filters.selectedPropertyTypes.isNotEmpty,
-              onTap: _openPropertyTypeBottomSheet,
-            ),
-            const SizedBox(width: 8),
-            CustomFilterChip(
-              label: 'Reset',
-              isSelected: false,
-              leading: const Icon(
-                Icons.refresh_rounded,
-                size: 16,
-                color: _kTextMid,
+            const Icon(Icons.search_rounded, color: _grey, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: TextField(
+                controller: _searchController,
+                style: const TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w700,
+                  color: _navy,
+                ),
+                onSubmitted: (val) {
+                  setState(() {
+                    _currentQuery = val;
+                    _baseItems = null; // display shimmer
+                  });
+                  notifier.updateCity(val);
+                  _loadBaseItems();
+                },
+                decoration: const InputDecoration(
+                  hintText: 'Search something',
+                  hintStyle: TextStyle(
+                    fontSize: 14.5,
+                    color: _grey,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  border: InputBorder.none,
+                  isCollapsed: true,
+                ),
               ),
-              onTap: () {
-                notifier.clearFilters();
-                _applyFiltersAndReload();
-              },
+            ),
+            GestureDetector(
+              onTap: _openFilterBottomSheet,
+              child: const Icon(Icons.tune_rounded, color: _navy, size: 20),
             ),
           ],
         ),
@@ -935,166 +965,68 @@ class _NameSearchResultsScreenState
     );
   }
 
-  Widget _buildAppliedFilterChips(
-    PropertyFilterState filters,
-    PropertyFilterNotifier notifier,
-  ) {
-    final chips = <Widget>[];
-
-    if (filters.selectedIntent.isNotEmpty) {
-      chips.add(_appliedChip(filters.selectedIntent, () {
-        notifier.updateIntent('');
-        _applyFiltersAndReload();
-      }));
-    }
-    for (final loc in filters.selectedLocalities) {
-      chips.add(_appliedChip(loc, () {
-        notifier.removeLocality(loc);
-        _applyFiltersAndReload();
-      }));
-    }
-    for (final bhk in filters.selectedBhk) {
-      chips.add(_appliedChip(bhk, () {
-        notifier.toggleBhk(bhk);
-        _applyFiltersAndReload();
-      }));
-    }
-    for (final pt in filters.selectedPropertyTypes) {
-      chips.add(_appliedChip(pt, () {
-        notifier.togglePropertyType(pt);
-        _applyFiltersAndReload();
-      }));
-    }
-    for (final f in filters.selectedFurnishing) {
-      chips.add(_appliedChip(f, () {
-        notifier.toggleFurnishing(f);
-        _applyFiltersAndReload();
-      }));
-    }
-    for (final b in filters.selectedBathrooms) {
-      chips.add(_appliedChip('$b Bath', () {
-        notifier.toggleBathroom(b);
-        _applyFiltersAndReload();
-      }));
-    }
-    for (final age in filters.selectedAge) {
-      chips.add(_appliedChip(age, () {
-        notifier.toggleAge(age);
-        _applyFiltersAndReload();
-      }));
-    }
-    for (final added in filters.selectedAdded) {
-      chips.add(_appliedChip(added, () {
-        notifier.toggleAdded(added);
-        _applyFiltersAndReload();
-      }));
-    }
-    for (final amen in filters.selectedAmenities) {
-      chips.add(_appliedChip(amen, () {
-        notifier.toggleAmenity(amen);
-        _applyFiltersAndReload();
-      }));
-    }
-    if (filters.minBudget > 0.0 || filters.maxBudget < 20.0) {
-      final label =
-          '₹${filters.minBudget.toStringAsFixed(1)}Cr - ₹${filters.maxBudget.toStringAsFixed(1)}Cr';
-      chips.add(_appliedChip(label, () {
-        notifier.updateBudget(0.0, 20.0);
-        _applyFiltersAndReload();
-      }));
-    }
-    if (filters.minArea > 0.0 || filters.maxArea < 5000.0) {
-      final label = '${filters.minArea.toStringAsFixed(0)} - ${filters.maxArea.toStringAsFixed(0)} Sq.Ft';
-      chips.add(_appliedChip(label, () {
-        notifier.updateArea(0.0, 5000.0);
-        _applyFiltersAndReload();
-      }));
-    }
-
-    if (chips.isEmpty) return const SizedBox.shrink();
-
-    return Container(
-      color: Colors.white,
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: Wrap(spacing: 8, runSpacing: 8, children: chips),
-    );
-  }
-
-  Widget _appliedChip(String label, VoidCallback onDelete) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF9F5FF),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _kPrimary.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: _kPrimary,
+  Widget _buildCategoryTabs(String category) {
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+        scrollDirection: Axis.horizontal,
+        itemCount: _kCategories.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 8),
+        itemBuilder: (context, i) {
+          final cat = _kCategories[i];
+          final selected = cat == category;
+          return GestureDetector(
+            onTap: () =>
+                ref.read(searchCategoryTabProvider.notifier).state = cat,
+            child: Container(
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              decoration: BoxDecoration(
+                color: selected ? _orange : Colors.white,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: selected ? _orange : _border),
+              ),
+              child: Text(
+                cat,
+                style: TextStyle(
+                  color: selected ? Colors.white : _navy,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
-          ),
-          const SizedBox(width: 4),
-          GestureDetector(
-            onTap: onDelete,
-            child: const Icon(Icons.close_rounded, size: 14, color: _kPrimary),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildResultsHeader(int count) {
+  Widget _buildResultsHeader(int count, String category) {
+    final label = category == 'All' ? 'Properties' : category;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            '$count Properties Found',
+            'Found $count $label',
             style: const TextStyle(
-              fontSize: 13,
+              fontSize: 15,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF1D2939),
+              color: _navy,
             ),
           ),
           GestureDetector(
             onTap: _showSortDialog,
-            child: Row(
-              children: [
-                Text(
-                  'Sort: ${_sortLabels[_sortOrder]}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF667085),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: Color(0xFF667085),
-                  size: 16,
-                ),
-              ],
-            ),
+            child: const Icon(Icons.swap_vert_rounded, color: _grey, size: 20),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildResultsList(
-    List<Property> items,
-    int totalCount,
-    bool hasMore,
-  ) {
+  Widget _buildResultsList(List<Property> items, int totalCount, bool hasMore) {
     if (items.isEmpty) {
       return const EmptyState(
         title: 'No Property Found',
@@ -1120,18 +1052,193 @@ class _NameSearchResultsScreenState
                 height: 24,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(_kPrimary),
+                  valueColor: AlwaysStoppedAnimation<Color>(_orange),
                 ),
               ),
             ),
           );
         }
         final p = items[i];
-        return PropertyCard(
+        return _SearchResultCard(
           property: p,
           onTap: () => context.push('/property/${p.id}'),
         );
       },
+    );
+  }
+}
+
+class _SearchResultCard extends ConsumerWidget {
+  final Property property;
+  final VoidCallback onTap;
+  const _SearchResultCard({required this.property, required this.onTap});
+
+  String _formatPrice(int price, String type) {
+    final t = type.toLowerCase();
+    if (t == 'rent' ||
+        t == 'lease' ||
+        t == 'pg' ||
+        t == 'co-living' ||
+        t == 'co-livin') {
+      if (price >= 100000) {
+        double lakhs = price / 100000.0;
+        return '₹${lakhs.toStringAsFixed(lakhs % 1 == 0 ? 0 : 1)} Lakh/mo';
+      }
+      return '₹$price/mo';
+    }
+    if (price >= 10000000) {
+      double crores = price / 10000000.0;
+      return '₹${crores.toStringAsFixed(crores % 1 == 0 ? 0 : 2)} Cr';
+    } else if (price >= 100000) {
+      double lakhs = price / 100000.0;
+      return '₹${lakhs.toStringAsFixed(lakhs % 1 == 0 ? 0 : 1)} Lakh';
+    }
+    return '₹$price';
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isAuthed = ref.watch(authProvider).user != null;
+    final isFav = ref.watch(
+      favoritesProvider.select((s) => s.contains(property.id)),
+    );
+    final p = property;
+
+    void toggleFavorite() {
+      if (!isAuthed) {
+        AppSnackbar.showError(context, 'Please login to add favorites');
+        context.push('/login?from=${Uri.encodeComponent('/property/${p.id}')}');
+        return;
+      }
+      ref
+          .read(favoritesProvider.notifier)
+          .toggleRemote(type: 'property', id: p.id)
+          .catchError((_) {
+            if (!context.mounted) return;
+            AppSnackbar.showError(
+              context,
+              'Failed to update wishlist. Please try again.',
+            );
+          });
+    }
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: _fieldFill,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        padding: const EdgeInsets.all(10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: CachedNetworkImage(
+                    imageUrl: p.images.isEmpty
+                        ? 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=900&q=80&auto=format&fit=crop'
+                        : p.images.first.trim(),
+                    height: 90,
+                    width: 90,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) =>
+                        Container(height: 90, width: 90, color: Colors.white),
+                    errorWidget: (context, url, error) =>
+                        Container(height: 90, width: 90, color: Colors.white),
+                  ),
+                ),
+                Positioned(
+                  top: 6,
+                  left: 6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.star_rounded, color: _orange, size: 11),
+                        SizedBox(width: 2),
+                        Text(
+                          '4.8',
+                          style: TextStyle(
+                            color: _navy,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          p.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w800,
+                            color: _navy,
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: toggleFavorite,
+                        child: Icon(
+                          isFav
+                              ? Icons.favorite_rounded
+                              : Icons.favorite_border_rounded,
+                          color: isFav ? const Color(0xFFE0245E) : _grey,
+                          size: 19,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    p.location,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w500,
+                      color: _grey,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _formatPrice(p.price, p.type),
+                    style: const TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w800,
+                      color: _orange,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

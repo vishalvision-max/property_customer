@@ -13,10 +13,7 @@ class AppSnackbar {
 
   static void showMessage(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ),
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
   }
 
@@ -24,7 +21,10 @@ class AppSnackbar {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        content: Text(
+          message,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(days: 365), // practically infinite
         action: SnackBarAction(
@@ -38,4 +38,3 @@ class AppSnackbar {
     );
   }
 }
-

@@ -62,7 +62,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
       appBar: AppBar(centerTitle: true, title: const Text('Favorites')),
       body: RefreshIndicator(
         onRefresh: _onRefresh,
-        color: const Color(0xFF6C5CE7),
+        color: const Color(0xFFFF8000),
         child: favIds.isEmpty
             // Wrap empty state in a scrollable so pull-to-refresh still works.
             ? LayoutBuilder(

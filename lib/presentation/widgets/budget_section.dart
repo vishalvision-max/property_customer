@@ -20,7 +20,7 @@ class BudgetSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const activeColor = Color(0xFF7B2FF7);
+    const activeColor = Color(0xFFFF8000);
     const inactiveColor = Color(0xFFE5E7EB);
 
     return Column(
@@ -32,7 +32,7 @@ class BudgetSection extends StatelessWidget {
             const Text(
               'Budget in ₹',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 13.5,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF1D2939),
               ),
@@ -40,14 +40,14 @@ class BudgetSection extends StatelessWidget {
             Text(
               '${_formatValue(minBudget)} - ${_formatValue(maxBudget)}',
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 12.5,
                 fontWeight: FontWeight.w700,
                 color: activeColor,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         RangeSlider(
           values: RangeValues(minBudget, maxBudget),
           min: 0.0,
@@ -63,11 +63,46 @@ class BudgetSection extends StatelessWidget {
         const Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('₹0 L', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF667085))),
-            Text('₹5 Cr', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF667085))),
-            Text('₹10 Cr', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF667085))),
-            Text('₹15 Cr', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF667085))),
-            Text('₹20 Cr+', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF667085))),
+            Text(
+              '₹0 L',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF667085),
+              ),
+            ),
+            Text(
+              '₹5 Cr',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF667085),
+              ),
+            ),
+            Text(
+              '₹10 Cr',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF667085),
+              ),
+            ),
+            Text(
+              '₹15 Cr',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF667085),
+              ),
+            ),
+            Text(
+              '₹20 Cr+',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF667085),
+              ),
+            ),
           ],
         ),
       ],

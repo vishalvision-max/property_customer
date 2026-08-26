@@ -33,7 +33,7 @@ class AppTheme {
     final base = ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF7C3AED)),
+      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFFF8000)),
     );
 
     return base.copyWith(
@@ -41,7 +41,9 @@ class AppTheme {
       cardTheme: const CardThemeData(
         elevation: 0,
         margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(20))),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(20)),
+        ),
       ),
       appBarTheme: const AppBarTheme(
         centerTitle: false,
@@ -64,7 +66,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
       ),
     );
   }
@@ -74,7 +79,7 @@ class AppTheme {
       useMaterial3: true,
       brightness: Brightness.dark,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF7C3AED),
+        seedColor: const Color(0xFFFF8000),
         brightness: Brightness.dark,
       ),
     );
@@ -84,7 +89,9 @@ class AppTheme {
       cardTheme: const CardThemeData(
         elevation: 0,
         margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(20))),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(20)),
+        ),
       ),
       appBarTheme: const AppBarTheme(
         centerTitle: false,
@@ -108,7 +115,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
       ),
     );
   }
@@ -116,7 +126,9 @@ class AppTheme {
   static BoxShadow softShadow(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return BoxShadow(
-      color: (isDark ? Colors.black : const Color(0xFF0F172A)).withValues(alpha: isDark ? 0.35 : 0.08),
+      color: (isDark ? Colors.black : const Color(0xFF0F172A)).withValues(
+        alpha: isDark ? 0.35 : 0.08,
+      ),
       blurRadius: 28,
       offset: const Offset(0, 12),
     );

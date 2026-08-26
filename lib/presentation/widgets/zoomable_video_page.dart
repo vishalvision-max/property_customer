@@ -84,19 +84,19 @@ class _ZoomableVideoPageState extends State<ZoomableVideoPage> {
                         size: 48,
                       )
                     : (c == null || !c.value.isInitialized)
-                        ? const CircularProgressIndicator(strokeWidth: 2)
-                        : InteractiveViewer(
-                            minScale: 1,
-                            maxScale: 4,
-                            child: FittedBox(
-                              fit: BoxFit.contain,
-                              child: SizedBox(
-                                width: c.value.size.width,
-                                height: c.value.size.height,
-                                child: VideoPlayer(c),
-                              ),
-                            ),
+                    ? const CircularProgressIndicator(strokeWidth: 2)
+                    : InteractiveViewer(
+                        minScale: 1,
+                        maxScale: 4,
+                        child: FittedBox(
+                          fit: BoxFit.contain,
+                          child: SizedBox(
+                            width: c.value.size.width,
+                            height: c.value.size.height,
+                            child: VideoPlayer(c),
                           ),
+                        ),
+                      ),
               ),
             ),
             Positioned(
@@ -116,4 +116,3 @@ class _ZoomableVideoPageState extends State<ZoomableVideoPage> {
     );
   }
 }
-

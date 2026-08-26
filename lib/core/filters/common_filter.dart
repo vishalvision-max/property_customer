@@ -132,8 +132,12 @@ class CommonFilter {
       'listingType': listingType,
       'city': city,
       'state': state,
-      'priceRange': priceRange != null ? [priceRange!.start, priceRange!.end] : null,
-      'areaRange': areaRange != null ? [areaRange!.start, areaRange!.end] : null,
+      'priceRange': priceRange != null
+          ? [priceRange!.start, priceRange!.end]
+          : null,
+      'areaRange': areaRange != null
+          ? [areaRange!.start, areaRange!.end]
+          : null,
       'bedrooms': bedrooms,
       'bathrooms': bathrooms,
       'furnishing': furnishing,
@@ -166,7 +170,11 @@ class CommonFilter {
       bedrooms: json['bedrooms'] as int?,
       bathrooms: json['bathrooms'] as int?,
       furnishing: json['furnishing'] as String? ?? 'Any',
-      amenities: (json['amenities'] as List<dynamic>?)?.map((e) => e as String).toList() ?? [],
+      amenities:
+          (json['amenities'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
       sortBy: json['sortBy'] as String? ?? '',
       sortOrder: json['sortOrder'] as String? ?? 'asc',
     );

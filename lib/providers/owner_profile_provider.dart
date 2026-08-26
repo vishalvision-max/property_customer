@@ -18,11 +18,8 @@ class OwnerProfileState with _$OwnerProfileState {
     required String? error,
   }) = _OwnerProfileState;
 
-  factory OwnerProfileState.initial() => const OwnerProfileState(
-        isLoading: false,
-        profile: null,
-        error: null,
-      );
+  factory OwnerProfileState.initial() =>
+      const OwnerProfileState(isLoading: false, profile: null, error: null);
 }
 
 @riverpod
@@ -52,7 +49,12 @@ class OwnerProfileNotifier extends _$OwnerProfileNotifier {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final repo = ref.read(ownerRepositoryProvider);
-      final updated = await repo.updateProfile(token: token, name: name, email: email, imageFile: imageFile);
+      final updated = await repo.updateProfile(
+        token: token,
+        name: name,
+        email: email,
+        imageFile: imageFile,
+      );
       OwnerProfile finalProfile;
       if (updated.name.trim().isNotEmpty && updated.email.trim().isNotEmpty) {
         finalProfile = updated;
@@ -62,7 +64,9 @@ class OwnerProfileNotifier extends _$OwnerProfileNotifier {
           name: name.trim(),
           email: email.trim(),
           phone: state.profile!.phone,
-          imageUrl: updated.imageUrl.isNotEmpty ? updated.imageUrl : state.profile!.imageUrl,
+          imageUrl: updated.imageUrl.isNotEmpty
+              ? updated.imageUrl
+              : state.profile!.imageUrl,
         );
       } else {
         finalProfile = OwnerProfile(
@@ -74,8 +78,17 @@ class OwnerProfileNotifier extends _$OwnerProfileNotifier {
         );
       }
 
-      state = state.copyWith(isLoading: false, profile: finalProfile, error: null);
-      ref.read(authProvider.notifier).syncProfileUpdate(name: finalProfile.name, email: finalProfile.email);
+      state = state.copyWith(
+        isLoading: false,
+        profile: finalProfile,
+        error: null,
+      );
+      ref
+          .read(authProvider.notifier)
+          .syncProfileUpdate(
+            name: finalProfile.name,
+            email: finalProfile.email,
+          );
       return finalProfile;
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());

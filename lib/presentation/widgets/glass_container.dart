@@ -24,9 +24,13 @@ class GlassContainer extends StatelessWidget {
         filter: AppTheme.glassBlur(),
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: (isDark ? const Color(0xFF101A2E) : Colors.white).withValues(alpha: isDark ? 0.55 : 0.65),
+            color: (isDark ? const Color(0xFF101A2E) : Colors.white).withValues(
+              alpha: isDark ? 0.55 : 0.65,
+            ),
             borderRadius: borderRadius,
-            border: Border.all(color: cs.outlineVariant.withValues(alpha: isDark ? 0.35 : 0.45)),
+            border: Border.all(
+              color: cs.outlineVariant.withValues(alpha: isDark ? 0.35 : 0.45),
+            ),
             boxShadow: [AppTheme.softShadow(context)],
           ),
           child: Padding(padding: padding, child: child),

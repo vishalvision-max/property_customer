@@ -6,15 +6,17 @@ final searchHistoryServiceProvider = Provider<SearchHistoryService>((ref) {
   return SearchHistoryService();
 });
 
-final searchHistoryProvider = StateNotifierProvider<
-    SearchHistoryNotifier,
-    AsyncValue<List<SearchHistoryItem>>
->((ref) {
-  final service = ref.watch(searchHistoryServiceProvider);
-  return SearchHistoryNotifier(service);
-});
+final searchHistoryProvider =
+    StateNotifierProvider<
+      SearchHistoryNotifier,
+      AsyncValue<List<SearchHistoryItem>>
+    >((ref) {
+      final service = ref.watch(searchHistoryServiceProvider);
+      return SearchHistoryNotifier(service);
+    });
 
-class SearchHistoryNotifier extends StateNotifier<AsyncValue<List<SearchHistoryItem>>> {
+class SearchHistoryNotifier
+    extends StateNotifier<AsyncValue<List<SearchHistoryItem>>> {
   final SearchHistoryService _service;
 
   SearchHistoryNotifier(this._service) : super(const AsyncValue.loading()) {

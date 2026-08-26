@@ -19,7 +19,7 @@ class DeveloperSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const activeColor = Color(0xFF7B2FF7);
+    const activeColor = Color(0xFFFF8000);
     const borderColor = Color(0xFFE5E7EB);
 
     return Column(
@@ -46,9 +46,14 @@ class DeveloperSection extends StatelessWidget {
                   onTap: () => onDeveloperToggled(developer),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
-                      color: isSelected ? const Color(0xFFF9F5FF) : Colors.white,
+                      color: isSelected
+                          ? const Color(0xFFFFF1E0)
+                          : Colors.white,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: isSelected ? activeColor : borderColor,
@@ -58,15 +63,23 @@ class DeveloperSection extends StatelessWidget {
                     child: Row(
                       children: [
                         if (isSelected) ...[
-                          const Icon(Icons.check_circle_rounded, color: activeColor, size: 16),
+                          const Icon(
+                            Icons.check_circle_rounded,
+                            color: activeColor,
+                            size: 16,
+                          ),
                           const SizedBox(width: 6),
                         ],
                         Text(
                           developer,
                           style: TextStyle(
                             fontSize: 13,
-                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                            color: isSelected ? activeColor : const Color(0xFF344054),
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w600,
+                            color: isSelected
+                                ? activeColor
+                                : const Color(0xFF344054),
                           ),
                         ),
                       ],

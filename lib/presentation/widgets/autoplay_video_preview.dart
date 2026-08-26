@@ -156,7 +156,8 @@ class _AutoplayVideoPreviewState extends State<AutoplayVideoPreview> {
     if (c == null) return;
     if (!c.value.isInitialized) return;
     if (_completed && !widget.loop) return;
-    final shouldPlay = widget.autoplay && (widget.gateByVisibility ? _visible : true);
+    final shouldPlay =
+        widget.autoplay && (widget.gateByVisibility ? _visible : true);
     if (shouldPlay) {
       if (!c.value.isPlaying) c.play();
     } else {
@@ -194,7 +195,12 @@ class _AutoplayVideoPreviewState extends State<AutoplayVideoPreview> {
     } else if (c == null || !c.value.isInitialized) {
       child =
           widget.loading ??
-          Container(color: cs.surfaceContainerHighest, child: const Center(child: CircularProgressIndicator(strokeWidth: 2)));
+          Container(
+            color: cs.surfaceContainerHighest,
+            child: const Center(
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
     } else {
       child = SizedBox.expand(
         child: ClipRect(
@@ -222,10 +228,14 @@ class _AutoplayVideoPreviewState extends State<AutoplayVideoPreview> {
     return VisibilityDetector(
       key: ValueKey('autoplay_video_${widget.url}'),
       onVisibilityChanged: (info) {
-        final nextVisible = info.visibleFraction >= widget.visibleFractionToPlay;
+        final nextVisible =
+            info.visibleFraction >= widget.visibleFractionToPlay;
         if (nextVisible == _visible) return;
         _visible = nextVisible;
-        if (_visible && widget.autoplay && _controller == null && !_initFailed) {
+        if (_visible &&
+            widget.autoplay &&
+            _controller == null &&
+            !_initFailed) {
           _disposeTimer?.cancel();
           _init();
           return;

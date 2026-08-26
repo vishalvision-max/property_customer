@@ -18,7 +18,7 @@ import 'property_list_args.dart';
 import 'property_name_search_args.dart';
 
 // ─── Design Tokens ───
-const _kPrimary = Color(0xFF6C5CE7);
+const _kPrimary = Color(0xFFFF8000);
 const _kBg = Color(0xFFF6F7FB);
 const _kTextDark = Color(0xFF1A1A2E);
 const _kTextMid = Color(0xFF6B7280);
@@ -892,21 +892,24 @@ class _LocationSheetState extends ConsumerState<_LocationSheet> {
                   runSpacing: 8,
                   children: [
                     for (final loc in state.saved.take(8))
-                      ActionChip(
+                      InputChip(
                         avatar: const Icon(
                           Icons.history_rounded,
                           size: 15,
                           color: _kPrimary,
                         ),
-                        label: Text(loc),
+                        label: Text(loc.label),
                         onPressed: () async {
                           await ref
                               .read(locationProvider.notifier)
-                              .setManual(loc);
-                          widget.onLocationChanged?.call(loc);
+                              .selectSaved(loc);
+                          widget.onLocationChanged?.call(loc.label);
                           if (!context.mounted) return;
                           Navigator.of(context).pop();
                         },
+                        onDeleted: () => ref
+                            .read(locationProvider.notifier)
+                            .removeSaved(loc.label),
                       ),
                   ],
                 ),

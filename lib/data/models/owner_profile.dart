@@ -19,16 +19,16 @@ class OwnerProfile {
       name: (json['name'] ?? json['full_name'] ?? '').toString(),
       email: (json['email'] ?? '').toString(),
       phone: (json['phone'] ?? json['mobile'] ?? '').toString(),
-      imageUrl: (json['image'] ?? json['avatar'] ?? json['profile_image'] ?? '').toString(),
+      imageUrl: (json['image'] ?? json['avatar'] ?? json['profile_image'] ?? '')
+          .toString(),
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'email': email,
-        'phone': phone,
-        'image': imageUrl,
-      };
+    'id': id,
+    'name': name,
+    'email': email,
+    'phone': phone,
+    'image': imageUrl,
+  };
 }
-

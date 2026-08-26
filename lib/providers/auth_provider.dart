@@ -19,12 +19,12 @@ class AuthState with _$AuthState {
   }) = _AuthState;
 
   factory AuthState.initial() => const AuthState(
-        isLoading: true,
-        user: null,
-        error: null,
-        message: null,
-        seenOnboarding: false,
-      );
+    isLoading: true,
+    user: null,
+    error: null,
+    message: null,
+    seenOnboarding: false,
+  );
 }
 
 @riverpod
@@ -52,7 +52,11 @@ class Auth extends _$Auth {
       );
       return state;
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString(), message: null);
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString(),
+        message: null,
+      );
       return state;
     }
   }
@@ -63,7 +67,10 @@ class Auth extends _$Auth {
     state = state.copyWith(seenOnboarding: true);
   }
 
-  Future<void> syncProfileUpdate({required String name, required String email}) async {
+  Future<void> syncProfileUpdate({
+    required String name,
+    required String email,
+  }) async {
     final currentUser = state.user;
     if (currentUser == null) return;
     final updatedUser = User(
@@ -77,38 +84,47 @@ class Auth extends _$Auth {
     await repo.updateCachedUser(updatedUser);
   }
 
-  Future<String?> sendOtp({required String phone}) async {
-    state = state.copyWith(isLoading: true, error: null, message: null);
+  // NOTE: these action methods deliberately do NOT touch `state.isLoading` —
+  // that field is reserved for the initial bootstrap and is watched by the
+  // router's redirect logic. Screens track their own local loading flags.
+  // Mutating it here would notify GoRouterRefreshListenable mid-request and
+  // cause go_router to recreate the current page (tearing down the screen
+  // that's awaiting this call).
+
+  Future<({String? message, String? otp})> sendOtp({
+    required String phone,
+  }) async {
+    state = state.copyWith(error: null, message: null);
     try {
       final repo = ref.read(authRepositoryProvider);
-      final msg = await repo.sendOtp(phone: phone);
-      state = state.copyWith(isLoading: false, error: null, message: msg);
-      return msg;
+      final result = await repo.sendOtp(phone: phone);
+      state = state.copyWith(error: null, message: result.message);
+      return (message: result.message, otp: result.otp);
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString(), message: null);
-      return null;
+      state = state.copyWith(error: e.toString(), message: null);
+      return (message: null, otp: null);
     }
   }
 
   Future<void> verifyOtp({required String phone, required String otp}) async {
-    state = state.copyWith(isLoading: true, error: null, message: null, user: null);
+    state = state.copyWith(error: null, message: null);
     try {
       final repo = ref.read(authRepositoryProvider);
       final user = await repo.verifyOtp(phone: phone, otp: otp);
-      state = state.copyWith(isLoading: false, user: user, error: null, message: null);
+      state = state.copyWith(user: user, error: null, message: null);
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString(), message: null);
+      state = state.copyWith(error: e.toString(), message: null);
     }
   }
 
   Future<void> login({required String email, required String password}) async {
-    state = state.copyWith(isLoading: true, error: null, message: null, user: null);
+    state = state.copyWith(error: null, message: null);
     try {
       final repo = ref.read(authRepositoryProvider);
       final user = await repo.login(email: email, password: password);
-      state = state.copyWith(isLoading: false, user: user, error: null, message: null);
+      state = state.copyWith(user: user, error: null, message: null);
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString(), message: null);
+      state = state.copyWith(error: e.toString(), message: null);
     }
   }
 
@@ -118,7 +134,7 @@ class Auth extends _$Auth {
     required String password,
     required String passwordConfirmation,
   }) async {
-    state = state.copyWith(isLoading: true, error: null, message: null, user: null);
+    state = state.copyWith(error: null, message: null);
     try {
       final repo = ref.read(authRepositoryProvider);
       final user = await repo.signup(
@@ -127,20 +143,20 @@ class Auth extends _$Auth {
         password: password,
         passwordConfirmation: passwordConfirmation,
       );
-      state = state.copyWith(isLoading: false, user: user, error: null, message: null);
+      state = state.copyWith(user: user, error: null, message: null);
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString(), message: null);
+      state = state.copyWith(error: e.toString(), message: null);
     }
   }
 
   Future<void> forgotPassword({required String email}) async {
-    state = state.copyWith(isLoading: true, error: null, message: null);
+    state = state.copyWith(error: null, message: null);
     try {
       final repo = ref.read(authRepositoryProvider);
       final msg = await repo.forgotPassword(email: email);
-      state = state.copyWith(isLoading: false, error: null, message: msg);
+      state = state.copyWith(error: null, message: msg);
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString(), message: null);
+      state = state.copyWith(error: e.toString(), message: null);
     }
   }
 

@@ -12,7 +12,8 @@ class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
 
   @override
-  ConsumerState<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
+  ConsumerState<ForgotPasswordScreen> createState() =>
+      _ForgotPasswordScreenState();
 }
 
 class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
@@ -59,12 +60,16 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           children: [
             Text(
               'Recover your account',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 8),
             Text(
               'Enter your email and we’ll send a reset link.',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Theme.of(context).hintColor),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Theme.of(context).hintColor,
+              ),
             ),
             const SizedBox(height: 18),
             GlassContainer(
@@ -86,7 +91,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                       onPressed: _valid
                           ? () async {
                               if (!_formKey.currentState!.validate()) return;
-                              await ref.read(authProvider.notifier).forgotPassword(email: _email.text.trim());
+                              await ref
+                                  .read(authProvider.notifier)
+                                  .forgotPassword(email: _email.text.trim());
                             }
                           : null,
                     ),

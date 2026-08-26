@@ -35,7 +35,7 @@
 //             ),
 //             ElevatedButton(
 //               style: ElevatedButton.styleFrom(
-//                 backgroundColor: const Color(0xFF7B2FF7),
+//                 backgroundColor: const Color(0xFFFF8000),
 //                 foregroundColor: Colors.white,
 //                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
 //               ),
@@ -56,7 +56,7 @@
 
 //   @override
 //   Widget build(BuildContext context) {
-//     const activeColor = Color(0xFF7B2FF7);
+//     const activeColor = Color(0xFFFF8000);
 
 //     return Column(
 //       crossAxisAlignment: CrossAxisAlignment.start,
@@ -106,7 +106,7 @@
 //                 child: Container(
 //                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
 //                   decoration: BoxDecoration(
-//                     color: const Color(0xFFF9F5FF),
+//                     color: const Color(0xFFFFF1E0),
 //                     borderRadius: BorderRadius.circular(20),
 //                     border: Border.all(color: activeColor.withValues(alpha: 0.3)),
 //                   ),

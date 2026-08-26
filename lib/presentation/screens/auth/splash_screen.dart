@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../presentation/widgets/error_retry.dart';
@@ -32,6 +33,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     });
   }
 
+  static const _kMinSplashDuration = Duration(milliseconds: 1200);
+
   Future<void> _bootstrap(
     Auth authNotifier,
     Favorites favoritesNotifier,
@@ -42,6 +45,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       _error = null;
       _step = 'Preparing…';
     });
+    final started = DateTime.now();
     try {
       setState(() => _step = 'Loading session…');
       await authNotifier.bootstrap().timeout(const Duration(seconds: 8));
@@ -50,6 +54,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         favoritesNotifier.load(),
         locationNotifier.load(),
       ]).timeout(const Duration(seconds: 8));
+      if (!mounted) return;
+      final elapsed = DateTime.now().difference(started);
+      final remaining = _kMinSplashDuration - elapsed;
+      if (remaining > Duration.zero) {
+        await Future.delayed(remaining);
+      }
       if (!mounted) return;
       // Router redirect will route to onboarding/login/home based on `auth`.
       // Navigation is handled by GoRouter redirect from `/splash`.
@@ -103,27 +113,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
               : Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                          height: 92,
-                          width: 92,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(24),
-                            gradient: LinearGradient(
-                              colors: [cs.primary, cs.tertiary],
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: cs.primary.withValues(alpha: 0.22),
-                                blurRadius: 32,
-                                offset: const Offset(0, 16),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.home_work_rounded,
-                            color: Colors.white,
-                            size: 46,
-                          ),
+                    SvgPicture.asset(
+                          'assets/icons/logo.svg',
+                          height: 120,
+                          width: 120,
                         )
                         .animate()
                         .fadeIn(duration: 450.ms)

@@ -20,13 +20,13 @@ class LeadState with _$LeadState {
   }) = _LeadState;
 
   factory LeadState.initial() => const LeadState(
-        isLoading: false,
-        items: [],
-        currentPage: 1,
-        lastPage: 1,
-        total: 0,
-        error: null,
-      );
+    isLoading: false,
+    items: [],
+    currentPage: 1,
+    lastPage: 1,
+    total: 0,
+    error: null,
+  );
 }
 
 @riverpod
@@ -41,9 +41,7 @@ class LeadNotifier extends _$LeadNotifier {
   Future<bool> _maybeLogoutOnUnauthorized(Object e) async {
     final msg = e.toString();
     final unauthorized =
-        msg.contains('(401)') ||
-        msg.contains(' 401') ||
-        msg.contains('401 ');
+        msg.contains('(401)') || msg.contains(' 401') || msg.contains('401 ');
     if (!unauthorized) return false;
     await ref.read(authProvider.notifier).logout();
     state = state.copyWith(

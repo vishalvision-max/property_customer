@@ -12,7 +12,7 @@ import '../../../providers/lead_provider.dart';
 import '../../widgets/error_retry.dart';
 import '../../widgets/shimmer_list.dart';
 
-const _kPrimary = Color(0xFF6C5CE7);
+const _kPrimary = Color(0xFFFF8000);
 const _kBg = Color(0xFFF6F8FA);
 const _kTextDark = Color(0xFF1A1A2E);
 const _kTextMid = Color(0xFF6B7280);
@@ -479,7 +479,7 @@ class _LeadCard extends StatelessWidget {
                         height: 48,
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [_kPrimary, Color(0xFF9B8DF8)],
+                            colors: [_kPrimary, Color(0xFFFFB366)],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),

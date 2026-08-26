@@ -98,11 +98,11 @@ class PropertyNotifier extends _$PropertyNotifier {
 
       String? finalCity = city;
       String? finalState = stateLoc;
-      
+
       if (finalCity == 'Set location' || finalCity == 'Unknown Location') {
         finalCity = null;
       }
-      
+
       if (finalCity != null && finalCity.contains(',') && stateLoc == null) {
         final parts = finalCity.split(',');
         finalCity = parts.first.trim();
@@ -111,8 +111,16 @@ class PropertyNotifier extends _$PropertyNotifier {
         }
       }
 
-      // Fetch using the global filters method
-      final filtered = await repo.fetchWithFilters(type: type, city: finalCity, state: finalState);
+      // Fetch using the global filters method. The home feed only ever
+      // shows a handful of cards, so cap this at a sane page size instead
+      // of the "everything" default — a huge response decoded synchronously
+      // can freeze the UI thread for several seconds.
+      final filtered = await repo.fetchWithFilters(
+        type: type,
+        city: finalCity,
+        state: finalState,
+        perPage: '60',
+      );
       state = state.copyWith(
         isLoading: false,
         all: filtered,
@@ -220,7 +228,11 @@ class PropertyNotifier extends _$PropertyNotifier {
     String? state,
   }) async {
     final repo = ref.read(propertyRepositoryProvider);
-    final all = await repo.fetchWithFilters(type: mode, city: city, state: state);
+    final all = await repo.fetchWithFilters(
+      type: mode,
+      city: city,
+      state: state,
+    );
 
     return all
         .where((p) {

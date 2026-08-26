@@ -21,7 +21,7 @@ mixin _$LocationState {
   String get currentLabel => throw _privateConstructorUsedError;
   double? get lat => throw _privateConstructorUsedError;
   double? get lng => throw _privateConstructorUsedError;
-  List<String> get saved => throw _privateConstructorUsedError;
+  List<SavedAddress> get saved => throw _privateConstructorUsedError;
   String? get error => throw _privateConstructorUsedError;
 
   /// Create a copy of LocationState
@@ -43,7 +43,7 @@ abstract class $LocationStateCopyWith<$Res> {
     String currentLabel,
     double? lat,
     double? lng,
-    List<String> saved,
+    List<SavedAddress> saved,
     String? error,
   });
 }
@@ -91,7 +91,7 @@ class _$LocationStateCopyWithImpl<$Res, $Val extends LocationState>
             saved: null == saved
                 ? _value.saved
                 : saved // ignore: cast_nullable_to_non_nullable
-                      as List<String>,
+                      as List<SavedAddress>,
             error: freezed == error
                 ? _value.error
                 : error // ignore: cast_nullable_to_non_nullable
@@ -116,7 +116,7 @@ abstract class _$$LocationStateImplCopyWith<$Res>
     String currentLabel,
     double? lat,
     double? lng,
-    List<String> saved,
+    List<SavedAddress> saved,
     String? error,
   });
 }
@@ -163,7 +163,7 @@ class __$$LocationStateImplCopyWithImpl<$Res>
         saved: null == saved
             ? _value._saved
             : saved // ignore: cast_nullable_to_non_nullable
-                  as List<String>,
+                  as List<SavedAddress>,
         error: freezed == error
             ? _value.error
             : error // ignore: cast_nullable_to_non_nullable
@@ -181,7 +181,7 @@ class _$LocationStateImpl implements _LocationState {
     required this.currentLabel,
     required this.lat,
     required this.lng,
-    required final List<String> saved,
+    required final List<SavedAddress> saved,
     required this.error,
   }) : _saved = saved;
 
@@ -193,9 +193,9 @@ class _$LocationStateImpl implements _LocationState {
   final double? lat;
   @override
   final double? lng;
-  final List<String> _saved;
+  final List<SavedAddress> _saved;
   @override
-  List<String> get saved {
+  List<SavedAddress> get saved {
     if (_saved is EqualUnmodifiableListView) return _saved;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_saved);
@@ -250,7 +250,7 @@ abstract class _LocationState implements LocationState {
     required final String currentLabel,
     required final double? lat,
     required final double? lng,
-    required final List<String> saved,
+    required final List<SavedAddress> saved,
     required final String? error,
   }) = _$LocationStateImpl;
 
@@ -263,7 +263,7 @@ abstract class _LocationState implements LocationState {
   @override
   double? get lng;
   @override
-  List<String> get saved;
+  List<SavedAddress> get saved;
   @override
   String? get error;
 

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/saved_address.dart';
 import '../models/user.dart';
 
 class LocalStorageService {
@@ -56,14 +57,28 @@ class LocalStorageService {
     return (prefs.getStringList(_kFavorites) ?? const <String>[]).toSet();
   }
 
-  Future<void> saveLocations(List<String> locations) async {
+  Future<void> saveLocations(List<SavedAddress> locations) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_kSavedLocations, locations);
+    await prefs.setStringList(
+      _kSavedLocations,
+      locations.map((l) => jsonEncode(l.toJson())).toList(),
+    );
   }
 
-  Future<List<String>> getLocations() async {
+  Future<List<SavedAddress>> getLocations() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getStringList(_kSavedLocations) ?? const <String>[];
+    final raw = prefs.getStringList(_kSavedLocations) ?? const <String>[];
+    final result = <SavedAddress>[];
+    for (final entry in raw) {
+      try {
+        result.add(
+          SavedAddress.fromJson(jsonDecode(entry) as Map<String, dynamic>),
+        );
+      } catch (_) {
+        // Ignore entries saved in the old plain-string format.
+      }
+    }
+    return result;
   }
 
   Future<void> setPreferredLocation(String value) async {

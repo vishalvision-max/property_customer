@@ -65,7 +65,9 @@ class Favorites extends _$Favorites {
       await storage.saveFavorites(state);
 
       // Pre-populate nested favoritable property objects into the property provider's cache!
-      final rawProps = await favoritesService.fetchFavoriteProperties(token: token);
+      final rawProps = await favoritesService.fetchFavoriteProperties(
+        token: token,
+      );
       if (rawProps.isNotEmpty) {
         final propNotifier = ref.read(propertyNotifierProvider.notifier);
         final service = ref.read(propertyServiceProvider);
@@ -136,10 +138,7 @@ class Favorites extends _$Favorites {
     await storage.saveFavorites(state);
   }
 
-  Future<void> toggleRemote({
-    required String type,
-    required String id,
-  }) async {
+  Future<void> toggleRemote({required String type, required String id}) async {
     if (kIsWeb) {
       await toggle(id);
       return;
@@ -165,8 +164,11 @@ class Favorites extends _$Favorites {
 
     try {
       final favoritesService = ref.read(favoritesServiceProvider);
-      final result =
-          await favoritesService.toggle(token: token, type: type, id: id);
+      final result = await favoritesService.toggle(
+        token: token,
+        type: type,
+        id: id,
+      );
       if (result.isFavorited != null) {
         final reconciled = {...state};
         if (result.isFavorited!) {

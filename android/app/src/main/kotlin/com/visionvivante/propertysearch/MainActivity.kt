@@ -1,4 +1,4 @@
-package com.example.property_customer
+package com.visionvivante.propertysearch
 
 import io.flutter.embedding.android.FlutterActivity
 

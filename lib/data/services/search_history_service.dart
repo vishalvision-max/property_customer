@@ -20,7 +20,7 @@ class SearchHistoryService {
 
     // Remove if duplicate text exists (exact match)
     list.removeWhere((x) => x.searchText.trim() == item.searchText.trim());
-    
+
     // Also handle if duplicate ID exists, just in case
     list.removeWhere((x) => x.id == item.id);
 

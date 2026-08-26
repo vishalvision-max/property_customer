@@ -8,7 +8,7 @@ import '../../../providers/app_providers.dart';
 import '../../../providers/auth_provider.dart';
 import '../../widgets/primary_button.dart';
 
-const _kPrimary = Color(0xFF6C5CE7);
+const _kPrimary = Color(0xFFFF8000);
 const _kBg = Color(0xFFF6F7FB);
 const _kTextDark = Color(0xFF1A1A2E);
 const _kBorder = Color(0xFFE5E7EB);
@@ -17,7 +17,8 @@ class ChangePasswordScreen extends ConsumerStatefulWidget {
   const ChangePasswordScreen({super.key});
 
   @override
-  ConsumerState<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
+  ConsumerState<ChangePasswordScreen> createState() =>
+      _ChangePasswordScreenState();
 }
 
 class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
@@ -43,7 +44,8 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   }
 
   void _recompute() {
-    final ok = _old.text.trim().isNotEmpty && Validators.password(_new.text) == null;
+    final ok =
+        _old.text.trim().isNotEmpty && Validators.password(_new.text) == null;
     if (ok != _valid) setState(() => _valid = ok);
   }
 
@@ -54,7 +56,10 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
-        title: const Text('Change Password', style: TextStyle(fontWeight: FontWeight.w900, color: _kTextDark)),
+        title: const Text(
+          'Change Password',
+          style: TextStyle(fontWeight: FontWeight.w900, color: _kTextDark),
+        ),
       ),
       body: ListView(
         padding: AppSpacing.pagePadding,
@@ -77,7 +82,9 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                     label: 'Old password',
                     icon: Icons.lock_outline_rounded,
                     obscureText: _obscure,
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Old password is required' : null,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Old password is required'
+                        : null,
                     enabled: !_saving,
                   ),
                   const SizedBox(height: 12),
@@ -90,39 +97,67 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                     enabled: !_saving,
                     suffix: IconButton(
                       onPressed: () => setState(() => _obscure = !_obscure),
-                      icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                      icon: Icon(
+                        _obscure
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 14),
                   PrimaryButton(
                     label: 'Update password',
                     isLoading: _saving,
-                    onPressed: _valid ? () async {
-                      if (!_formKey.currentState!.validate()) return;
-                      final token = ref.read(authProvider).user?.token;
-                      if (token == null || token.trim().isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please login again'), behavior: SnackBarBehavior.floating));
-                        return;
-                      }
-                      final messenger = ScaffoldMessenger.of(context);
-                      setState(() => _saving = true);
-                      try {
-                        final message = await ref.read(ownerRepositoryProvider).updatePassword(
-                          token: token.trim(),
-                          currentPassword: _old.text.trim(),
-                          password: _new.text.trim(),
-                          passwordConfirmation: _new.text.trim(),
-                        );
-                        if (!mounted) return;
-                        messenger.showSnackBar(SnackBar(content: Text(message), behavior: SnackBarBehavior.floating));
-                        context.go('/profile');
-                      } catch (e) {
-                        if (!mounted) return;
-                        messenger.showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')), behavior: SnackBarBehavior.floating));
-                      }
-                      if (!mounted) return;
-                      setState(() => _saving = false);
-                    } : null,
+                    onPressed: _valid
+                        ? () async {
+                            if (!_formKey.currentState!.validate()) return;
+                            final token = ref.read(authProvider).user?.token;
+                            if (token == null || token.trim().isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Please login again'),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                              return;
+                            }
+                            final messenger = ScaffoldMessenger.of(context);
+                            setState(() => _saving = true);
+                            try {
+                              final message = await ref
+                                  .read(ownerRepositoryProvider)
+                                  .updatePassword(
+                                    token: token.trim(),
+                                    currentPassword: _old.text.trim(),
+                                    password: _new.text.trim(),
+                                    passwordConfirmation: _new.text.trim(),
+                                  );
+                              if (!mounted) return;
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(message),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                              context.go('/profile');
+                            } catch (e) {
+                              if (!mounted) return;
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    e.toString().replaceFirst(
+                                      'Exception: ',
+                                      '',
+                                    ),
+                                  ),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                            if (!mounted) return;
+                            setState(() => _saving = false);
+                          }
+                        : null,
                     leading: const Icon(Icons.shield_rounded),
                   ),
                 ],

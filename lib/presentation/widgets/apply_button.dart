@@ -14,13 +14,13 @@ class ApplyButton extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
         gradient: const LinearGradient(
-          colors: [Color(0xFF7B2FF7), Color(0xFF5B21E6)],
+          colors: [Color(0xFFFF8000), Color(0xFFFFB366)],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF7B2FF7).withValues(alpha: 0.3),
+            color: const Color(0xFFFF8000).withValues(alpha: 0.3),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),

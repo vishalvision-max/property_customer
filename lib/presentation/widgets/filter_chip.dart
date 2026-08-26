@@ -18,7 +18,7 @@ class CustomFilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const activeColor = Color(0xFF7B2FF7);
+    const activeColor = Color(0xFFFF8000);
     const inactiveBorderColor = Color(0xFFD0D5DD);
     const inactiveTextColor = Color(0xFF1D2939);
 
@@ -29,7 +29,7 @@ class CustomFilterChip extends StatelessWidget {
         height: 44,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFF9F5FF) : Colors.white,
+          color: isSelected ? const Color(0xFFFFF1E0) : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? activeColor : inactiveBorderColor,
@@ -40,10 +40,7 @@ class CustomFilterChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (leading != null) ...[
-              leading!,
-              const SizedBox(width: 6),
-            ],
+            if (leading != null) ...[leading!, const SizedBox(width: 6)],
             Text(
               label,
               style: TextStyle(
@@ -52,10 +49,7 @@ class CustomFilterChip extends StatelessWidget {
                 color: isSelected ? activeColor : inactiveTextColor,
               ),
             ),
-            if (trailing != null) ...[
-              const SizedBox(width: 4),
-              trailing!,
-            ],
+            if (trailing != null) ...[const SizedBox(width: 4), trailing!],
           ],
         ),
       ),

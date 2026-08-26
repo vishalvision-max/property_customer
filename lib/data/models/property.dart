@@ -124,21 +124,24 @@ class Property {
         final result = <String>[];
 
         if (rawAmenities is List) {
-          result.addAll(rawAmenities
-              .map((e) {
-                // Amenity object
-                if (e is Map<String, dynamic>) {
-                  return (e['name'] ?? e['title'] ?? e['amenity_name'] ?? '')
-                      .toString();
-                }
+          result.addAll(
+            rawAmenities
+                .map((e) {
+                  // Amenity object
+                  if (e is Map<String, dynamic>) {
+                    return (e['name'] ?? e['title'] ?? e['amenity_name'] ?? '')
+                        .toString();
+                  }
 
-                // Plain string
-                return e.toString();
-              })
-              .where((e) => e.trim().isNotEmpty));
+                  // Plain string
+                  return e.toString();
+                })
+                .where((e) => e.trim().isNotEmpty),
+          );
         }
 
-        if (json['electricity_included'] == 1 || json['electricity_included'] == true) {
+        if (json['electricity_included'] == 1 ||
+            json['electricity_included'] == true) {
           result.add('Electricity Included');
         }
         if (json['water_included'] == 1 || json['water_included'] == true) {
@@ -268,34 +271,52 @@ class Property {
       bookingAmount: json['booking_amount'] != null
           ? int.tryParse(json['booking_amount'].toString())
           : null,
-      priceNegotiable: json['price_negotiable'] == 1 || json['price_negotiable'] == true,
+      priceNegotiable:
+          json['price_negotiable'] == 1 || json['price_negotiable'] == true,
       propertyHighlights: json['property_highlights']?.toString(),
       promotionTags: json['promotion_tags']?.toString(),
-      area: json['area'] != null ? double.tryParse(json['area'].toString()) : null,
+      area: json['area'] != null
+          ? double.tryParse(json['area'].toString())
+          : null,
       areaUnit: json['area_unit']?.toString(),
       furnishingsList: (() {
         final f = json['furnishings'];
         if (f is List) {
-          return f.map((e) {
-            if (e is Map<String, dynamic>) {
-              final quantity = e['pivot']?['quantity'];
-              final name = e['name'];
-              if (quantity != null && name != null) {
-                return '$quantity $name';
-              }
-              return name?.toString() ?? '';
-            }
-            return e.toString();
-          }).where((e) => e.isNotEmpty).toList();
+          return f
+              .map((e) {
+                if (e is Map<String, dynamic>) {
+                  final quantity = e['pivot']?['quantity'];
+                  final name = e['name'];
+                  if (quantity != null && name != null) {
+                    return '$quantity $name';
+                  }
+                  return name?.toString() ?? '';
+                }
+                return e.toString();
+              })
+              .where((e) => e.isNotEmpty)
+              .toList();
         }
         return <String>[];
       })(),
-      plotDetails: json['plot_details'] is Map ? Map<String, dynamic>.from(json['plot_details']) : null,
-      pgDetails: json['pg_details'] is Map ? Map<String, dynamic>.from(json['pg_details']) : null,
-      officeDetails: json['office_details'] is Map ? Map<String, dynamic>.from(json['office_details']) : null,
-      shopDetails: json['shop_details'] is Map ? Map<String, dynamic>.from(json['shop_details']) : null,
-      warehouseDetails: json['warehouse_details'] is Map ? Map<String, dynamic>.from(json['warehouse_details']) : null,
-      residentialDetails: json['residential_details'] is Map ? Map<String, dynamic>.from(json['residential_details']) : null,
+      plotDetails: json['plot_details'] is Map
+          ? Map<String, dynamic>.from(json['plot_details'])
+          : null,
+      pgDetails: json['pg_details'] is Map
+          ? Map<String, dynamic>.from(json['pg_details'])
+          : null,
+      officeDetails: json['office_details'] is Map
+          ? Map<String, dynamic>.from(json['office_details'])
+          : null,
+      shopDetails: json['shop_details'] is Map
+          ? Map<String, dynamic>.from(json['shop_details'])
+          : null,
+      warehouseDetails: json['warehouse_details'] is Map
+          ? Map<String, dynamic>.from(json['warehouse_details'])
+          : null,
+      residentialDetails: json['residential_details'] is Map
+          ? Map<String, dynamic>.from(json['residential_details'])
+          : null,
     );
   }
 

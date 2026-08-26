@@ -22,7 +22,11 @@ class ErrorRetry extends StatelessWidget {
           children: [
             Text(title, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
-            Text(message, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
             const SizedBox(height: 16),
             OutlinedButton.icon(
               onPressed: onRetry,
@@ -35,4 +39,3 @@ class ErrorRetry extends StatelessWidget {
     );
   }
 }
-

@@ -1,104 +1,48 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/property_filter_provider.dart';
-import '../widgets/bhk_section.dart';
-import '../widgets/budget_section.dart';
-import '../widgets/property_type_section.dart';
-import '../widgets/furnishing_type_section.dart';
-import '../widgets/filter_chip_section.dart';
-import '../widgets/amenities_section.dart';
-import '../widgets/area_section.dart';
-import '../widgets/listed_by_section.dart';
-import '../widgets/developer_section.dart';
-import '../widgets/apply_button.dart';
 import '../../../providers/property_provider.dart';
 import '../../../data/models/property.dart';
 import '../../../data/models/property_filter_model.dart';
-import '../../../providers/app_providers.dart';
-import 'dart:async';
 
-class FilterBottomSheet extends ConsumerStatefulWidget {
-  /// Optional: pass the current visible property list so the Apply button
-  /// shows the correct matching count. If omitted, falls back to the global
-  /// [propertyNotifierProvider] cache (works on the home/list screens).
+const _navy = Color(0xFF191D31);
+const _grey = Color(0xFF666876);
+const _orange = Color(0xFFFF8000);
+const _orangeTint = Color(0xFFFFF1E0);
+
+const _kPropertyTypes = [
+  'Apartments',
+  'Independent House',
+  'Builder Floor',
+  'Villa',
+  'Studio',
+  'Duplex',
+];
+
+class FilterBottomSheet extends ConsumerWidget {
+  /// Optional: pass the current visible property list so the price-range
+  /// histogram and "Set Filter" count reflect the actual result set.
   final List<Property>? properties;
 
   const FilterBottomSheet({super.key, this.properties});
 
   @override
-  ConsumerState<FilterBottomSheet> createState() => _FilterBottomSheetState();
-}
-
-class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
-  bool _isAdvancedExpanded = false;
-  Timer? _debounce;
-  int? _remoteCount;
-  PropertyFilterState? _lastFilters;
-
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    super.dispose();
-  }
-
-  void _fetchRemoteCount(PropertyFilterState filters) {
-    if (_lastFilters == filters) return;
-    _lastFilters = filters;
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), () async {
-      try {
-        final ps = ref.read(propertyServiceProvider);
-        String? mappedType;
-        if (filters.selectedIntent == 'Buy') mappedType = 'sale';
-        else if (filters.selectedIntent == 'Rent') mappedType = 'rent';
-        
-        final c = await ps.fetchPropertyCount(
-          type: mappedType,
-          bhk: filters.selectedBhk,
-          propertyKinds: filters.selectedPropertyTypes,
-          bathrooms: filters.selectedBathrooms.isNotEmpty ? int.tryParse(filters.selectedBathrooms.first.replaceAll('+', '')) : null,
-          minArea: filters.minArea > 0 ? filters.minArea : null,
-          maxArea: filters.maxArea < 5000 ? filters.maxArea : null,
-          minPrice: filters.minBudget > 0 ? filters.minBudget * 10000000 : null,
-          maxPrice: filters.maxBudget < 20 ? filters.maxBudget * 10000000 : null,
-          amenities: filters.selectedAmenities,
-          furnishing: filters.selectedFurnishing,
-        );
-        if (!mounted) return;
-        setState(() {
-          _remoteCount = c;
-        });
-      } catch (e) {
-        // Fallback handled via UI
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final filters = ref.watch(propertyFilterProvider);
     final notifier = ref.read(propertyFilterProvider.notifier);
-    // Use caller-supplied list when available (e.g. search results screen);
-    // fall back to the global cache used by the home screen.
-    final allProperties =
-        widget.properties ?? ref.watch(propertyNotifierProvider).all;
+    final allProperties = properties ?? ref.watch(propertyNotifierProvider).all;
 
-    final int propertyCount = _remoteCount ?? _calculateCount(filters, allProperties);
-    _fetchRemoteCount(filters);
-
-    const activeColor = Color(0xFF7B2FF7);
-    const borderColor = Color(0xFFE5E7EB);
-    const textDark = Color(0xFF1A1A2E);
+    final propertyCount = _calculateCount(filters, allProperties);
+    final priceBounds = _priceBounds(allProperties);
 
     return Container(
-      height: MediaQuery.sizeOf(context).height * 0.95,
+      height: MediaQuery.sizeOf(context).height * 0.92,
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
         children: [
-          // Drag Handle
           const SizedBox(height: 10),
           Container(
             height: 4,
@@ -109,567 +53,217 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
             ),
           ),
           const SizedBox(height: 14),
-
-          // Header
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Filters',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: textDark,
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: const BoxDecoration(
+                      color: _orangeTint,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.arrow_back_rounded,
+                      color: _navy,
+                      size: 20,
+                    ),
                   ),
                 ),
-                TextButton(
-                  onPressed: () {
-                    notifier.clearFilters();
-                  },
-                  child: const Text(
-                    'Reset All',
+                const Expanded(
+                  child: Text(
+                    'Filter',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: activeColor,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: _navy,
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: notifier.clearFilters,
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      'Reset',
+                      style: TextStyle(
+                        color: _orange,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          const Divider(color: borderColor, height: 1),
-
-          // Filter scrollable contents
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
               physics: const BouncingScrollPhysics(),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Applied Filters Chips Row
-                  _buildAppliedChips(filters, notifier),
-                  const SizedBox(height: 18),
-
-                  // I'm Looking To Section
                   const Text(
-                    "I'm Looking To",
+                    'Price Range',
                     style: TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF1D2939),
+                      fontWeight: FontWeight.w800,
+                      color: _navy,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 18),
+                  _PriceHistogramSlider(
+                    min: priceBounds.$1,
+                    max: priceBounds.$2,
+                    values: RangeValues(
+                      (filters.minBudget * 10000000).clamp(
+                        priceBounds.$1,
+                        priceBounds.$2,
+                      ),
+                      (filters.maxBudget >= 20.0
+                              ? priceBounds.$2
+                              : filters.maxBudget * 10000000)
+                          .clamp(priceBounds.$1, priceBounds.$2),
+                    ),
+                    prices: allProperties
+                        .map((p) => p.price.toDouble())
+                        .toList(),
+                    onChanged: (v) => notifier.updateBudget(
+                      v.start / 10000000,
+                      v.end / 10000000,
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+
+                  const Text(
+                    'Property Type',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: _navy,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
                   Wrap(
-                    spacing: 8,
+                    spacing: 10,
                     runSpacing: 10,
-                    children:
-                        [
-                          ('Buy', '🏠'),
-                          ('Rent', '🔑'),
-                          ('Co-living', ''),
-                          ('Pg', '🛋️'),
-                          ('Lease', '📋'),
-                        ].map((record) {
-                          final intent = record.$1;
-                          final icon = record.$2;
-                          final isSelected = filters.selectedIntent == intent;
-                          return GestureDetector(
-                            onTap: () => notifier.updateIntent(intent),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 180),
-                              curve: Curves.easeInOut,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 9,
-                              ),
-                              decoration: BoxDecoration(
-                                gradient: isSelected
-                                    ? const LinearGradient(
-                                        colors: [
-                                          Color(0xFF7C3AED),
-                                          Color(0xFF9F67FA),
-                                        ],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      )
-                                    : null,
-                                color: isSelected
-                                    ? null
-                                    : const Color(0xFFF8F8FF),
-                                borderRadius: BorderRadius.circular(24),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? Colors.transparent
-                                      : const Color(0xFFD0D5DD),
-                                  width: 1,
-                                ),
-                                boxShadow: isSelected
-                                    ? [
-                                        BoxShadow(
-                                          color: const Color(
-                                            0xFF7C3AED,
-                                          ).withOpacity(0.30),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 3),
-                                        ),
-                                      ]
-                                    : [],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    icon,
-                                    style: const TextStyle(fontSize: 14),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    intent,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: isSelected
-                                          ? FontWeight.w700
-                                          : FontWeight.w500,
-                                      color: isSelected
-                                          ? Colors.white
-                                          : const Color(0xFF344054),
-                                      letterSpacing: 0.1,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }).toList(),
+                    children: [
+                      for (final t in _kPropertyTypes)
+                        _TypePill(
+                          label: t,
+                          selected: filters.selectedPropertyTypes.contains(t),
+                          onTap: () => notifier.togglePropertyType(t),
+                        ),
+                    ],
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 28),
 
-                  // Locality Section
-                  // LocalitySection(
-                  //   selectedLocalities: filters.selectedLocalities,
-                  //   onLocalityAdded: notifier.addLocality,
-                  //   onLocalityRemoved: notifier.removeLocality,
-                  // ),
-                  const SizedBox(height: 24),
-
-                  // Budget Section
-                  BudgetSection(
-                    minBudget: filters.minBudget,
-                    maxBudget: filters.maxBudget,
-                    onBudgetChanged: notifier.updateBudget,
+                  const Text(
+                    'Home Details',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: _navy,
+                    ),
                   ),
-                  const SizedBox(height: 24),
-
-                  // BHK Section
-                  BhkSection(
-                    selectedBhk: filters.selectedBhk,
-                    onBhkToggled: notifier.toggleBhk,
+                  const SizedBox(height: 8),
+                  _StepperRow(
+                    label: 'Bedrooms',
+                    value: filters.minBedrooms,
+                    onChanged: notifier.setMinBedrooms,
                   ),
-                  const SizedBox(height: 24),
-
-                  // Furnishing Type Section
-                  FurnishingTypeSection(
-                    selectedFurnishing: filters.selectedFurnishing,
-                    onFurnishingToggled: notifier.toggleFurnishing,
+                  const Divider(height: 1, color: Color(0xFFF2F4F7)),
+                  _StepperRow(
+                    label: 'Bathrooms',
+                    value: filters.minBathroomsCount,
+                    onChanged: notifier.setMinBathrooms,
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
 
-                  // Advanced Filters Accordion
-                  _buildAdvancedAccordion(filters, notifier),
-                  const SizedBox(height: 24),
+                  const Text(
+                    'Building Size',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: _navy,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  _PlainRangeSlider(
+                    min: 0,
+                    max: 5000,
+                    values: RangeValues(filters.minArea, filters.maxArea),
+                    onChanged: (v) => notifier.updateArea(v.start, v.end),
+                  ),
                 ],
               ),
             ),
           ),
-
-          // Sticky Bottom Apply Button
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(top: BorderSide(color: borderColor)),
-            ),
-            child: ApplyButton(
-              count: propertyCount,
-              onPressed: () {
-                Navigator.pop(context, true);
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAppliedChips(
-    PropertyFilterState filters,
-    PropertyFilterNotifier notifier,
-  ) {
-    final chips = <Widget>[];
-
-    for (final loc in filters.selectedLocalities) {
-      chips.add(_appliedChip(loc, () => notifier.removeLocality(loc)));
-    }
-    for (final bhk in filters.selectedBhk) {
-      chips.add(_appliedChip(bhk, () => notifier.toggleBhk(bhk)));
-    }
-    for (final pt in filters.selectedPropertyTypes) {
-      chips.add(_appliedChip(pt, () => notifier.togglePropertyType(pt)));
-    }
-    for (final pt in filters.selectedFurnishing) {
-      chips.add(_appliedChip(pt, () => notifier.toggleFurnishing(pt)));
-    }
-    if (filters.verifiedOnly) {
-      chips.add(
-        _appliedChip('Verified Only', () => notifier.toggleVerifiedOnly(false)),
-      );
-    }
-    if (filters.imagesOnly) {
-      chips.add(
-        _appliedChip('Images Only', () => notifier.toggleImagesOnly(false)),
-      );
-    }
-    if (filters.minArea > 0.0 || filters.maxArea < 5000.0) {
-      final label =
-          '${filters.minArea.toInt()} - ${filters.maxArea.toInt()} Sqft';
-      chips.add(_appliedChip(label, () => notifier.updateArea(0.0, 5000.0)));
-    }
-    for (final pt in filters.selectedLeaseTypes) {
-      chips.add(_appliedChip(pt, () => notifier.toggleLeaseType(pt)));
-    }
-    for (final pt in filters.selectedBathrooms) {
-      chips.add(_appliedChip(pt, () => notifier.toggleBathroom(pt)));
-    }
-    for (final pt in filters.selectedAge) {
-      chips.add(_appliedChip(pt, () => notifier.toggleAge(pt)));
-    }
-    for (final pt in filters.selectedAdded) {
-      chips.add(_appliedChip(pt, () => notifier.toggleAdded(pt)));
-    }
-    for (final pt in filters.selectedAvailable) {
-      chips.add(_appliedChip(pt, () => notifier.toggleAvailable(pt)));
-    }
-    for (final pt in filters.selectedPowerBackup) {
-      chips.add(_appliedChip(pt, () => notifier.togglePowerBackup(pt)));
-    }
-    for (final pt in filters.selectedAmenities) {
-      chips.add(_appliedChip(pt, () => notifier.toggleAmenity(pt)));
-    }
-
-    if (filters.minBudget > 0.0 || filters.maxBudget < 20.0) {
-      final label =
-          '₹${filters.minBudget.toStringAsFixed(1)}Cr - ₹${filters.maxBudget.toStringAsFixed(1)}Cr';
-      chips.add(_appliedChip(label, () => notifier.updateBudget(0.0, 20.0)));
-    }
-
-    if (chips.isEmpty) return const SizedBox.shrink();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Applied Filters',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF6B7280),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Wrap(spacing: 8, runSpacing: 8, children: chips),
-      ],
-    );
-  }
-
-  Widget _appliedChip(String label, VoidCallback onDelete) {
-    const activeColor = Color(0xFF7B2FF7);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF9F5FF),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: activeColor.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: activeColor,
-            ),
-          ),
-          const SizedBox(width: 4),
-          GestureDetector(
-            onTap: onDelete,
-            child: const Icon(
-              Icons.close_rounded,
-              size: 14,
-              color: activeColor,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAdvancedAccordion(
-    PropertyFilterState filters,
-    PropertyFilterNotifier notifier,
-  ) {
-    return Column(
-      children: [
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              _isAdvancedExpanded = !_isAdvancedExpanded;
-            });
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF9FAFB),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Advanced Filters',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1D2939),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            child: SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: Material(
+                color: _orange,
+                borderRadius: BorderRadius.circular(27),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(27),
+                  onTap: () => Navigator.pop(context, true),
+                  child: Center(
+                    child: Text(
+                      propertyCount > 0
+                          ? 'Set Filter ($propertyCount)'
+                          : 'Set Filter',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                      ),
+                    ),
                   ),
                 ),
-                Icon(
-                  _isAdvancedExpanded
-                      ? Icons.keyboard_arrow_up_rounded
-                      : Icons.keyboard_arrow_down_rounded,
-                  color: const Color(0xFF667085),
-                ),
-              ],
+              ),
             ),
           ),
-        ),
-        AnimatedCrossFade(
-          firstChild: const SizedBox.shrink(),
-          secondChild: Padding(
-            padding: const EdgeInsets.only(top: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // View Verified properties only
-                // Row(
-                //   children: [
-                //     const Expanded(
-                //       child: Text(
-                //         'View Verified properties only',
-                //         style: TextStyle(
-                //           fontSize: 14,
-                //           fontWeight: FontWeight.w600,
-                //           color: Color(0xFF344054),
-                //         ),
-                //       ),
-                //     ),
-                //     Checkbox(
-                //       value: filters.verifiedOnly,
-                //       onChanged: (v) => notifier.toggleVerifiedOnly(v ?? false),
-                //       activeColor: const Color(0xFF7B2FF7),
-                //       shape: RoundedRectangleBorder(
-                //         borderRadius: BorderRadius.circular(4),
-                //       ),
-                //     ),
-                //   ],
-                // ),
-                // const SizedBox(height: 12),
-
-                // View Properties with images only
-                // Row(
-                //   children: [
-                //     const Expanded(
-                //       child: Text(
-                //         'View Properties with images only',
-                //         style: TextStyle(
-                //           fontSize: 14,
-                //           fontWeight: FontWeight.w600,
-                //           color: Color(0xFF344054),
-                //         ),
-                //       ),
-                //     ),
-                //     Checkbox(
-                //       value: filters.imagesOnly,
-                //       onChanged: (v) => notifier.toggleImagesOnly(v ?? false),
-                //       activeColor: const Color(0xFF7B2FF7),
-                //       shape: RoundedRectangleBorder(
-                //         borderRadius: BorderRadius.circular(4),
-                //       ),
-                //     ),
-                //   ],
-                // ),
-                // const SizedBox(height: 24),
-                PropertyTypeSection(
-                  selectedTypes: filters.selectedPropertyTypes,
-                  onTypeToggled: notifier.togglePropertyType,
-                ),
-                const SizedBox(height: 24),
-
-                AreaSection(
-                  minArea: filters.minArea,
-                  maxArea: filters.maxArea,
-                  onAreaChanged: notifier.updateArea,
-                ),
-                // const SizedBox(height: 24),
-                // FilterChipSection(
-                //   title: 'Lease Type',
-                //   options: const ['Family', 'Company', 'Bachelor'],
-                //   selectedOptions: filters.selectedLeaseTypes,
-                //   onOptionToggled: notifier.toggleLeaseType,
-                // ),
-                const SizedBox(height: 24),
-
-                FilterChipSection(
-                  title: 'Bathrooms',
-                  options: const ['1+', '2+', '3+', '4+'],
-                  selectedOptions: filters.selectedBathrooms,
-                  onOptionToggled: notifier.toggleBathroom,
-                ),
-                const SizedBox(height: 24),
-
-                FilterChipSection(
-                  title: 'Age of Property',
-                  options: const [
-                    'Less than 1 year',
-                    'Less than 3 years',
-                    'Less than 5 years',
-                    'Less than 10 years',
-                  ],
-                  selectedOptions: filters.selectedAge,
-                  onOptionToggled: notifier.toggleAge,
-                ),
-                const SizedBox(height: 24),
-
-                FilterChipSection(
-                  title: 'Added',
-                  options: const [
-                    'Yesterday',
-                    'Last 3 days',
-                    'Last week',
-                    'Last month',
-                  ],
-                  selectedOptions: filters.selectedAdded,
-                  onOptionToggled: notifier.toggleAdded,
-                ),
-                const SizedBox(height: 24),
-
-                FilterChipSection(
-                  title: 'Available',
-                  options: const [
-                    'Within a week',
-                    'Within 15 days',
-                    'Within a month',
-                    'After a month',
-                  ],
-                  selectedOptions: filters.selectedAvailable,
-                  onOptionToggled: notifier.toggleAvailable,
-                ),
-                const SizedBox(height: 24),
-
-                // FilterChipSection(
-                //   title: 'Power Backup',
-                //   options: const ['Partial', 'Full'],
-                //   selectedOptions: filters.selectedPowerBackup,
-                //   onOptionToggled: notifier.togglePowerBackup,
-                // ),
-                // const SizedBox(height: 24),
-                AmenitiesSection(
-                  selectedAmenities: filters.selectedAmenities,
-                  onAmenityToggled: notifier.toggleAmenity,
-                ),
-                const SizedBox(height: 24),
-
-                // ListedBySection(
-                //   selectedListedBy: filters.selectedListedBy,
-                //   selectedConstructionStatus:
-                //       filters.selectedConstructionStatus,
-                //   onListedByToggled: notifier.toggleListedBy,
-                //   onConstructionStatusToggled:
-                //       notifier.toggleConstructionStatus,
-                // ),
-                // const SizedBox(height: 24),
-
-                // DeveloperSection(
-                //   selectedDevelopers: filters.selectedDevelopers,
-                //   onDeveloperToggled: notifier.toggleDeveloper,
-                // ),
-              ],
-            ),
-          ),
-          crossFadeState: _isAdvancedExpanded
-              ? CrossFadeState.showSecond
-              : CrossFadeState.showFirst,
-          duration: const Duration(milliseconds: 250),
-        ),
-      ],
+        ],
+      ),
     );
+  }
+
+  (double, double) _priceBounds(List<Property> all) {
+    if (all.isEmpty) return (0, 20000000);
+    var min = all.first.price.toDouble();
+    var max = all.first.price.toDouble();
+    for (final p in all) {
+      if (p.price < min) min = p.price.toDouble();
+      if (p.price > max) max = p.price.toDouble();
+    }
+    if (max <= min) max = min + 1;
+    return (min, max);
   }
 
   int _calculateCount(PropertyFilterState filter, List<Property> all) {
-    if (all.isEmpty) return 0; // no data yet — show 0 instead of fake number
+    if (all.isEmpty) return 0;
     return all.where((p) {
-      // Empty intent = show all types (consistent with search results screen)
       if (filter.selectedIntent.isNotEmpty) {
         final pt = p.type.toLowerCase();
-        if (filter.selectedIntent == 'Buy' && pt != 'buy' && pt != 'sale') {
+        if (filter.selectedIntent == 'Buy' && pt != 'buy' && pt != 'sale')
           return false;
-        }
         if (filter.selectedIntent == 'Rent' && pt != 'rent') return false;
-        if (filter.selectedIntent == 'Commercial' &&
-            !p.propertyKind.toLowerCase().contains('commercial') &&
-            !p.name.toLowerCase().contains('office')) {
-          return false;
-        }
       }
-
-      if (filter.selectedLocalities.isNotEmpty) {
-        bool localityMatch = false;
-        for (final loc in filter.selectedLocalities) {
-          if (p.location.toLowerCase().contains(loc.toLowerCase())) {
-            localityMatch = true;
-            break;
-          }
-        }
-        if (!localityMatch) return false;
-      }
-      if (filter.selectedBhk.isNotEmpty) {
-        bool bhkMatch = false;
-        final nameClean = p.name.toLowerCase().replaceAll(' ', '');
-        final kindClean = p.propertyKind.toLowerCase().replaceAll(' ', '');
-        for (final bhk in filter.selectedBhk) {
-          final bhkClean = bhk.toLowerCase().replaceAll(' ', '');
-          if (nameClean.contains(bhkClean) || kindClean.contains(bhkClean)) {
-            bhkMatch = true;
-            break;
-          }
-        }
-        if (!bhkMatch) return false;
-      }
-      if (filter.selectedPropertyTypes.isNotEmpty &&
-          p.propertyKind.isNotEmpty &&
-          p.propertyKind != 'null') {
-        bool typeMatch = false;
+      if (filter.selectedPropertyTypes.isNotEmpty) {
+        final kindClean = p.propertyKind.toLowerCase();
+        final nameClean = p.name.toLowerCase();
+        var typeMatch = false;
         for (final type in filter.selectedPropertyTypes) {
-          if (p.propertyKind.toLowerCase().contains(type.toLowerCase()) ||
-              p.name.toLowerCase().contains(type.toLowerCase())) {
+          if (kindClean.contains(type.toLowerCase()) ||
+              nameClean.contains(type.toLowerCase())) {
             typeMatch = true;
             break;
           }
@@ -681,13 +275,6 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
           (filter.maxBudget < 20.0 && priceCr > filter.maxBudget)) {
         return false;
       }
-
-      if (filter.verifiedOnly &&
-          !p.description.toLowerCase().contains('verified'))
-        return false;
-
-      if (filter.imagesOnly && p.images.isEmpty) return false;
-
       if (filter.minArea > 0.0 || filter.maxArea < 5000.0) {
         final area = p.area ?? 0.0;
         if (area < filter.minArea ||
@@ -695,65 +282,295 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
           return false;
         }
       }
-
-      if (filter.selectedFurnishing.isNotEmpty && p.description.isNotEmpty) {
-        bool furnMatch = false;
-        for (final f in filter.selectedFurnishing) {
-          if (p.description.toLowerCase().contains(f.toLowerCase()))
-            furnMatch = true;
-        }
-        if (!furnMatch) return false;
+      if (filter.minBedrooms > 0) {
+        final bhk = p.bhk ?? p.bedrooms ?? 0;
+        if (bhk < filter.minBedrooms) return false;
       }
-
-      if (filter.selectedAmenities.isNotEmpty && p.amenities.isNotEmpty) {
-        bool amenMatch = false;
-        for (final a in filter.selectedAmenities) {
-          for (final pa in p.amenities) {
-            if (pa.toLowerCase().contains(a.toLowerCase())) {
-              amenMatch = true;
-              break;
-            }
-          }
-        }
-        if (!amenMatch) return false;
-      }
-
-      if (filter.selectedBathrooms.isNotEmpty &&
-          p.bathrooms != null &&
-          p.bathrooms! > 0) {
-        bool bathMatch = false;
-        final baths = p.bathrooms!;
-        for (final b in filter.selectedBathrooms) {
-          if (b == '1+' && baths >= 1) bathMatch = true;
-          if (b == '2+' && baths >= 2) bathMatch = true;
-          if (b == '3+' && baths >= 3) bathMatch = true;
-          if (b == '4+' && baths >= 4) bathMatch = true;
-        }
-        if (!bathMatch) return false;
-      }
-
-      if (filter.selectedAdded.isNotEmpty && p.createdAt != null) {
-        bool addedMatch = false;
-        final now = DateTime.now();
-        final diff = now.difference(p.createdAt!);
-        for (final a in filter.selectedAdded) {
-          if (a == 'Yesterday' && diff.inDays <= 1) addedMatch = true;
-          if (a == 'Last 3 days' && diff.inDays <= 3) addedMatch = true;
-          if (a == 'Last week' && diff.inDays <= 7) addedMatch = true;
-          if (a == 'Last month' && diff.inDays <= 30) addedMatch = true;
-        }
-        if (!addedMatch) return false;
-      }
-
-      if (filter.selectedLeaseTypes.isNotEmpty && p.description.isNotEmpty) {
-        bool leaseMatch = false;
-        for (final l in filter.selectedLeaseTypes) {
-          if (p.description.toLowerCase().contains(l.toLowerCase()))
-            leaseMatch = true;
-        }
-        if (!leaseMatch) return false;
+      if (filter.minBathroomsCount > 0) {
+        if ((p.bathrooms ?? 0) < filter.minBathroomsCount) return false;
       }
       return true;
     }).length;
+  }
+}
+
+class _TypePill extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _TypePill({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+        decoration: BoxDecoration(
+          color: selected ? _orange : Colors.white,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected ? _orange : const Color(0xFFECEDF0),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.white : _navy,
+            fontSize: 13.5,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StepperRow extends StatelessWidget {
+  final String label;
+  final int value;
+  final ValueChanged<int> onChanged;
+  const _StepperRow({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: _grey,
+                fontSize: 14.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          _stepBtn(
+            Icons.remove_rounded,
+            () => onChanged(value > 0 ? value - 1 : 0),
+          ),
+          SizedBox(
+            width: 32,
+            child: Text(
+              '$value',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: _navy,
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          _stepBtn(Icons.add_rounded, () => onChanged(value + 1)),
+        ],
+      ),
+    );
+  }
+
+  Widget _stepBtn(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: const BoxDecoration(
+          color: _orangeTint,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: _orange, size: 18),
+      ),
+    );
+  }
+}
+
+class _PlainRangeSlider extends StatelessWidget {
+  final double min;
+  final double max;
+  final RangeValues values;
+  final ValueChanged<RangeValues> onChanged;
+  const _PlainRangeSlider({
+    required this.min,
+    required this.max,
+    required this.values,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final safe = RangeValues(
+      values.start.clamp(min, max),
+      values.end.clamp(values.start.clamp(min, max), max),
+    );
+    return Column(
+      children: [
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            activeTrackColor: _orange,
+            inactiveTrackColor: _orangeTint,
+            thumbColor: Colors.white,
+            overlayColor: _orange.withValues(alpha: 0.12),
+            rangeThumbShape: const RoundRangeSliderThumbShape(
+              enabledThumbRadius: 11,
+              elevation: 3,
+            ),
+            trackHeight: 3,
+          ),
+          child: RangeSlider(
+            min: min,
+            max: max,
+            values: safe,
+            onChanged: onChanged,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                safe.start.toInt().toString(),
+                style: const TextStyle(
+                  color: _orange,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13.5,
+                ),
+              ),
+              Text(
+                safe.end.toInt().toString(),
+                style: const TextStyle(
+                  color: _orange,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Range slider with a real price-distribution histogram drawn behind the
+/// track, bucketed from the currently loaded properties' prices.
+class _PriceHistogramSlider extends StatelessWidget {
+  final double min;
+  final double max;
+  final RangeValues values;
+  final List<double> prices;
+  final ValueChanged<RangeValues> onChanged;
+
+  const _PriceHistogramSlider({
+    required this.min,
+    required this.max,
+    required this.values,
+    required this.prices,
+    required this.onChanged,
+  });
+
+  String _fmt(double v) {
+    if (v >= 10000000) return '₹${(v / 10000000).toStringAsFixed(1)}Cr';
+    if (v >= 100000) return '₹${(v / 100000).toStringAsFixed(0)}L';
+    if (v >= 1000) return '₹${(v / 1000).toStringAsFixed(0)}K';
+    return '₹${v.toInt()}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final safe = RangeValues(
+      values.start.clamp(min, max),
+      values.end.clamp(values.start.clamp(min, max), max),
+    );
+    const bins = 24;
+    final counts = List<int>.filled(bins, 0);
+    final span = (max - min) <= 0 ? 1 : (max - min);
+    for (final price in prices) {
+      final idx = (((price - min) / span) * bins).floor().clamp(0, bins - 1);
+      counts[idx]++;
+    }
+    final maxCount = counts
+        .fold<int>(0, (a, b) => a > b ? a : b)
+        .clamp(1, 1 << 30);
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 58,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              for (final c in counts)
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 1),
+                    child: Container(
+                      height: 6 + (c / maxCount) * 52,
+                      decoration: BoxDecoration(
+                        color: _orangeTint,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            activeTrackColor: _orange,
+            inactiveTrackColor: Colors.transparent,
+            thumbColor: Colors.white,
+            overlayColor: _orange.withValues(alpha: 0.12),
+            rangeThumbShape: const RoundRangeSliderThumbShape(
+              enabledThumbRadius: 11,
+              elevation: 3,
+            ),
+            trackHeight: 3,
+          ),
+          child: RangeSlider(
+            min: min,
+            max: max,
+            values: safe,
+            onChanged: onChanged,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _fmt(safe.start),
+                style: const TextStyle(
+                  color: _orange,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13.5,
+                ),
+              ),
+              Text(
+                _fmt(safe.end),
+                style: const TextStyle(
+                  color: _orange,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }

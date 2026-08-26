@@ -30,7 +30,8 @@ class _AreaSectionState extends State<AreaSection> {
   @override
   void didUpdateWidget(covariant AreaSection oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.minArea != widget.minArea || oldWidget.maxArea != widget.maxArea) {
+    if (oldWidget.minArea != widget.minArea ||
+        oldWidget.maxArea != widget.maxArea) {
       _currentMin = widget.minArea;
       _currentMax = widget.maxArea;
     }
@@ -71,14 +72,14 @@ class _AreaSectionState extends State<AreaSection> {
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         SliderTheme(
           data: SliderTheme.of(context).copyWith(
             trackHeight: 4,
-            activeTrackColor: const Color(0xFF7B2FF7),
+            activeTrackColor: const Color(0xFFFF8000),
             inactiveTrackColor: const Color(0xFFE5E7EB),
             thumbColor: Colors.white,
-            overlayColor: const Color(0xFF7B2FF7).withOpacity(0.12),
+            overlayColor: const Color(0xFFFF8000).withOpacity(0.12),
             thumbShape: const RoundSliderThumbShape(
               enabledThumbRadius: 10,
               elevation: 4,
@@ -106,12 +107,30 @@ class _AreaSectionState extends State<AreaSection> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('0', style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF))),
-              Text('1000', style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF))),
-              Text('2000', style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF))),
-              Text('3000', style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF))),
-              Text('4000', style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF))),
-              Text('Any', style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF))),
+              Text(
+                '0',
+                style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)),
+              ),
+              Text(
+                '1000',
+                style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)),
+              ),
+              Text(
+                '2000',
+                style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)),
+              ),
+              Text(
+                '3000',
+                style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)),
+              ),
+              Text(
+                '4000',
+                style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)),
+              ),
+              Text(
+                'Any',
+                style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)),
+              ),
             ],
           ),
         ),

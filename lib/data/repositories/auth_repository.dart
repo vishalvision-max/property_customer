@@ -20,7 +20,9 @@ class AuthRepository {
     await _storage.saveUser(user);
   }
 
-  Future<String> sendOtp({required String phone}) async {
+  Future<({String message, String? otp})> sendOtp({
+    required String phone,
+  }) async {
     return _service.sendOtp(phone: phone);
   }
 
@@ -46,7 +48,7 @@ class AuthRepository {
     return user;
   }
 
-  Future<String> forgotPassword({required String email}) => _service.forgotPassword(email: email);
-
+  Future<String> forgotPassword({required String email}) =>
+      _service.forgotPassword(email: email);
   Future<void> logout() => _storage.clearUser();
 }

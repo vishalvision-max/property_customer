@@ -13,13 +13,15 @@ class SearchHistoryItem {
     return SearchHistoryItem(
       id: (json['id'] ?? '').toString(),
       searchText: (json['searchText'] ?? '').toString(),
-      createdAt: DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
+      createdAt: DateTime.parse(
+        json['createdAt'] ?? DateTime.now().toIso8601String(),
+      ),
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'searchText': searchText,
-        'createdAt': createdAt.toIso8601String(),
-      };
+    'id': id,
+    'searchText': searchText,
+    'createdAt': createdAt.toIso8601String(),
+  };
 }

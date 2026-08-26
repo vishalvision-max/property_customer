@@ -31,7 +31,9 @@ PropertyService propertyService(PropertyServiceRef ref) {
   return PropertyService(
     getCity: () {
       final loc = ref.read(locationProvider).currentLabel;
-      if (loc.isNotEmpty && loc != 'Unknown Location' && loc != 'Set location') {
+      if (loc.isNotEmpty &&
+          loc != 'Unknown Location' &&
+          loc != 'Set location') {
         return loc.split(',').first.trim();
       }
       return null;
@@ -56,7 +58,9 @@ OwnerService ownerService(OwnerServiceRef ref) {
 
 @riverpod
 GoogleGeocodingService googleGeocodingService(GoogleGeocodingServiceRef ref) {
-  return GoogleGeocodingService(apiKey: "AIzaSyB9zroafCQGFNKoU1g5-ScptQBJo2FgpKw");
+  return GoogleGeocodingService(
+    apiKey: "AIzaSyB9zroafCQGFNKoU1g5-ScptQBJo2FgpKw",
+  );
 }
 
 @riverpod

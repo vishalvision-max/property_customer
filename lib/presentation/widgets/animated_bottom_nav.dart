@@ -32,8 +32,8 @@ class AnimatedBottomNav extends StatelessWidget {
     required this.currentIndex,
     required this.onTap,
     required this.items,
-    this.activeColor = const Color(0xFF6C5CE7),
-    this.inactiveColor = const Color(0xFF9CA3AF),
+    this.activeColor = const Color(0xFFFF8000),
+    this.inactiveColor = const Color(0xFF666876),
     this.backgroundColor = Colors.white,
   });
 

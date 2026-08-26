@@ -19,7 +19,8 @@ class Validators {
     final v = (value ?? '');
     if (v.isEmpty) return 'Password is required';
     if (v.length < 6) return 'Password must be at least 6 characters';
-    if (!RegExp(r'\d').hasMatch(v)) return 'Password must include at least 1 number';
+    if (!RegExp(r'\d').hasMatch(v))
+      return 'Password must include at least 1 number';
     return null;
   }
 
@@ -30,4 +31,3 @@ class Validators {
     return null;
   }
 }
-

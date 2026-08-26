@@ -1,13 +1,11 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:http/http.dart' as http;
 
-import '../../../data/models/user.dart';
-import '../../../providers/app_providers.dart';
 import '../../../providers/auth_provider.dart';
+import '../../widgets/white_pill_button.dart';
+import 'otp_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -19,429 +17,288 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _otpController = TextEditingController();
 
   bool _isLoading = false;
-  bool _otpSent = false;
 
   @override
   void dispose() {
     _phoneController.dispose();
-    _otpController.dispose();
     super.dispose();
   }
 
   Future<void> _sendOtp() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
+    final phone = _phoneController.text.trim();
+    final result = await ref.read(authProvider.notifier).sendOtp(phone: phone);
+    if (!mounted) return;
+    setState(() => _isLoading = false);
 
-    try {
-      final response = await http.post(
-        Uri.parse('https://propertysearch.visionvivante.in/api/v1/owner/auth/send/otp'),
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: {
-          'phone': _phoneController.text.trim(),
-        },
-      );
-
-      final data = jsonDecode(response.body);
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        if (mounted) {
-          setState(() {
-            _otpSent = true;
-            
-            // Auto-fill OTP in debug mode / test environment
-            if (data['otp'] != null) {
-              _otpController.text = data['otp'].toString();
-            }
-          });
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(data['message'] ?? 'OTP Sent Successfully')),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(data['message'] ?? 'Failed to send OTP')),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _verifyOtp() async {
-    if (_otpController.text.trim().length != 6) {
+    final error = ref.read(authProvider).error;
+    if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid 6-digit OTP')),
+        SnackBar(content: Text(error.replaceFirst('Exception: ', ''))),
       );
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final response = await http.post(
-        Uri.parse('https://propertysearch.visionvivante.in/api/v1/owner/auth/verify/otp'),
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: {
-          'phone': _phoneController.text.trim(),
-          'otp': _otpController.text.trim(),
-        },
-      );
-
-      final data = jsonDecode(response.body);
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Login Successful')),
-          );
-
-          // Save token and user manually to prevent a duplicate API call
-          if (data['token'] != null && data['user'] != null) {
-            final storage = ref.read(localStorageProvider);
-            
-            final rawUser = User.fromJson(data['user']);
-            final fullUser = User(
-              id: rawUser.id,
-              name: rawUser.name.isNotEmpty ? rawUser.name : 'User ${rawUser.id}',
-              email: rawUser.email.isNotEmpty ? rawUser.email : '${_phoneController.text.trim()}@example.com',
-              token: data['token'].toString(),
-            );
-            
-            await storage.saveUser(fullUser);
-            
-            // Hydrate the global authProvider so GoRouter knows we are authenticated
-            await ref.read(authProvider.notifier).bootstrap();
-          }
-
-          if (!mounted) return;
-
-          // Navigate to HomeScreen
-          context.go('/home');
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(data['message'] ?? 'Invalid OTP')),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+    if (result.message != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(result.message!)));
     }
+
+    if (!context.mounted) return;
+    final from = GoRouterState.of(context).uri.queryParameters['from'];
+    context.push(
+      from != null && from.isNotEmpty
+          ? '/verify-otp?from=${Uri.encodeComponent(from)}'
+          : '/verify-otp',
+      extra: VerifyOtpArgs(phone: phone, autoFillOtp: result.otp),
+    );
   }
 
-  static const _kPrimary = Color(0xFF6C5CE7);
-  static const _kPrimaryDark = Color(0xFF5B3DF5);
-  static const _kBg = Color(0xFFF6F7FB);
-  static const _kTextDark = Color(0xFF1A1A2E);
-  static const _kTextMid = Color(0xFF6B7280);
-  static const _kBorder = Color(0xFFE5E7EB);
+  static const _navy = Color(0xFF191D31);
+  static const _grey = Color(0xFF666876);
+  static const _orange = Color(0xFFFF8000);
+  static const _fieldFill = Color(0xFFF2F3F5);
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _kBg,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Premium Header Icon/Graphic
-                    Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: _kPrimary.withValues(alpha: 0.1),
-                        ),
-                        child: Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: const LinearGradient(
-                              colors: [_kPrimaryDark, _kPrimary],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: _kPrimary.withValues(alpha: 0.3),
-                                blurRadius: 20,
-                                offset: const Offset(0, 10),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 8, 0, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(right: 24),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            IconButton(
+                              padding: EdgeInsets.zero,
+                              onPressed: () {
+                                if (context.canPop()) {
+                                  context.pop();
+                                } else {
+                                  context.go('/onboarding');
+                                }
+                              },
+                              icon: const Icon(
+                                Icons.arrow_back_rounded,
+                                color: _navy,
+                                size: 26,
                               ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.real_estate_agent_rounded,
-                            size: 48,
-                            color: Colors.white,
-                          ),
+                            ),
+                            TextButton(
+                              onPressed: () => context.go('/home'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: _grey,
+                                padding: EdgeInsets.zero,
+                              ),
+                              child: const Text(
+                                'Continue without login',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 32),
-                    
-                    // Typography
-                    Text(
-                      'Welcome Back',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w900,
-                        color: _kTextDark,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      _otpSent 
-                        ? 'Enter the 6-digit OTP sent to your phone' 
-                        : 'Enter your phone number to continue',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        color: _kTextMid,
-                        fontWeight: FontWeight.w500,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 40),
-                    
-                    // Input Card
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.04),
-                            blurRadius: 24,
-                            offset: const Offset(0, 12),
-                          ),
-                        ],
-                        border: Border.all(color: _kBorder.withValues(alpha: 0.6)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // Phone Number Input
-                          TextFormField(
-                            controller: _phoneController,
-                            keyboardType: TextInputType.phone,
-                            enabled: !_otpSent && !_isLoading,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                              LengthLimitingTextInputFormatter(10),
-                            ],
+                      const SizedBox(height: 24),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 24),
+                        child: Text.rich(
+                          TextSpan(
                             style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: _kTextDark,
-                              letterSpacing: 1.2,
+                              color: _navy,
+                              fontSize: 26,
+                              height: 1.25,
                             ),
-                            decoration: InputDecoration(
-                              labelText: 'Phone Number',
-                              labelStyle: const TextStyle(color: _kTextMid, letterSpacing: 0),
-                              prefixIcon: const Icon(Icons.phone_rounded, color: _kPrimary),
-                              filled: true,
-                              fillColor: _kBg.withValues(alpha: 0.5),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide.none,
+                            children: const [
+                              TextSpan(
+                                text: 'Welcome to Nestora\n',
+                                style: TextStyle(fontWeight: FontWeight.w800),
                               ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide(color: _kBorder.withValues(alpha: 0.8)),
+                              TextSpan(
+                                text: "Let's Get You Closer\n",
+                                style: TextStyle(fontWeight: FontWeight.w400),
                               ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(color: _kPrimary, width: 1.5),
+                              TextSpan(
+                                text: 'To ',
+                                style: TextStyle(fontWeight: FontWeight.w400),
                               ),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Phone number is required';
-                              }
-                              if (value.length != 10) {
-                                return 'Enter a valid 10-digit number';
-                              }
-                              return null;
-                            },
+                              TextSpan(
+                                text: 'Your Ideal Home',
+                                style: TextStyle(
+                                  color: _orange,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
                           ),
-
-                          // Animated OTP Input transition
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeInOut,
-                            height: _otpSent ? 110 : 0,
-                            margin: EdgeInsets.only(top: _otpSent ? 24 : 0),
-                            child: SingleChildScrollView(
-                              physics: const NeverScrollableScrollPhysics(),
-                              child: Column(
-                                children: [
-                                  TextFormField(
-                                    controller: _otpController,
-                                    keyboardType: TextInputType.number,
-                                    enabled: !_isLoading,
-                                    textAlign: TextAlign.center,
-                                    inputFormatters: [
-                                      FilteringTextInputFormatter.digitsOnly,
-                                      LengthLimitingTextInputFormatter(6),
-                                    ],
-                                    style: const TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.w800,
-                                      color: _kPrimaryDark,
-                                      letterSpacing: 20.0,
-                                    ),
-                                    decoration: InputDecoration(
-                                      hintText: '• • • • • •',
-                                      hintStyle: TextStyle(
-                                        color: _kTextMid.withValues(alpha: 0.4),
-                                        letterSpacing: 20.0,
-                                      ),
-                                      filled: true,
-                                      fillColor: _kBg.withValues(alpha: 0.8),
-                                      contentPadding: const EdgeInsets.symmetric(vertical: 20),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(16),
-                                        borderSide: BorderSide.none,
-                                      ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(16),
-                                        borderSide: const BorderSide(color: _kPrimary, width: 2),
-                                      ),
-                                    ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 24),
+                        child: const Text(
+                          'Login or Sign up with your phone number',
+                          style: TextStyle(
+                            color: _grey,
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w500,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                      Builder(
+                        builder: (context) {
+                          final screenW = MediaQuery.of(context).size.width;
+                          final houseSize = screenW * 0.75;
+                          return SizedBox(
+                            height: houseSize,
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                Positioned(
+                                  left: screenW * 0.30,
+                                  top: 0,
+                                  width: houseSize,
+                                  height: houseSize,
+                                  child: Image.asset(
+                                    'assets/icons/cuthouse.png',
+                                    fit: BoxFit.contain,
                                   ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 32),
-                          
-                          // Primary Button
-                          Container(
-                            height: 56,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              gradient: const LinearGradient(
-                                colors: [_kPrimaryDark, _kPrimary],
-                                begin: Alignment.centerLeft,
-                                end: Alignment.centerRight,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: _kPrimary.withValues(alpha: 0.4),
-                                  blurRadius: 16,
-                                  offset: const Offset(0, 8),
                                 ),
                               ],
                             ),
-                            child: ElevatedButton(
-                              onPressed: _isLoading ? null : (_otpSent ? _verifyOtp : _sendOtp),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.transparent,
-                                shadowColor: Colors.transparent,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
+                          );
+                        },
+                      ),
+                      Form(
+                        key: _formKey,
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 24),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Phone Number',
+                                style: TextStyle(
+                                  color: _grey,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
-                              child: _isLoading
-                                  ? const SizedBox(
-                                      width: 24,
-                                      height: 24,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.5,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              const SizedBox(height: 10),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: _fieldFill,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 14,
                                       ),
-                                    )
-                                  : Text(
-                                      _otpSent ? 'Verify OTP' : 'Send OTP',
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                        letterSpacing: 0.5,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            '🇮🇳',
+                                            style: TextStyle(fontSize: 20),
+                                          ),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            '+91',
+                                            style: TextStyle(
+                                              color: _navy,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          SizedBox(width: 4),
+                                          Icon(
+                                            Icons.keyboard_arrow_down_rounded,
+                                            color: _grey,
+                                            size: 20,
+                                          ),
+                                        ],
                                       ),
                                     ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Change Phone Number Action
-                    if (_otpSent) ...[
-                      const SizedBox(height: 24),
-                      Center(
-                        child: TextButton(
-                          onPressed: _isLoading
-                              ? null
-                              : () {
-                                  setState(() {
-                                    _otpSent = false;
-                                    _otpController.clear();
-                                  });
-                                },
-                          style: TextButton.styleFrom(
-                            foregroundColor: _kTextMid,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.arrow_back_rounded, size: 18),
-                              const SizedBox(width: 8),
+                                    Container(
+                                      width: 1,
+                                      height: 26,
+                                      color: Colors.black.withValues(
+                                        alpha: 0.08,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: _phoneController,
+                                        keyboardType: TextInputType.phone,
+                                        enabled: !_isLoading,
+                                        inputFormatters: [
+                                          FilteringTextInputFormatter
+                                              .digitsOnly,
+                                          LengthLimitingTextInputFormatter(10),
+                                        ],
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: _navy,
+                                        ),
+                                        decoration: const InputDecoration(
+                                          hintText: 'Enter your phone number',
+                                          hintStyle: TextStyle(
+                                            color: _grey,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          filled: false,
+                                          border: InputBorder.none,
+                                          contentPadding: EdgeInsets.symmetric(
+                                            vertical: 14,
+                                            horizontal: 14,
+                                          ),
+                                        ),
+                                        validator: (value) {
+                                          if (value == null ||
+                                              value.trim().isEmpty) {
+                                            return 'Phone number is required';
+                                          }
+                                          if (value.length != 10) {
+                                            return 'Enter a valid 10-digit number';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 14),
                               const Text(
-                                'Change Phone Number',
+                                "We'll send you a 6-digit OTP to verify your number",
                                 style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
+                                  color: _grey,
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.4,
                                 ),
                               ),
                             ],
@@ -449,10 +306,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                     ],
-                  ],
+                  ),
                 ),
               ),
-            ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+                child: WhitePillButton(
+                  label: 'Continue',
+                  loading: _isLoading,
+                  onTap: _sendOtp,
+                ),
+              ),
+            ],
           ),
         ),
       ),

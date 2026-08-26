@@ -7,7 +7,7 @@ part of 'owner_profile_provider.dart';
 // **************************************************************************
 
 String _$ownerProfileNotifierHash() =>
-    r'0c775b5969d0336acd725722312af80852c40083';
+    r'4a9ffe38faad888996a70fb68560e343c605ed06';
 
 /// See also [OwnerProfileNotifier].
 @ProviderFor(OwnerProfileNotifier)

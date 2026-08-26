@@ -16,7 +16,8 @@ class ScheduleVisitScreen extends ConsumerStatefulWidget {
   const ScheduleVisitScreen({super.key, required this.propertyId});
 
   @override
-  ConsumerState<ScheduleVisitScreen> createState() => _ScheduleVisitScreenState();
+  ConsumerState<ScheduleVisitScreen> createState() =>
+      _ScheduleVisitScreenState();
 }
 
 class _ScheduleVisitScreenState extends ConsumerState<ScheduleVisitScreen> {
@@ -24,7 +25,14 @@ class _ScheduleVisitScreenState extends ConsumerState<ScheduleVisitScreen> {
   String? _slot;
   bool _submitting = false;
 
-  static const _slots = <String>['09:00 AM', '11:00 AM', '01:00 PM', '03:00 PM', '05:00 PM', '07:00 PM'];
+  static const _slots = <String>[
+    '09:00 AM',
+    '11:00 AM',
+    '01:00 PM',
+    '03:00 PM',
+    '05:00 PM',
+    '07:00 PM',
+  ];
 
   bool get _valid => _date != null && _slot != null;
 
@@ -63,7 +71,7 @@ class _ScheduleVisitScreenState extends ConsumerState<ScheduleVisitScreen> {
     } else if (property.name.toLowerCase().contains('villa')) {
       typeStr = 'Villa';
     }
-    
+
     if (property.bhk != null && property.bhk! > 0) {
       return '${property.bhk} BHK $typeStr';
     }
@@ -72,10 +80,13 @@ class _ScheduleVisitScreenState extends ConsumerState<ScheduleVisitScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final property = ref.watch(propertyNotifierProvider.notifier).getById(widget.propertyId);
+    final property = ref
+        .watch(propertyNotifierProvider.notifier)
+        .getById(widget.propertyId);
     final fmt = DateFormat('EEE, MMM d, yyyy');
 
-    String imageUrl = 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=900&q=80&auto=format&fit=crop';
+    String imageUrl =
+        'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=900&q=80&auto=format&fit=crop';
     if (property != null) {
       if (property.images.isNotEmpty) {
         imageUrl = property.images.first;
@@ -90,7 +101,10 @@ class _ScheduleVisitScreenState extends ConsumerState<ScheduleVisitScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
-        title: const Text('Schedule a Visit', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+        title: const Text(
+          'Schedule a Visit',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+        ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -105,7 +119,11 @@ class _ScheduleVisitScreenState extends ConsumerState<ScheduleVisitScreen> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4)),
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
                   ],
                 ),
                 clipBehavior: Clip.antiAlias,
@@ -115,13 +133,18 @@ class _ScheduleVisitScreenState extends ConsumerState<ScheduleVisitScreen> {
                     CachedNetworkImage(
                       imageUrl: imageUrl,
                       fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(color: Colors.grey[300]),
-                      errorWidget: (context, url, error) => Container(color: Colors.grey[300]),
+                      placeholder: (context, url) =>
+                          Container(color: Colors.grey[300]),
+                      errorWidget: (context, url, error) =>
+                          Container(color: Colors.grey[300]),
                     ),
                     Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [Colors.black.withValues(alpha: 0.8), Colors.transparent],
+                          colors: [
+                            Colors.black.withValues(alpha: 0.8),
+                            Colors.transparent,
+                          ],
                           begin: Alignment.bottomCenter,
                           end: Alignment.topCenter,
                         ),
@@ -155,7 +178,11 @@ class _ScheduleVisitScreenState extends ConsumerState<ScheduleVisitScreen> {
                           const SizedBox(height: 2),
                           Row(
                             children: [
-                              const Icon(Icons.location_on, color: Colors.white70, size: 14),
+                              const Icon(
+                                Icons.location_on,
+                                color: Colors.white70,
+                                size: 14,
+                              ),
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
@@ -178,13 +205,18 @@ class _ScheduleVisitScreenState extends ConsumerState<ScheduleVisitScreen> {
                       top: 12,
                       right: 12,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF5C46E8).withValues(alpha: 0.9),
+                          color: const Color(0xFFFF8000).withValues(alpha: 0.9),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          property.type.toUpperCase() == 'SALE' ? 'FOR SALE' : 'FOR RENT',
+                          property.type.toUpperCase() == 'SALE'
+                              ? 'FOR SALE'
+                              : 'FOR RENT',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 10,
@@ -202,10 +234,10 @@ class _ScheduleVisitScreenState extends ConsumerState<ScheduleVisitScreen> {
             Text(
               'Select Date & Time',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 18,
-                    color: const Color(0xFF1D2939),
-                  ),
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
+                color: const Color(0xFF1D2939),
+              ),
             ),
             const SizedBox(height: 12),
             GlassContainer(
@@ -215,7 +247,11 @@ class _ScheduleVisitScreenState extends ConsumerState<ScheduleVisitScreen> {
                 children: [
                   const Text(
                     'Preferred Date',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF344054)),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF344054),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   InkWell(
@@ -226,13 +262,17 @@ class _ScheduleVisitScreenState extends ConsumerState<ScheduleVisitScreen> {
                       final picked = await showDatePicker(
                         context: context,
                         initialDate: now.add(const Duration(days: 1)),
-                        firstDate: DateTime(now.year, now.month, now.day).add(const Duration(days: 1)),
+                        firstDate: DateTime(
+                          now.year,
+                          now.month,
+                          now.day,
+                        ).add(const Duration(days: 1)),
                         lastDate: now.add(const Duration(days: 365)),
                         builder: (context, child) {
                           return Theme(
                             data: Theme.of(context).copyWith(
                               colorScheme: const ColorScheme.light(
-                                primary: Color(0xFF5C46E8),
+                                primary: Color(0xFFFF8000),
                                 onPrimary: Colors.white,
                                 onSurface: Color(0xFF1D2939),
                               ),
@@ -243,7 +283,9 @@ class _ScheduleVisitScreenState extends ConsumerState<ScheduleVisitScreen> {
                       );
                       if (!mounted) return;
                       if (picked == null) return;
-                      if (picked.isBefore(DateTime(now.year, now.month, now.day + 1))) {
+                      if (picked.isBefore(
+                        DateTime(now.year, now.month, now.day + 1),
+                      )) {
                         messenger.showSnackBar(
                           SnackBar(
                             content: const Text('Cannot pick a past date'),
@@ -257,27 +299,46 @@ class _ScheduleVisitScreenState extends ConsumerState<ScheduleVisitScreen> {
                     },
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       decoration: BoxDecoration(
-                        border: Border.all(color: const Color(0xFFEAECF0), width: 1.5),
+                        border: Border.all(
+                          color: const Color(0xFFEAECF0),
+                          width: 1.5,
+                        ),
                         borderRadius: BorderRadius.circular(12),
                         color: Colors.white,
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.calendar_month_rounded, color: Color(0xFF5C46E8), size: 22),
+                          const Icon(
+                            Icons.calendar_month_rounded,
+                            color: Color(0xFFFF8000),
+                            size: 22,
+                          ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              _date == null ? 'Choose a future date' : fmt.format(_date!),
+                              _date == null
+                                  ? 'Choose a future date'
+                                  : fmt.format(_date!),
                               style: TextStyle(
                                 fontSize: 15,
-                                fontWeight: _date == null ? FontWeight.w500 : FontWeight.w700,
-                                color: _date == null ? const Color(0xFF98A2B3) : const Color(0xFF1D2939),
+                                fontWeight: _date == null
+                                    ? FontWeight.w500
+                                    : FontWeight.w700,
+                                color: _date == null
+                                    ? const Color(0xFF98A2B3)
+                                    : const Color(0xFF1D2939),
                               ),
                             ),
                           ),
-                          const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF98A2B3)),
+                          const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: Color(0xFF98A2B3),
+                          ),
                         ],
                       ),
                     ),
@@ -285,7 +346,11 @@ class _ScheduleVisitScreenState extends ConsumerState<ScheduleVisitScreen> {
                   const SizedBox(height: 20),
                   const Text(
                     'Preferred Time Slot',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF344054)),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF344054),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Wrap(
@@ -297,22 +362,33 @@ class _ScheduleVisitScreenState extends ConsumerState<ScheduleVisitScreen> {
                           label: Text(s),
                           selected: _slot == s,
                           onSelected: (_) => setState(() => _slot = s),
-                          selectedColor: const Color(0xFF5C46E8).withValues(alpha: 0.1),
+                          selectedColor: const Color(
+                            0xFFFF8000,
+                          ).withValues(alpha: 0.1),
                           labelStyle: TextStyle(
-                            color: _slot == s ? const Color(0xFF5C46E8) : const Color(0xFF344054),
-                            fontWeight: _slot == s ? FontWeight.w800 : FontWeight.w600,
+                            color: _slot == s
+                                ? const Color(0xFFFF8000)
+                                : const Color(0xFF344054),
+                            fontWeight: _slot == s
+                                ? FontWeight.w800
+                                : FontWeight.w600,
                             fontSize: 13,
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                             side: BorderSide(
-                              color: _slot == s ? const Color(0xFF5C46E8) : const Color(0xFFEAECF0),
+                              color: _slot == s
+                                  ? const Color(0xFFFF8000)
+                                  : const Color(0xFFEAECF0),
                               width: _slot == s ? 1.5 : 1,
                             ),
                           ),
                           backgroundColor: Colors.white,
                           showCheckmark: false,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
                         ),
                     ],
                   ),
@@ -334,7 +410,9 @@ class _ScheduleVisitScreenState extends ConsumerState<ScheduleVisitScreen> {
                       if (user == null || user.token.isEmpty) {
                         messenger.showSnackBar(
                           SnackBar(
-                            content: const Text('Please login to schedule a visit'),
+                            content: const Text(
+                              'Please login to schedule a visit',
+                            ),
                             behavior: SnackBarBehavior.floating,
                             backgroundColor: errorColor,
                           ),
@@ -344,22 +422,30 @@ class _ScheduleVisitScreenState extends ConsumerState<ScheduleVisitScreen> {
 
                       setState(() => _submitting = true);
                       try {
-                        final formattedDate = DateFormat('yyyy-MM-dd').format(_date!);
+                        final formattedDate = DateFormat(
+                          'yyyy-MM-dd',
+                        ).format(_date!);
                         final timeParsed = DateFormat('hh:mm a').parse(_slot!);
-                        final formattedTime = DateFormat('HH:mm').format(timeParsed);
+                        final formattedTime = DateFormat(
+                          'HH:mm',
+                        ).format(timeParsed);
 
-                        await ref.read(propertyNotifierProvider.notifier).scheduleVisit(
-                          token: user.token,
-                          propertyId: widget.propertyId,
-                          userId: user.id,
-                          date: formattedDate,
-                          time: formattedTime,
-                        );
+                        await ref
+                            .read(propertyNotifierProvider.notifier)
+                            .scheduleVisit(
+                              token: user.token,
+                              propertyId: widget.propertyId,
+                              userId: user.id,
+                              date: formattedDate,
+                              time: formattedTime,
+                            );
 
                         if (!mounted) return;
                         messenger.showSnackBar(
                           SnackBar(
-                            content: Text('Visit scheduled successfully for ${fmt.format(_date!)} at $_slot!'),
+                            content: Text(
+                              'Visit scheduled successfully for ${fmt.format(_date!)} at $_slot!',
+                            ),
                             behavior: SnackBarBehavior.floating,
                             backgroundColor: const Color(0xFF039855),
                           ),
@@ -369,7 +455,9 @@ class _ScheduleVisitScreenState extends ConsumerState<ScheduleVisitScreen> {
                         if (!mounted) return;
                         messenger.showSnackBar(
                           SnackBar(
-                            content: const Text('Failed to schedule visit. Please try again.'),
+                            content: Text(
+                              e.toString().replaceFirst('Exception: ', ''),
+                            ),
                             behavior: SnackBarBehavior.floating,
                             backgroundColor: errorColor,
                           ),

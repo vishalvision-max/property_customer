@@ -39,7 +39,7 @@ class RecentSearchesSection extends StatelessWidget {
             children: [
               const Icon(
                 Icons.history_rounded,
-                color: Color(0xFF6C5CE7), // Matches primary color
+                color: Color(0xFFFF8000), // Matches primary color
                 size: 20,
               ),
               const SizedBox(width: 8),
@@ -58,7 +58,7 @@ class RecentSearchesSection extends StatelessWidget {
                   child: const Text(
                     "Clear all",
                     style: TextStyle(
-                      color: Color(0xFF6C5CE7), // Matches primary color
+                      color: Color(0xFFFF8000), // Matches primary color
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
@@ -84,9 +84,7 @@ class RecentSearchesSection extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: const Color(0xFFE5E7EB),
-                        ),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
                       ),
                       child: Text(
                         item.searchText,

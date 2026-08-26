@@ -24,7 +24,7 @@ final sharedPrefsProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef SharedPrefsRef = AutoDisposeFutureProviderRef<SharedPreferences>;
-String _$authHash() => r'bfa89409ae99f767d07b1f9a81af9ba82a3ed6f1';
+String _$authHash() => r'1feee8db3ea39eebf1d06ceed19e9857bcc14eba';
 
 /// See also [Auth].
 @ProviderFor(Auth)

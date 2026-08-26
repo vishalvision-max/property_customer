@@ -10,15 +10,11 @@ class FurnishingTypeSection extends StatelessWidget {
     required this.onFurnishingToggled,
   });
 
-  static const _options = [
-    'Unfurnished',
-    'Semi Furnished',
-    'Fully Furnished',
-  ];
+  static const _options = ['Unfurnished', 'Semi Furnished', 'Fully Furnished'];
 
   @override
   Widget build(BuildContext context) {
-    const activeColor = Color(0xFF7B2FF7);
+    const activeColor = Color(0xFFFF8000);
     const borderColor = Color(0xFFE5E7EB);
 
     return Column(
@@ -42,9 +38,12 @@ class FurnishingTypeSection extends StatelessWidget {
               onTap: () => onFurnishingToggled(option),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFFF9F5FF) : Colors.white,
+                  color: isSelected ? const Color(0xFFFFF1E0) : Colors.white,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: isSelected ? activeColor : borderColor,
@@ -60,13 +59,19 @@ class FurnishingTypeSection extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: isSelected ? activeColor : Colors.white,
                         border: Border.all(
-                          color: isSelected ? activeColor : const Color(0xFFD0D5DD),
+                          color: isSelected
+                              ? activeColor
+                              : const Color(0xFFD0D5DD),
                           width: 1.5,
                         ),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: isSelected
-                          ? const Icon(Icons.check, size: 14, color: Colors.white)
+                          ? const Icon(
+                              Icons.check,
+                              size: 14,
+                              color: Colors.white,
+                            )
                           : null,
                     ),
                     const SizedBox(width: 8),
@@ -74,8 +79,12 @@ class FurnishingTypeSection extends StatelessWidget {
                       option,
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                        color: isSelected ? activeColor : const Color(0xFF344054),
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w600,
+                        color: isSelected
+                            ? activeColor
+                            : const Color(0xFF344054),
                       ),
                     ),
                   ],

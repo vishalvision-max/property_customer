@@ -7,7 +7,7 @@ class VideoCacheService {
   final CacheManager _cacheManager;
 
   VideoCacheService({CacheManager? cacheManager})
-      : _cacheManager = cacheManager ?? DefaultCacheManager();
+    : _cacheManager = cacheManager ?? DefaultCacheManager();
 
   Future<File?> getCachedFile(String url) async {
     if (kIsWeb) return null;
@@ -23,4 +23,3 @@ class VideoCacheService {
     }
   }
 }
-

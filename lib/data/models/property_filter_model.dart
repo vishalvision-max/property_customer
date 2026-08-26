@@ -23,6 +23,8 @@ class PropertyFilterState {
   final List<String> selectedAvailable;
   final List<String> selectedPowerBackup;
   final List<String> selectedAmenities;
+  final int minBedrooms;
+  final int minBathroomsCount;
 
   const PropertyFilterState({
     required this.selectedCity,
@@ -47,6 +49,8 @@ class PropertyFilterState {
     required this.selectedAvailable,
     required this.selectedPowerBackup,
     required this.selectedAmenities,
+    this.minBedrooms = 0,
+    this.minBathroomsCount = 0,
   });
 
   factory PropertyFilterState.initial() {
@@ -99,16 +103,20 @@ class PropertyFilterState {
     List<String>? selectedAvailable,
     List<String>? selectedPowerBackup,
     List<String>? selectedAmenities,
+    int? minBedrooms,
+    int? minBathroomsCount,
   }) {
     return PropertyFilterState(
       selectedCity: selectedCity ?? this.selectedCity,
       selectedIntent: selectedIntent ?? this.selectedIntent,
       selectedLocalities: selectedLocalities ?? this.selectedLocalities,
       selectedBhk: selectedBhk ?? this.selectedBhk,
-      selectedPropertyTypes: selectedPropertyTypes ?? this.selectedPropertyTypes,
+      selectedPropertyTypes:
+          selectedPropertyTypes ?? this.selectedPropertyTypes,
       selectedDevelopers: selectedDevelopers ?? this.selectedDevelopers,
       selectedListedBy: selectedListedBy ?? this.selectedListedBy,
-      selectedConstructionStatus: selectedConstructionStatus ?? this.selectedConstructionStatus,
+      selectedConstructionStatus:
+          selectedConstructionStatus ?? this.selectedConstructionStatus,
       minBudget: minBudget ?? this.minBudget,
       maxBudget: maxBudget ?? this.maxBudget,
       selectedFurnishing: selectedFurnishing ?? this.selectedFurnishing,
@@ -123,6 +131,8 @@ class PropertyFilterState {
       selectedAvailable: selectedAvailable ?? this.selectedAvailable,
       selectedPowerBackup: selectedPowerBackup ?? this.selectedPowerBackup,
       selectedAmenities: selectedAmenities ?? this.selectedAmenities,
+      minBedrooms: minBedrooms ?? this.minBedrooms,
+      minBathroomsCount: minBathroomsCount ?? this.minBathroomsCount,
     );
   }
 
@@ -150,6 +160,8 @@ class PropertyFilterState {
       'selectedAvailable': selectedAvailable,
       'selectedPowerBackup': selectedPowerBackup,
       'selectedAmenities': selectedAmenities,
+      'minBedrooms': minBedrooms,
+      'minBathroomsCount': minBathroomsCount,
     };
   }
 
@@ -157,26 +169,48 @@ class PropertyFilterState {
     return PropertyFilterState(
       selectedCity: map['selectedCity'] ?? '',
       selectedIntent: map['selectedIntent'] ?? '',
-      selectedLocalities: List<String>.from(map['selectedLocalities'] ?? const []),
+      selectedLocalities: List<String>.from(
+        map['selectedLocalities'] ?? const [],
+      ),
       selectedBhk: List<String>.from(map['selectedBhk'] ?? const []),
-      selectedPropertyTypes: List<String>.from(map['selectedPropertyTypes'] ?? const []),
-      selectedDevelopers: List<String>.from(map['selectedDevelopers'] ?? const []),
+      selectedPropertyTypes: List<String>.from(
+        map['selectedPropertyTypes'] ?? const [],
+      ),
+      selectedDevelopers: List<String>.from(
+        map['selectedDevelopers'] ?? const [],
+      ),
       selectedListedBy: List<String>.from(map['selectedListedBy'] ?? const []),
-      selectedConstructionStatus: List<String>.from(map['selectedConstructionStatus'] ?? const []),
+      selectedConstructionStatus: List<String>.from(
+        map['selectedConstructionStatus'] ?? const [],
+      ),
       minBudget: (map['minBudget'] as num?)?.toDouble() ?? 0.0,
       maxBudget: (map['maxBudget'] as num?)?.toDouble() ?? 20.0,
-      selectedFurnishing: List<String>.from(map['selectedFurnishing'] ?? const []),
+      selectedFurnishing: List<String>.from(
+        map['selectedFurnishing'] ?? const [],
+      ),
       verifiedOnly: map['verifiedOnly'] as bool? ?? false,
       imagesOnly: map['imagesOnly'] as bool? ?? false,
       minArea: (map['minArea'] as num?)?.toDouble() ?? 0.0,
       maxArea: (map['maxArea'] as num?)?.toDouble() ?? 5000.0,
-      selectedLeaseTypes: List<String>.from(map['selectedLeaseTypes'] ?? const []),
-      selectedBathrooms: List<String>.from(map['selectedBathrooms'] ?? const []),
+      selectedLeaseTypes: List<String>.from(
+        map['selectedLeaseTypes'] ?? const [],
+      ),
+      selectedBathrooms: List<String>.from(
+        map['selectedBathrooms'] ?? const [],
+      ),
       selectedAge: List<String>.from(map['selectedAge'] ?? const []),
       selectedAdded: List<String>.from(map['selectedAdded'] ?? const []),
-      selectedAvailable: List<String>.from(map['selectedAvailable'] ?? const []),
-      selectedPowerBackup: List<String>.from(map['selectedPowerBackup'] ?? const []),
-      selectedAmenities: List<String>.from(map['selectedAmenities'] ?? const []),
+      selectedAvailable: List<String>.from(
+        map['selectedAvailable'] ?? const [],
+      ),
+      selectedPowerBackup: List<String>.from(
+        map['selectedPowerBackup'] ?? const [],
+      ),
+      selectedAmenities: List<String>.from(
+        map['selectedAmenities'] ?? const [],
+      ),
+      minBedrooms: (map['minBedrooms'] as num?)?.toInt() ?? 0,
+      minBathroomsCount: (map['minBathroomsCount'] as num?)?.toInt() ?? 0,
     );
   }
 

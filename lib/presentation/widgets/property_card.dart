@@ -390,7 +390,7 @@ class PropertyCard extends ConsumerWidget {
       case 'co-living':
       case 'co-livin':
         transactionText = 'Co-Living';
-        transactionBg = const Color(0xFFF4F3FF);
+        transactionBg = const Color(0xFFFFF1E0);
         transactionColor = const Color(0xFF6941C6);
         break;
 
@@ -689,14 +689,14 @@ class PropertyCard extends ConsumerWidget {
                     //   //           borderRadius: BorderRadius.circular(10),
                     //   //         ),
                     //   //         side: const BorderSide(
-                    //   //           color: Color(0xFF5C46E8),
+                    //   //           color: Color(0xFFFF8000),
                     //   //           width: 1.5,
                     //   //         ),
                     //   //       ),
                     //   //       child: const Text(
                     //   //         'View Details',
                     //   //         style: TextStyle(
-                    //   //           color: Color(0xFF5C46E8),
+                    //   //           color: Color(0xFFFF8000),
                     //   //           fontSize: 13,
                     //   //           fontWeight: FontWeight.w800,
                     //   //         ),
@@ -756,7 +756,7 @@ class PropertyCard extends ConsumerWidget {
                     //   //       height: 42,
                     //   //       width: 42,
                     //   //       decoration: BoxDecoration(
-                    //   //         color: const Color(0xFF5C46E8),
+                    //   //         color: const Color(0xFFFF8000),
                     //   //         borderRadius: BorderRadius.circular(10),
                     //   //         boxShadow: [
                     //   //           BoxShadow(
@@ -979,11 +979,11 @@ class _PropertyMediaGalleryState extends State<_PropertyMediaGallery> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: const Color(0xFF5C46E8),
+                color: const Color(0xFFFF8000),
                 borderRadius: BorderRadius.circular(6),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF5C46E8).withValues(alpha: 0.3),
+                    color: const Color(0xFFFF8000).withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),

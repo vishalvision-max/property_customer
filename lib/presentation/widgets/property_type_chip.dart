@@ -37,12 +37,11 @@ class PropertyTypeChip extends StatelessWidget {
       ),
       child: Text(
         _isRent ? 'Rent' : 'Sale',
-        style: Theme.of(context)
-            .textTheme
-            .labelMedium
-            ?.copyWith(fontWeight: FontWeight.w700, color: fg),
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          fontWeight: FontWeight.w700,
+          color: fg,
+        ),
       ),
     );
   }
 }
-

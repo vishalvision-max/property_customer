@@ -25,19 +25,27 @@ class EmptyState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SvgPicture.asset(asset, width: 180, height: 140, fit: BoxFit.contain),
+            SvgPicture.asset(
+              asset,
+              width: 180,
+              height: 140,
+              fit: BoxFit.contain,
+            ),
             const SizedBox(height: 16),
-            Text(title, style: textTheme.titleLarge, textAlign: TextAlign.center),
+            Text(
+              title,
+              style: textTheme.titleLarge,
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 8),
             Text(
               message,
-              style: textTheme.bodyMedium?.copyWith(color: Theme.of(context).hintColor),
+              style: textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).hintColor,
+              ),
               textAlign: TextAlign.center,
             ),
-            if (action != null) ...[
-              const SizedBox(height: 16),
-              action!,
-            ],
+            if (action != null) ...[const SizedBox(height: 16), action!],
           ],
         ),
       ),

@@ -1,46 +1,55 @@
 import 'package:flutter/material.dart';
 
+/// Notifications are not yet exposed by the backend — every candidate endpoint
+/// (`/api/v1/notifications`, `/api/v1/owner/notifications`) currently 404s.
+/// Until one exists this screen shows a real empty state instead of the
+/// hardcoded mock rows it used to render.
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final items = List.generate(
-      10,
-      (i) => _NotificationItem(
-        title: i.isEven ? 'Price drop on your saved listing' : 'New listing near you',
-        message: i.isEven ? 'A property you favorited dropped 5% (mock).' : 'Fresh rental listings added in your area (mock).',
-        time: '${i + 1}h ago',
-      ),
-    );
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(title: const Text('Notifications')),
-      body: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-        itemCount: items.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 10),
-        itemBuilder: (context, i) {
-          final n = items[i];
-          return ListTile(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-            tileColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-            leading: CircleAvatar(
-              backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
-              child: Icon(Icons.notifications_rounded, color: Theme.of(context).colorScheme.primary),
-            ),
-            title: Text(n.title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
-            subtitle: Text(n.message),
-            trailing: Text(n.time, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Theme.of(context).hintColor)),
-          );
-        },
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 84,
+                height: 84,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                ),
+                child: Icon(
+                  Icons.notifications_none_rounded,
+                  size: 40,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'No notifications yet',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Price drops, new listings and visit updates will show up here.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.hintColor,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
-}
-
-class _NotificationItem {
-  final String title;
-  final String message;
-  final String time;
-  const _NotificationItem({required this.title, required this.message, required this.time});
 }

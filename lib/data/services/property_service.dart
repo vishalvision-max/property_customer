@@ -7,6 +7,45 @@ import 'package:http/http.dart' as http;
 import '../models/property.dart';
 import '../models/scheduled_visit.dart';
 
+/// Decodes a properties-list API response body and maps it to [Property]
+/// objects. Kept as a top-level function (not a class method) so it can run
+/// via [compute] in a background isolate — a large response decoded
+/// synchronously on the main isolate can visibly freeze the UI (even trigger
+/// an Android ANR), since `jsonDecode` + mapping hundreds of items is
+/// genuine CPU work, not I/O.
+List<Property> parsePropertyListResponseBody(String body) {
+  final decoded = body.trim().isEmpty ? null : jsonDecode(body);
+
+  final List items;
+  if (decoded is List) {
+    items = decoded;
+  } else if (decoded is Map<String, dynamic>) {
+    // Handle both flat and paginated responses:
+    //   { "data": [...] }                        — flat list
+    //   { "data": { "data": [...], "total": N } } — Laravel paginator
+    //   { "status": true, "data": { "data": [...] } }
+    final outer = decoded['data'] ?? decoded['properties'] ?? decoded['result'];
+    if (outer is List) {
+      items = outer;
+    } else if (outer is Map) {
+      final inner = outer['data'];
+      items = inner is List ? inner : const [];
+    } else {
+      items = const [];
+    }
+  } else {
+    items = const [];
+  }
+
+  return items
+      .whereType<Map>()
+      .map(
+        (e) => PropertyService._propertyFromApiJson(e.cast<String, dynamic>()),
+      )
+      .where((p) => p.id.isNotEmpty)
+      .toList(growable: false);
+}
+
 class PropertyService {
   final String? Function()? getCity;
 
@@ -43,9 +82,33 @@ class PropertyService {
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return;
-    } else {
-      throw Exception('Failed to schedule visit: ${response.statusCode}');
     }
+
+    debugPrint(
+      '[PropertyService] scheduleVisit → ${response.statusCode}: ${response.body}',
+    );
+
+    // Surface the server's own reason (validation errors, auth, …) instead of
+    // a bare status code, otherwise a failed booking is undiagnosable.
+    String reason = 'Failed to schedule visit (${response.statusCode})';
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        final message = decoded['message'];
+        final errors = decoded['errors'];
+        if (errors is Map && errors.isNotEmpty) {
+          final first = errors.values.first;
+          reason = first is List && first.isNotEmpty
+              ? first.first.toString()
+              : first.toString();
+        } else if (message is String && message.trim().isNotEmpty) {
+          reason = message.trim();
+        }
+      }
+    } catch (_) {
+      // Non-JSON body — keep the status-code fallback.
+    }
+    throw Exception(reason);
   }
 
   Future<List<ScheduledVisit>> fetchScheduledVisits(String token) async {
@@ -77,7 +140,7 @@ class PropertyService {
   }
 
   Future<List<Property>> fetchProperties() async {
-    return _fetchFromApi(query: const {'per_page': '100000'});
+    return _fetchFromApi(query: const {'per_page': '500'});
   }
 
   Future<({List<Property> items, bool hasMore, int currentPage})>
@@ -110,6 +173,12 @@ class PropertyService {
     int? maxPrice,
     List<int> categoryIds = const [], // property types as backend category_id[]
     List<String> propertyKinds = const [],
+    // Defaults to "return everything" since several callers (search results,
+    // filter counts) do client-side filtering over the full list. Callers
+    // that only need a small feed (e.g. the home screen) should pass a
+    // sane limit — a huge per_page means a huge response body, and
+    // decoding that JSON synchronously can visibly freeze the UI thread.
+    String perPage = '500',
   }) async {
     if (kIsWeb) {
       throw Exception('Properties API is not supported on web in this build');
@@ -118,10 +187,7 @@ class PropertyService {
     // Build query params list (key, value) to support multi-value params
     final params = <(String, String)>[];
 
-    params.add((
-      'per_page',
-      '100000',
-    )); // always return max results for filtering
+    params.add(('per_page', perPage));
     if (type != null && type.trim().isNotEmpty)
       params.add(('type', type.trim()));
     final resolvedCity = city != null && city.trim().isNotEmpty
@@ -205,33 +271,14 @@ class PropertyService {
         throw Exception('Failed to load filtered properties ($status)');
       }
 
-      final decoded = body.trim().isEmpty ? null : jsonDecode(body);
-      final List items;
-      if (decoded is List) {
-        items = decoded;
-      } else if (decoded is Map<String, dynamic>) {
-        final outer =
-            decoded['data'] ?? decoded['properties'] ?? decoded['result'];
-        if (outer is List) {
-          items = outer;
-        } else if (outer is Map) {
-          final inner = outer['data'];
-          items = inner is List ? inner : const [];
-        } else {
-          items = const [];
-        }
-      } else {
-        items = const [];
-      }
-
+      // Decoding + mapping runs in a background isolate — a big response
+      // parsed synchronously on the main isolate can freeze the UI thread
+      // (or trigger an Android ANR) since JSON decode is real CPU work.
+      final items = await compute(parsePropertyListResponseBody, body);
       debugPrint(
         '[PropertyService] fetchWithFilters parsed ${items.length} items',
       );
-      return items
-          .whereType<Map>()
-          .map((e) => _propertyFromApiJson(e.cast<String, dynamic>()))
-          .where((p) => p.id.isNotEmpty)
-          .toList(growable: false);
+      return items;
     } on SocketException {
       throw Exception('Network error. Please check your internet connection.');
     } catch (e) {
@@ -262,12 +309,16 @@ class PropertyService {
   }) async {
     final List<(String, String)> params = [];
 
-    if (type != null && type.trim().isNotEmpty) params.add(('type', type.trim()));
-    final resolvedCity = city != null && city.trim().isNotEmpty ? city.trim() : getCity?.call();
+    if (type != null && type.trim().isNotEmpty)
+      params.add(('type', type.trim()));
+    final resolvedCity = city != null && city.trim().isNotEmpty
+        ? city.trim()
+        : getCity?.call();
     if (resolvedCity != null && resolvedCity.trim().isNotEmpty) {
       params.add(('city', resolvedCity.trim()));
     }
-    if (state != null && state.trim().isNotEmpty) params.add(('state', state.trim()));
+    if (state != null && state.trim().isNotEmpty)
+      params.add(('state', state.trim()));
 
     for (final cid in categoryIds) {
       params.add(('category_id[]', cid.toString()));
@@ -280,15 +331,21 @@ class PropertyService {
       params.add(('bedrooms[]', b.toString()));
     }
     if (bathrooms != null) params.add(('bathrooms', bathrooms.toString()));
-    if (minArea != null) params.add(('built_up_area', minArea.toInt().toString()));
+    if (minArea != null)
+      params.add(('built_up_area', minArea.toInt().toString()));
     // API uses 'monthly_rent' or 'price', we map basic budget if possible.
-    if (minPrice != null && type == 'rent') params.add(('monthly_rent', minPrice.toString()));
+    if (minPrice != null && type == 'rent')
+      params.add(('monthly_rent', minPrice.toString()));
 
     final queryString = params
-        .map((p) => '${Uri.encodeQueryComponent(p.$1)}=${Uri.encodeQueryComponent(p.$2)}')
+        .map(
+          (p) =>
+              '${Uri.encodeQueryComponent(p.$1)}=${Uri.encodeQueryComponent(p.$2)}',
+        )
         .join('&');
 
-    final uriStr = '${_baseUri.toString()}/api/v1/owner/count/properties/filter' +
+    final uriStr =
+        '${_baseUri.toString()}/api/v1/owner/count/properties/filter' +
         (queryString.isNotEmpty ? '?$queryString' : '');
 
     final uri = Uri.parse(uriStr);
@@ -333,7 +390,7 @@ class PropertyService {
     final apiType = type == 'buy' ? 'sale' : type;
     return _fetchFromApi(
       query: <String, String>{
-        'per_page': '100000',
+        'per_page': '500',
         if (categoryId != null) 'category_id': categoryId.toString(),
         if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
         if (minPrice != null) 'min_price': minPrice.toString(),
@@ -589,29 +646,7 @@ class PropertyService {
       if (status < 200 || status >= 300) {
         throw Exception('Failed to load recommendations ($status)');
       }
-      final decoded = body.trim().isEmpty ? null : jsonDecode(body);
-      final List items;
-      if (decoded is List) {
-        items = decoded;
-      } else if (decoded is Map<String, dynamic>) {
-        final outer =
-            decoded['data'] ?? decoded['properties'] ?? decoded['result'];
-        if (outer is List) {
-          items = outer;
-        } else if (outer is Map) {
-          final inner = outer['data'];
-          items = inner is List ? inner : const [];
-        } else {
-          items = const [];
-        }
-      } else {
-        items = const [];
-      }
-      return items
-          .whereType<Map>()
-          .map((e) => _propertyFromApiJson(e.cast<String, dynamic>()))
-          .where((p) => p.id.isNotEmpty)
-          .toList(growable: false);
+      return await compute(parsePropertyListResponseBody, body);
     } on SocketException {
       throw Exception('Network error. Please check your internet connection.');
     } finally {
@@ -668,29 +703,7 @@ class PropertyService {
 
       debugPrint('[PropertyService] $errorLabel response:\n$body');
 
-      final decoded = body.trim().isEmpty ? null : jsonDecode(body);
-      final List items;
-      if (decoded is List) {
-        items = decoded;
-      } else if (decoded is Map<String, dynamic>) {
-        final outer =
-            decoded['data'] ?? decoded['properties'] ?? decoded['result'];
-        if (outer is List) {
-          items = outer;
-        } else if (outer is Map) {
-          final inner = outer['data'];
-          items = inner is List ? inner : const [];
-        } else {
-          items = const [];
-        }
-      } else {
-        items = const [];
-      }
-      return items
-          .whereType<Map>()
-          .map((e) => _propertyFromApiJson(e.cast<String, dynamic>()))
-          .where((p) => p.id.isNotEmpty)
-          .toList(growable: false);
+      return await compute(parsePropertyListResponseBody, body);
     } on SocketException {
       throw Exception('Network error. Please check your internet connection.');
     }
@@ -1112,7 +1125,7 @@ class PropertyService {
     final q = keyword.trim();
     return _fetchFromApi(
       query: <String, String>{
-        'per_page': '100000',
+        'per_page': '500',
         if (q.isNotEmpty) 'keyword': q,
       },
     );
@@ -1129,6 +1142,11 @@ class PropertyService {
     List<String> furnishing = const [],
   }) async {
     // Use backend filtering where possible (price, city text, type).
+    //
+    // `property_kind` is deliberately NOT sent: the backend only knows
+    // 'residential' | 'commercial' | 'plot' and answers 404 for anything else
+    // (e.g. 'apartments'), which surfaced to the user as "No Property Found".
+    // The property type is matched client-side instead.
     final all = await fetchFiltered(
       type: mode,
       minPrice: budgetRange?.start.toInt() == 0
@@ -1143,7 +1161,6 @@ class PropertyService {
       sortBy: sortBy,
       availability: availability,
       furnishing: furnishing.isNotEmpty ? furnishing.first : null,
-      propertyKind: propertyType != 'Any' ? propertyType : null,
     );
 
     return all.where((p) {
@@ -1151,22 +1168,45 @@ class PropertyService {
       final amenOk = amenities.isEmpty
           ? true
           : amenities.every((a) => p.amenities.contains(a));
-      final propTypeOk = (propertyType == null || propertyType == 'Any')
-          ? true
-          : p.propertyKind.toLowerCase().contains(propertyType.toLowerCase()) ||
-                p.name.toLowerCase().contains(propertyType.toLowerCase()) ||
-                (propertyType == 'Industrial Shed' &&
-                    ((p.categoryName ?? '').toLowerCase().contains(
-                          'industrial',
-                        ) ||
-                        p.propertyKind.toLowerCase().contains('industrial'))) ||
-                (propertyType == 'Agricultural Land' &&
-                    ((p.categoryName ?? '').toLowerCase().contains(
-                          'agricultur',
-                        ) ||
-                        p.propertyKind.toLowerCase().contains('agricultur')));
-      return amenOk && propTypeOk;
+      return amenOk && matchesPropertyType(p, propertyType);
     }).toList();
+  }
+
+  /// Synonyms for the UI's property-type labels, matched against a property's
+  /// `property_kind`, category name and title.
+  static const _propertyTypeSynonyms = <String, List<String>>{
+    'apartment': ['apartment', 'flat'],
+    'apartments': ['apartment', 'flat'],
+    'independent house': ['independent house', 'house'],
+    'builder floor': ['builder floor'],
+    'plot': ['plot', 'land'],
+    'land': ['plot', 'land'],
+    'studio': ['studio'],
+    'duplex': ['duplex'],
+    'villa': ['villa'],
+    'industrial shed': ['industrial'],
+    'agricultural land': ['agricultur'],
+    'residential': ['residential'],
+    'commercial': ['commercial', 'office', 'shop'],
+    'office': ['office'],
+    'pg': ['pg', 'co-living', 'shared'],
+  };
+
+  /// True when [p] matches the UI property-type label [propertyType].
+  /// A null/empty/'Any' label matches everything.
+  static bool matchesPropertyType(Property p, String? propertyType) {
+    final label = propertyType?.trim().toLowerCase() ?? '';
+    if (label.isEmpty || label == 'any') return true;
+
+    final needles = _propertyTypeSynonyms[label] ?? [label];
+    final haystack = [
+      p.propertyKind,
+      p.categoryName ?? '',
+      p.name,
+      p.type,
+    ].join(' ').toLowerCase();
+
+    return needles.any(haystack.contains);
   }
 
   Future<List<Property>> _fetchFromApi({
@@ -1208,45 +1248,24 @@ class PropertyService {
         '[PropertyService] fetchFiltered → $status (${body.length} bytes)',
       );
 
+      if (status == 404) {
+        // The API answers "no match for these filters" with a 404 body rather
+        // than an empty 200 list. That's an empty result, not a failure.
+        debugPrint('[PropertyService] fetchFiltered 404 → treating as empty');
+        return const <Property>[];
+      }
+
       if (status < 200 || status >= 300) {
         debugPrint(
           '[PropertyService] fetchFiltered error body: ${body.substring(0, body.length.clamp(0, 300))}',
         );
         throw Exception('Failed to load properties ($status)');
       }
-      final decoded = body.trim().isEmpty ? null : jsonDecode(body);
-
-      final List items;
-      if (decoded is List) {
-        items = decoded;
-      } else if (decoded is Map<String, dynamic>) {
-        // Handle both flat and paginated responses:
-        //   { "data": [...] }                        — flat list
-        //   { "data": { "data": [...], "total": N } } — Laravel paginator
-        //   { "status": true, "data": { "data": [...] } }
-        final outer =
-            decoded['data'] ?? decoded['properties'] ?? decoded['result'];
-        if (outer is List) {
-          items = outer;
-        } else if (outer is Map) {
-          // Laravel paginator: the real array is nested under another "data" key
-          final inner = outer['data'];
-          items = inner is List ? inner : const [];
-        } else {
-          items = const [];
-        }
-      } else {
-        items = const [];
-      }
-
+      final items = await compute(parsePropertyListResponseBody, body);
       debugPrint(
         '[PropertyService] fetchFiltered parsed ${items.length} raw items',
       );
-      return items
-          .whereType<Map>()
-          .map((e) => _propertyFromApiJson(e.cast<String, dynamic>()))
-          .where((p) => p.id.isNotEmpty)
-          .toList(growable: false);
+      return items;
     } on SocketException catch (e) {
       debugPrint('[PropertyService] fetchFiltered SocketException: $e');
       throw Exception('Network error. Please check your internet connection.');
@@ -1261,7 +1280,7 @@ class PropertyService {
   Property propertyFromApiJson(Map<String, dynamic> json) =>
       _propertyFromApiJson(json);
 
-  Property _propertyFromApiJson(Map<String, dynamic> json) {
+  static Property _propertyFromApiJson(Map<String, dynamic> json) {
     // Support a few common backend field-name variants to avoid breaking
     // if the API schema differs from the mock schema.
     String pickString(List<String> keys) {
@@ -1308,7 +1327,7 @@ class PropertyService {
 
     final type = pickString(['type', 'mode', 'purpose']);
     final rawType = type.trim().toLowerCase();
-    
+
     // Fallback normalization just in case, but prefer the raw type if it's one of the 5.
     final finalType = rawType.isNotEmpty ? rawType : 'buy';
 
